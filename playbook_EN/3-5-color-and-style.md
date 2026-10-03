@@ -36,15 +36,13 @@ After receiving the start order, echo these five items before touching anything 
 | 800 | `#343A40` | Headings, primary body text (11.51:1 on white) |
 | 900 | `#212529` | Highest-emphasis text, dark-mode page background (15.43:1 on white) |
 
-**Action 2: Brand primary, three tiers (`--color-brand-*`)**
+**Action 2: Brand primary, three tiers (`--color-brand-*`; the brand colour is reserved for the one primary action that is clickable right now — at most one full-brand area per screen)**
 
 | State | Value | Check |
 | :-- | :-- | :-- |
 | Primary | `#2563EB` | 5.17:1 on white; white text on it 5.17:1 (both directions pass the body gate) |
 | Hover | `#1D4ED8` | 6.70:1 on white |
 | Pressed | `#1E40AF` | One step darker than hover, instant feedback only, never a text background |
-
-The brand colour is reserved for the one primary action that is clickable right now — at most one full-brand area per screen.
 
 **Action 3: Four semantic colours (`--color-<semantic>-*`; 700 tier in light mode, 300 tier in dark mode; text inside the fills: `#15803D` on `#DCFCE7` 4.57:1, `#92400E` on `#FEF3C7` 6.37:1, `#B91C1C` on `#FEE2E2` 5.30:1, `#1D4ED8` on `#DBEAFE` 5.49:1)**
 
@@ -58,11 +56,11 @@ The brand colour is reserved for the one primary action that is clickable right 
 **Action 4: Contrast gates (WCAG 2.1 AA, fixed; when a value fails, change the value, never the gate)**
 - Body text (<18px, or <14px bold) against its background ≥ **4.5:1**
 - Large text (≥18px, or ≥14px bold), icons, key chart marks ≥ **3:1**
-- UI boundaries (input border, card border, divider) against the adjacent surface ≥ **3:1**; the generic border value is `#6C757D` (4.69:1 on white, 4.41:1 on step 50, 3.29:1 on the dark background)
-- State must never rely on colour alone: an icon or a word is always present
+- UI boundaries (input border, card border, divider) against the adjacent surface ≥ **3:1**; the generic border value is `#6C757D` (4.69:1 on white, 4.41:1 on step 50, 3.29:1 on the dark background); state must never rely on colour alone, an icon or a word is always present
 - ❌ Counter-example: turning the error text red and calling that the message (colour-blind users see nothing) | ✅ Good example: red text + icon + the words "Save failed", three signals at once
 
 **Action 5: A runnable contrast self-check (swap in your own two colours; if a ratio is under the gate, change the colour and rerun)**
+Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
 ```powershell
 function Get-CR($a, $b) {
   $L = { param($h) $c = @(1,3,5) | ForEach-Object { [Convert]::ToInt32($h.Substring($_,2),16)/255 }; $v = $c | ForEach-Object { if ($_ -le 0.03928) { $_/12.92 } else { [Math]::Pow(($_+0.055)/1.055,2.4) } }; 0.2126*$v[0]+0.7152*$v[1]+0.0722*$v[2] }
@@ -86,8 +84,7 @@ function Get-CR($a, $b) {
 | 3xl | 40 | 1.25 | 700 | First-screen headline (at most one per page) |
 
 **Action 7: Spacing and layout (`--space-*`, 4px base, only these eight values)**
-`4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`. Adjacent text blocks 4–8, card padding 16–24, between cards 24–32, between page sections 48–64.
-❌ Counter-example: hand-written values such as `margin: 13px`, `padding: 5px` | ✅ Good example: always `var(--space-3)` (which is 12)
+`4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`. Adjacent text blocks 4–8, card padding 16–24, between cards 24–32, between page sections 48–64. ❌ Counter-example: hand-written values such as `margin: 13px`, `padding: 5px` | ✅ Good example: always `var(--space-3)` (which is 12)
 
 **Action 8: Radius, border, shadow (`--radius-*` / `--shadow-*`; radius `4` inputs / `8` cards and medium buttons / `12` overlays and large buttons / `999` avatars and pill labels; one border style everywhere `1px solid var(--color-neutral-300)`, focus switches to brand plus a 2px outer glow; use the three shadow levels as they are)**
 ```css
@@ -108,15 +105,17 @@ function Get-CR($a, $b) {
 | `--color-border` | `#DEE2E6` | `#6C757D` |
 | `--color-brand` | `#2563EB` | `#60A5FA` |
 
-**Action 10: Self-check for this card's output (run from the project root; 10 steps, four semantics and seven tokens means pass)**
+**Action 10: Self-check for this card's output (run from the project root; non-developers only need the exit code: exit 1 = this card is not done. 10 steps, four semantics, 7 tokens, 0 raw bold hex and ≤80 lines all pass)**
 ```powershell
 $t = 'docs/DESIGN_TOKENS.md'
 $l = @(Get-Content $t -Encoding UTF8)
-"DESIGN_TOKENS.md lines $($l.Count)"
-"neutral steps $(@($l | Where-Object { $_ -match '^\| [0-9]{2,3} \|' }).Count)"
-"semantic rows $(@($l | Where-Object { $_ -match 'success|warning|danger|info' }).Count)"
-"token rows $(@($l | Where-Object { $_ -match '^--color-' }).Count)"
-"raw bold hex rows $(@($l | Where-Object { $_ -match '\*\*#[0-9A-Fa-f]{6}\*\*' }).Count)"
+$neutral = @($l | Where-Object { $_ -match '^\| [0-9]{2,3} \|' }).Count
+$sema = @($l | Where-Object { $_ -match 'success|warning|danger|info' }).Count
+$tok = @($l | Where-Object { $_ -match '--color-[a-z-]+' }).Count
+$raw = @($l | Where-Object { $_ -match '\*\*#[0-9A-Fa-f]{6}\*\*' }).Count
+"lines $($l.Count) (must be <= 80) | neutral steps $neutral (must be >= 10) | semantic rows $sema (must be >= 4)"
+"tokens $tok (must be >= 7) | raw bold hex rows $raw (must be 0)"
+if ($l.Count -gt 80 -or $neutral -lt 10 -or $sema -lt 4 -or $tok -lt 7 -or $raw -ne 0) { Write-Host '[FAIL] card self-check failed'; exit 1 } else { Write-Host '[OK] card self-check passed' }
 ```
 
 **Prohibitions (any violation voids this round's output):**
@@ -129,7 +128,7 @@ $l = @(Get-Content $t -Encoding UTF8)
 2. The 10-step neutral table verbatim (step + hex + use, 10 rows); the four semantic colours verbatim in light and dark + the four in-fill contrast ratios
 3. Real output of the Action 5 command (three ratios) plus the gate verdict (which values clear ≥4.5:1 and which clear ≥3:1)
 4. The seven type tiers, eight spacing values, four radius values and three shadow levels, verbatim
-5. Real output of the Action 10 command (10 steps, 4 semantics, 7 tokens) + this round's commit hash
+5. Real output of the Action 10 command (≤80 lines, 10 steps, 4 semantics, 7 tokens, 0 raw bold hex; exit code 0) + this round's commit hash
 
 ## ④ State write-back
 

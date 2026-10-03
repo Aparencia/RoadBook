@@ -17,7 +17,7 @@ After receiving the start instruction, first receipt the following nine items be
 8. **Baseline bookkeeping (the 0 point of the net-increment ledger)**: receipt three baseline numbers — the short hash from `git rev-parse --short HEAD`, the file count from `(git ls-files).Count`, and empty `git status --porcelain` output (working tree clean; `git diff --numstat` prints nothing for untracked new files, so it would misjudge). If the baseline is not clean → ask the user what to do first; opening the ledger on a dirty tree is forbidden.
 9. **Lesson retrieval (JIT)**: assign first, `$kw = 'checkout'` (replace with the module or keyword this task touches), then run `Select-String -Path docs/lessons/*.md -Pattern $kw -List` (if that directory does not exist, declare "no historical lessons"); on a hit, receipt the card name + one line on the key point — these are the known minefields of this module, compare against them item by item while writing code.
 
-Also declare: **during this requirement, "batch-level notice, requirement-level gate" applies** — send a one-line progress notice at the end of each batch and continue to the next batch without waiting for a reply; after the whole requirement is done, go into 4-2 review for one verdict (**tier S is exempt from review**: after 4-1 is green go straight to 4-3, with the 4-3 guardrail as the fallback). In the middle, stop only when any item of the "condition-triggered pause list" is triggered.
+Also declare the pause rule (execute this sentence; no improvising): **tier S: write the three batches in one go and report once (paste the three ledgers), then wait for the user to say "continue" before entering 4-3; tiers M/L: report after every batch and wait for the user to say "continue"; any item of the condition-triggered pause list fires → stop immediately and wait for a verdict**. (**Tier S is exempt from review**: after 4-1 is green go straight to 4-3, with the 4-3 guardrail as the fallback.)
 
 ---
 
@@ -36,6 +36,7 @@ Write `$anchor`'s output into the `起点锚点` field of STATE.md. Losing it = 
 - Landing rules: for where new files go, first check the "new code landing table" in `docs/ARCHITECTURE.md`; to create a new component/module, first check the three-part set in `docs/registry/` — **if a close equivalent already exists, reuse it; parallel creation is forbidden**.
   ❌ Counter-example: the old button component cannot be found → create `Button2.tsx`
   ✅ Good example: searching finds `PrimaryButton`, reuse it; if it really does not fit → write "why the existing component was not used" in the receipt and then create it
+- **After the first batch lands**: replace check.ps1's `$STEPS` zero-dependency placeholder check with the real build/test command (the placeholder is placed during onboarding and must be replaced here; leaving it means the close-out ceremony validates document format only, not code).
 
 **Five checks to recite every batch (after reciting them, write the results into this batch's notice)**: ① did you touch only the files SCOPE involves (`git status`, verified file by file) ｜ ② did you change anything outside SCOPE while you were at it (restore it if found; if you want it fixed, register it in `docs/TECH_DEBT.md`) ｜ ③ is there a "why an existing file could not be used" for every new file ｜ ④ did dependencies change (a changed lockfile must be explained separately; unrequested dependency upgrades are forbidden) ｜ ⑤ did you run into anything on the Won't Have list (if so, stop — that is out of scope).
 
@@ -50,7 +51,7 @@ $slug = 'checkout'; $what = '实现购物车结算接口'   # scope short name +
 git commit -m "4-1 feat($slug): $what"
 ```
 
-After committing, send a one-line **progress notice** (batch number + a summary of the five-check results + the registry write-back status); **do not wait for a reply, continue to the next batch**.
+After committing, send a one-line **progress notice** (batch number + a summary of the five-check results + the registry write-back status), then follow the pause rule declared above (tier S: one report at the end; tiers M/L: wait for the user to say "continue").
 
 **Commit message format (uniform across the whole repository)**: `<卡号> <type>(<scope>): <摘要>` — type ∈ feat/fix/docs/chore/style/refactor/test; the card number lets 5-1 trace batches back by commit (in `git log --oneline`, the entries starting with `4-1 ` are this task's batch list). [disambiguated]
 
@@ -114,8 +115,7 @@ Red light: more than 20 new files in this batch → stop and merge them first, o
 
 ## ③ Evidence receipt
 
-Every batch notice contains: batch number / commit hash / a summary of the five-check results / the registry write-back status / the five net-increment numbers (files added · files deleted · lines added · lines deleted · net lines).
-After all batches (or the merge of parallel units) are done:
+Every batch notice contains: batch number / commit hash / a summary of the five-check results / the registry write-back status / the five net-increment numbers (files added · files deleted · lines added · lines deleted · net lines); after all batches (or the merge of parallel units) are done:
 1. The full output of `git diff --stat $anchor..HEAD`
 2. Cumulative lines vs `预估改动行数` (whether the ×1.5 trigger line was ever touched)
 3. When parallel lanes were used: the list of unit branches + the merge order

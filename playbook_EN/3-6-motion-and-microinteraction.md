@@ -15,7 +15,7 @@ After receiving the start order, echo these five items before touching anything 
    - [ ] ④ Ten microinteractions: hover, press, focus ring, in-button loading, skeleton, Toast in/out, list add/remove, collapse/expand, number change, success tick
    - [ ] ⑤ Opt-out fixed: under `prefers-reduced-motion: reduce`, ≤100ms or opacity only
    - [ ] ⑥ Performance budget: transform/opacity only, displacement ≤8px, 60fps, ≤300ms per animation
-   - [ ] ⑦ Acceptance: screen recording or DevTools Performance readings
+   - [ ] ⑦ Acceptance: each animation gets three manual reproduction steps plus the reproduction result; DevTools readings or a screen recording are optional supporting evidence at tier L only (not required for tiers S/M)
    - [ ] ⑧ Naming and commit: `docs/MOTION.md` landed, and STATE.md `下一步` [disambiguated: next step] set to 4-1 Batch coding
 5. **Landing declaration**: output = `docs/MOTION.md`; next card = 4-1 Batch coding.
 
@@ -84,19 +84,24 @@ With it on, only ≤100ms opacity or colour changes survive; displacement, scali
 ❌ Counter-example: hover lift plus shadow transition on every list row, dropping a long list to 20fps while scrolling
 ✅ Good example: list rows do a 100ms background change only, and lifting is reserved for card-style entries
 
-**Action 7: Acceptance (either reading, but the proof must be kept)**
-- Screen recording: `Win + G`, record 5 seconds, confirm by eye that nothing jumps or flickers
-- DevTools: record 3 seconds in the Performance panel; no red long frames in Frames, and no forced-synchronous-layout warning in Console
+**Action 7: Acceptance (write the manual reproduction first, then talk about optional evidence)**
+- Each animation gets three manual reproduction steps: how to trigger → what you should see → how to reset (e.g. click "Save" → a tick appears inside the button and reverts after 300ms → reload the page), and the reproduction result (real command output or file path) goes into docs/MOTION.md
+- ❌ Counter-example: one line saying "checked, no flicker" | ✅ Good example: the three steps written out plus what was actually observed (with a timing reading or a file path)
+- Only at tier L, or when the user explicitly asks: `Win + G`, record 5 seconds and confirm by eye that nothing jumps or flickers; or record 3 seconds in the DevTools Performance panel — no red long frames in Frames, no forced-synchronous-layout warning in Console
 
-**Action 8: A runnable motion self-check (run from the project root; ≥6 button options, six duration classes and the opt-out means pass)**
+**Action 8: A runnable motion self-check (run from the project root; non-developers only need the exit code: exit 1 = this card is not done. ≥6 button options, six duration classes, ≥4 easings and the opt-out all pass)**
+Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
 ```powershell
 $m = 'docs/MOTION.md'
 $l = @(Get-Content $m -Encoding UTF8)
-"MOTION.md lines $($l.Count)"
-"button motion rows $(@($l | Where-Object { $_ -match '^\| B[0-9] \|' }).Count)"
-"duration rows $(@($l | Where-Object { $_ -match '^\| (hover|press|enter|exit|page|skeleton) \|' }).Count)"
-"easing rows $(@($l | Where-Object { $_ -match 'cubic-bezier' }).Count)"
-"opt-out rows $(@($l | Where-Object { $_ -match 'prefers-reduced-motion' }).Count)"
+$btn = @($l | Where-Object { $_ -match '^\| (B[0-9]|按下缩放|上浮|颜色阶跃|涟漪|图标位移|无动效)' }).Count
+$dur = @($l | Where-Object { $_ -match '^\| (hover|press|enter|exit|page|skeleton|进入|退出|页面|骨架屏)[^|]*\| *[0-9]' }).Count
+$ease = @($l | Where-Object { $_ -match 'cubic-bezier' }).Count
+$off = @($l | Where-Object { $_ -match 'prefers-reduced-motion' }).Count
+"MOTION.md lines $($l.Count) (must be <= 70)"
+"button motion rows $btn (must be >= 6); duration rows $dur (must be >= 6)"
+"easing rows $ease (must be >= 4); opt-out rows $off (must be >= 1)"
+if ($l.Count -gt 70 -or $btn -lt 6 -or $dur -lt 6 -or $ease -lt 4 -or $off -lt 1) { Write-Host '[FAIL] card self-check failed'; exit 1 } else { Write-Host '[OK] card self-check passed' }
 ```
 
 **Prohibitions (any violation voids this round's output):**
@@ -109,9 +114,9 @@ $l = @(Get-Content $m -Encoding UTF8)
 1. Full path of `docs/MOTION.md` + line count
 2. The six duration rows and the four cubic-bezier curves, verbatim
 3. The button motion table verbatim (rows B1–B6, including one-line CSS and taboo)
-4. The ten microinteractions verbatim (trigger → behaviour → duration)
+4. The ten microinteractions verbatim (trigger → behaviour → duration), plus the three manual reproduction steps and the reproduction result for the chosen animations (screenshots/recording only as optional supporting evidence at tier L)
 5. The opt-out CSS verbatim + the five performance-budget rules verbatim
-6. Real output of the Action 8 command (button motion ≥6, durations 6, opt-out 1) + this round's commit hash
+6. Real output of the Action 8 command (≤70 lines, button motion ≥6, durations ≥6, easings ≥4, opt-out ≥1; exit code 0) + this round's commit hash
 
 ## ④ State write-back
 

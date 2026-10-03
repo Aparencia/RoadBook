@@ -116,7 +116,7 @@ powershell -NoProfile -File check.ps1
 ```
 `git status --porcelain` empty + check.ps1 exit code 0 = the close-out is done.
 
-Tier note: tier S does not run this card (≤3 files, ≤100 lines and clear acceptance criteria); tiers M/L run it whenever the requirement is vague or real users exist.
+Tier note: tier S does not run this card (≤3 files, ≤100 lines and clear acceptance criteria; **single-page static app exception**: 1 entry page + no backend + no dependency → ≤5 files and ≤400 lines); tiers M/L run it whenever the requirement is vague or real users exist.
 
 Fixed closing line:
 `The elicitation record is ready and the open items are listed. Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

@@ -9,14 +9,15 @@ This card is written against the DSH (DeepSeek Harness) 0.2.0-rc2 tool surface: 
 
 [ First run (after receiving this card) ]
 Execute in order; if any item is missing, stop immediately and ask the user — guessing is forbidden:
-1. Read AGENTS.md (constitution) and STATE.md (state dashboard) at the project root.
-2. Give the user a "boot report" receipt (≤12 lines):
+1. Ask the user for the **real path of the master folder** (e.g. `D:/.../V5`) — without it you cannot find playbook/ or template/, and every later card stalls.
+2. Read AGENTS.md (constitution) and STATE.md (state dashboard) at the project root.
+3. Give the user a "boot report" receipt (≤12 lines):
    - the project in one sentence + tech stack
    - current stage / current task / tier
    - where you left off (verbatim text of the "Next" field in STATE.md)
    - the card to execute this time: <card number-name> (read from STATE.md "Next"; if absent, ask the user for their intent)
    - git status: verbatim `git status --short` output + `git log --oneline -3`; working tree dirty → report "N uncommitted files" [disambiguated] and let the user pick one of three (commit now / log to docs/TECH_DEBT.md and shelve / discard the changes)
-3. Wait for the user to say "继续" ("continue") or give a new intent.
+4. Wait for the user to say "继续" ("continue") or give a new intent.
 
 [ Route the intent to a card ] (judge in order; stop at the first hit)
 ① The user is chatting / asking questions / discussing options ("为什么用 X" ("why use X"), "A 和 B 哪个好" ("which is better, A or B"))

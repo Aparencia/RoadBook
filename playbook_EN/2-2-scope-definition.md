@@ -47,7 +47,7 @@ Each item = an observable behavior, written as "open which page → do what → 
 Page level (which page) + element level (the name, position, and state of buttons/lists/input boxes), written to a granularity that can create a row in the component registry.
 
 **Action 5: tier-S simplified version**
-For tier S (≤3 files, ≤100 lines), SCOPE.md needs only three sections: the Must list / the Won't list / the acceptance criteria (2 items are enough).
+For tier S (≤3 files, ≤100 lines; **single-page static app exception**: 1 entry page + no backend + no dependency → ≤5 files and ≤400 lines, including the three design documents), SCOPE.md needs only three sections: the Must list / the Won't list / the acceptance criteria (2 items are enough).
 
 **The five scope-compliance checks (self-check before this card's wrap-up; write the verbatim answers into the receipt):**
 
@@ -56,11 +56,11 @@ For tier S (≤3 files, ≤100 lines), SCOPE.md needs only three sections: the M
 ② Has anything from Could/Won't slipped in? (if so, delete it or downgrade it)
 ③ For everything on the Won't list, is the code absolutely not written this iteration?
 ④ Is every acceptance criterion an "observable behavior"?
-⑤ Has the user read each item and said "确认" ("confirmed")? (without confirmation, entering 4-1 is forbidden) [disambiguated]
+⑤ Has the user said "确认" ("confirmed")? (send the user this line — replying "确认" is enough, no need to restate every item: `请回复：确认 SCOPE，开始写代码`; without confirmation, entering 4-1 is forbidden) [disambiguated]
 ```
 
 **Prohibitions:**
-- Writing any business code before the user confirms SCOPE is forbidden
+- Writing any business code before the user confirms SCOPE is forbidden (single-person mode: the user replying "确认 SCOPE" once is enough; no item-by-item restatement is needed)
 - Treating "the user did not say not to" as "we may do it" is forbidden — anything not listed in Must is not done
 
 ---
@@ -72,7 +72,7 @@ At wrap-up, the following must be given item by item:
 2. MoSCoW counts (Must x / Should x / Could x / Won't x)
 3. The one-sentence restatement of the task (the wording the user confirmed)
 4. The clarifying questions and the user's answers (quoted verbatim)
-5. The verbatim text of the user's SCOPE confirmation (quoted verbatim; without confirmation, entering 4-1 is forbidden) + the value and basis of `预估改动行数` ("estimated changed lines") [disambiguated]
+5. The user's own words confirming SCOPE (single-person mode: one "确认" / "确认 SCOPE" is enough, no item-by-item restatement; only multi-party projects walk every item; without confirmation, entering 4-1 is forbidden) + the value and basis of `预估改动行数` ("estimated changed lines") [disambiguated]
 
 ---
 

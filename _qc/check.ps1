@@ -306,6 +306,25 @@ $scanUni += @(Get-ChildItem $pen -File | ForEach-Object { $_.FullName })
 $scanUni += @(Get-ChildItem $tpl -Recurse -File | Where-Object { $_.Extension -in @('.md', '.ps1') } | ForEach-Object { $_.FullName })
 $noPp = @($scanUni | Where-Object { (Test-Path $_) -and ([IO.File]::ReadAllText($_, [Text.Encoding]::UTF8) -match 'powershell(\.exe)?\s+-File') })
 Check (-not $noPp) "命令统一 powershell -NoProfile -File（缺 -NoProfile：$(($noPp | ForEach-Object { Split-Path $_ -Leaf }) -join ', ')）"
+$fenceScan = @()
+foreach ($f in $scanUni) {
+    if (-not (Test-Path $f)) { continue }
+    $inFence = $false
+    foreach ($ln in [IO.File]::ReadAllLines($f, [Text.Encoding]::UTF8)) {
+        if ($ln -match '^\s*```') { $inFence = -not $inFence; continue }
+        if ($inFence) { $fenceScan += [pscustomobject]@{ File = (Split-Path $f -Leaf); Line = $ln.Trim() } }
+    }
+}
+$badVar = @($fenceScan | Where-Object { $_.Line -match '\$[^\x00-\x7F]' })
+Check (-not $badVar) "命令代码块内无中文变量名（PS 5.1 无 BOM 会 ParserError：$(($badVar | ForEach-Object { "$($_.File):$($_.Line)" }) -join ' | ')）"
+$badSlash = @($fenceScan | Where-Object { $_.Line -match '[A-Za-z]:\\' })
+Check (-not $badSlash) "命令代码块内无盘符反斜杠路径（契约 §2② 要求正斜杠：$(($badSlash | ForEach-Object { "$($_.File):$($_.Line)" }) -join ' | ')）"
+$uiTpl = Join-Path $tpl 'docs\UI.md'
+if (Test-Path $uiTpl) {
+    $uiTxt = [IO.File]::ReadAllText($uiTpl, [Text.Encoding]::UTF8)
+    $uiMiss = @('S1','S2','S3','S4','S5','S6','S7','S8','32','40','48','640','1024') | Where-Object { $uiTxt -notmatch [regex]::Escape($_) }
+    Check (-not $uiMiss) "template/docs/UI.md 直接照抄即过 3-4 卡自查（缺 token：$($uiMiss -join ',')）"
+}
 $nodeExe = Get-Command node -ErrorAction SilentlyContinue
 if ($null -eq $nodeExe) {
     Write-Host "  [--] 未装 node，跳过插件离线单测"

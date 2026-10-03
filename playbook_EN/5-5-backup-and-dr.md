@@ -21,7 +21,7 @@ After receiving the start instruction, first return the following five items bef
 
 | Backup object (down to the file/table/bucket path) | Frequency | Storage location (write the full path or the remote secret name) | Retention | Encrypted |
 | :--- | :--- | :--- | :--- | :-: |
-| Example: `data/app.db` | daily 03:00 | Example: `D:/backup/app\` + one off-site copy | 30 days | yes |
+| Example: `data/app.db` | daily 03:00 | Example: `D:/backup/app/` + one off-site copy | 30 days | yes |
 | Example: `.env` (secrets stored separately in the password vault) | on change | Example: the vault entry name | long term | yes |
 | Example: the user upload directory `data/uploads/` | daily 03:00 | Example: the object-storage bucket name | 90 days | no (the content itself is not sensitive) |
 
@@ -38,7 +38,7 @@ powershell -NoProfile -File doctor.ps1
 # 第 1 步：取回最近一次备份并恢复到与生产隔离的演练目录（演练目录里不跑 doctor.ps1）
 # (step 1: retrieve the most recent backup and restore it into a drill directory isolated from production; do not run doctor.ps1 inside the drill directory)
 New-Item -ItemType Directory -Force -Path D:/restore-drill/2026-01-01 | Out-Null
-Copy-Item D:/backup/app\app.db D:/restore-drill/2026-01-01\app.db
+Copy-Item D:/backup/app/app.db D:/restore-drill/2026-01-01/app.db
 Set-Location D:/restore-drill/2026-01-01
 ```
 All three steps are required, each with real output pasted in:
@@ -47,7 +47,7 @@ All three steps are required, each with real output pasted in:
 3. **Verify**: after the restore the data must actually be usable — cross-check at least two concrete pieces of data against `docs/registry/DATA_DICT.md` (e.g. the timestamp and the row count of the newest record); if it does not cross-check, the restore failed — it is not "probably fine". To run `doctor.ps1` inside the drill directory, first copy the project root's `.tool-versions` in as well; otherwise use an equivalent self-check (start the service + query the data)
 
 - ❌ Counter-example: running `powershell -NoProfile -File doctor.ps1` directly in an empty drill directory → it reports a missing .tool-versions (it only recognises the project root; that is running it in the wrong place, not a failed drill)
-- ❌ Counter-example: `Test-Path D:/backup/app\app.db` returns `True` → declaring "restore capability verified" (it only proves the file exists, not that it can be restored)
+- ❌ Counter-example: `Test-Path D:/backup/app/app.db` returns `True` → declaring "restore capability verified" (it only proves the file exists, not that it can be restored)
 - ✅ Positive example: first produce the doctor baseline in the project root (exit code 0), then place a copy of `.tool-versions` in the drill directory and re-run it successfully → paste both outputs into the receipt
 - ✅ Positive example: the restored database starts the service, the newest records of the key tables can be queried, and the row counts match those before the backup → paste those readings
 

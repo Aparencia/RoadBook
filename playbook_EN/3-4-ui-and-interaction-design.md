@@ -31,7 +31,7 @@ After receiving the start order, echo these five items before touching anything 
 | :-- | :-- | :-- | :-- |
 | e.g. Task list | Let the user find last session's task within 3 seconds | Home primary button | Row click → detail; depends on the list endpoint |
 
-**Action 2: Eight-state matrix (walk every list / form / detail; IDs are for self-check reference only)**
+**Action 2: Eight-state matrix (walk every list / form / detail; every row must carry an S1–S8 ID, which the template `docs/UI.md` already does; IDs are for self-check reference only)**
 
 | ID | State | Criterion (when it is this state) | How to draw it |
 | :-- | :-- | :-- | :-- |
@@ -44,8 +44,8 @@ After receiving the start order, echo these five items before touching anything 
 | S7 | Overlong text | One field over 200 characters, or an unbroken long string | Truncate to 2 lines + tooltip for the full text; force-wrap long strings |
 | S8 | Extreme value | 0, negative, over 1亿, empty array | Define the display rule first (e.g. ≥1万 shows as 1.2万) [disambiguated: 亿 = a hundred million, 万 = ten thousand]; nothing may overflow its box |
 
-❌ Counter-example: only the state with data was drawn, so the empty table and the 500 error are seen for the first time in production
-✅ Good example: all eight states are screenshotted into docs/UI.md, and S7 is tested with a 300-character string that has no spaces
+❌ Counter-example: only the state with data was drawn, or the eight states are dismissed with "designed / checked", so the empty table and the 500 error are seen for the first time in production
+✅ Good example: each of the eight states gets its three manual reproduction steps written out (e.g. F12 → Application → Local Storage → change drink.water.v1 to 999 → reload), plus the reproduction result (real command output or file path); screenshots/recording are optional supporting evidence at tier L only
 
 **Action 3: Component selection table (choose by hierarchy, not by taste)**
 
@@ -92,15 +92,20 @@ Disabled: opacity 0.4 on the whole button, `cursor: not-allowed`, no click respo
 2. Esc: close the current overlay and return focus to the element that opened it.
 3. Enter: never submits a form (submission belongs to the button only); in a search box it runs the query.
 
-**Action 9: Self-check for this card's output (run from the project root; 0 misses, all button tiers present and 8 checklist rows means complete)**
+**Action 9: Self-check for this card's output (run from the project root; non-developers only need the exit code: exit 1 = this card is not done. 0 misses, three button tiers, the whole checklist ticked and ≤90 lines all pass)**
+Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
 ```powershell
 $u = 'docs/UI.md'
 $l = @(Get-Content $u -Encoding UTF8)
-"UI.md lines $($l.Count)"
-$miss = @('S1','S2','S3','S4','S5','S6','S7','S8','32','40','48','640','1024') | Where-Object { $l -notmatch $_ }
-"missing $($miss.Count) -> $($miss -join ',')"
-"button rows $(@($l | Where-Object { $_ -match '^\| (Small|Medium|Large|小|中|大) \|' }).Count)"
-"unticked rows $(@($l | Where-Object { $_ -match '^   - \[ \]' }).Count)"
+$text = $l -join "`n"
+"UI.md lines $($l.Count) (must be <= 90)"
+$need = @('S1','S2','S3','S4','S5','S6','S7','S8','32','40','48','640','1024')
+$miss = @(); foreach ($t in $need) { if ($text -notmatch [regex]::Escape($t)) { $miss += $t } }
+"state/breakpoint misses $($miss.Count) -> $($miss -join ',') (must be 0)"
+$btn = @($l | Where-Object { $_ -match '^\| (小|中|大|sm|md|lg|Small|Medium|Large) \|' }).Count
+$todo = @($l | Where-Object { $_ -match '^   - \[ \]' }).Count
+"button tier rows $btn (must be 3); unticked checklist rows $todo (must be 0)"
+if ($l.Count -gt 90 -or $miss.Count -gt 0 -or $btn -ne 3 -or $todo -gt 0) { Write-Host '[FAIL] card self-check failed'; exit 1 } else { Write-Host '[OK] card self-check passed' }
 ```
 
 **Prohibitions (any violation voids this round's output):**
@@ -118,7 +123,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 2. The eight-state matrix (verbatim criterion and drawing for every one of S1–S8), all eight rows present
 3. Verbatim values of the three button tiers and the three breakpoints
 4. 2 error-copy examples and 2 button-copy examples, verbatim
-5. Real output of the Action 9 command (0 missing, button rows 3, checklist rows 8)
+5. Real output of the Action 9 command (0 misses, button tier rows 3, unticked checklist rows 0, ≤90 lines; exit code 0)
 6. This round's commit hash
 
 ---

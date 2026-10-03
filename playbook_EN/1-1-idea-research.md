@@ -20,10 +20,12 @@ Also state: the output lands at `docs/decisions/IDEA_<日期>_<主题>.md`; this
 
 ## ② Execution
 
-**Action 0: create the directory and the pool** (run in the target project directory — first record that absolute path in `$项目`; creating a new docs/ inside the master repo is forbidden)
+**Action 0: create the directory and the pool** (run in the target project directory — first record that absolute path in `$proj`; creating a new docs/ inside the master repo is forbidden)
+
+**Variable names must be ASCII**: when Windows PowerShell 5.1 reads a .ps1 without BOM, a Chinese variable name raises "字符串缺少终止符" ("string is missing the terminator"); scripts must be saved as UTF-8 with BOM.
 ```powershell
-$项目 = 'C:\code\myapp'   # absolute path to the target project root; assign before calling
-Set-Location $项目
+$proj = 'C:/code/myapp'   # absolute path to the target project root; assign before calling
+Set-Location $proj
 New-Item -ItemType Directory -Force docs/decisions, docs/pool | Out-Null
 if (-not (Test-Path docs/pool/IDEAS.md)) { Set-Content docs/pool/IDEAS.md @('# IDEAS · 需求池', '', '| 日期 | 想法 | 状态 | 复活条件 / 结论 |', '|---|---|---|---|') }
 ```

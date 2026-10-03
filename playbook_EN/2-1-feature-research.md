@@ -60,7 +60,7 @@ List the files expected to be touched + the affected lines in the registry (past
 
 | Tier | Criterion (meeting any one puts the task in this tier) |
 | :-- | :-- |
-| S | ≤3 files and ≤100 lines, no new dependency, no table schema, no new page |
+| S | ≤3 files and ≤100 lines, no new dependency, no table schema, no new page; **single-page static app exception**: 1 entry page + no backend + no dependency → relaxed to ≤5 files and ≤400 lines (including the 3-4/3-5/3-6 design documents) |
 | M | an ordinary feature: confined to 1–2 modules, no new external package, no breaking table schema |
 | L | a new dependency introduced / cross-module / breaking table schema / a new page system → **3-1 design + 5-2 release are mandatory** |
 
