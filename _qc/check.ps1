@@ -30,7 +30,7 @@ if (Test-Path $rm) {
 Check (Test-Path (Join-Path $root 'design\v6-design.md')) 'design/v6-design.md 存在'
 Check (Test-Path (Join-Path $root 'design\playbook-contract.md')) 'design/playbook-contract.md 存在'
 Check (Test-Path (Join-Path $root '_archive\V5')) '_archive/V5/ 封存目录存在'
-$idFiles = @('README.md','START-HERE.md','design\v6-design.md','playbook\00-驱动卡.md','template\README.md','template\AGENTS.md')
+$idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\00-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
 
@@ -93,7 +93,29 @@ foreach ($d in @('decisions','specs','reviews','versions','lessons','archive')) 
     Check (Test-Path (Join-Path $tpl "docs\$d")) "模板目录存在：docs/$d"
 }
 
-Write-Host "== 4. 结论 =="
+Write-Host "== 4. Skill 分发（SKILL.md）=="
+$sk = Join-Path $root 'SKILL.md'
+Check (Test-Path $sk) 'SKILL.md 存在（DSH skill 入口）'
+if (Test-Path $sk) {
+    $skRaw = [System.IO.File]::ReadAllText($sk, [Text.Encoding]::UTF8)
+    $skLines = [System.IO.File]::ReadAllLines($sk, [Text.Encoding]::UTF8)
+    Check ($skLines.Count -le 120) "行数 $($skLines.Count) <= 120 ：SKILL.md"
+    Check ($skRaw -match '^---\r?\n') 'SKILL.md 首行严格为 ---（前置 BOM 或空行会被 DSH 静默忽略）'
+    $skName = [regex]::Match($skRaw, '(?m)^name:\s*(\S+)\s*$')
+    Check ($skName.Success -and $skName.Groups[1].Value -eq 'roadbook' -and $skName.Groups[1].Value -match '^[a-z0-9]+(?:-[a-z0-9]+)*$') "SKILL.md frontmatter name=roadbook（实际：$($skName.Groups[1].Value)）"
+    $skDesc = [regex]::Match($skRaw, '(?m)^description:\s*(.+)$')
+    $skDescLen = 0
+    if ($skDesc.Success) { $skDescLen = $skDesc.Groups[1].Value.Trim().Length }
+    Check ($skDescLen -gt 0 -and $skDescLen -le 500) "SKILL.md description 长度 $skDescLen（1..500，对齐 catalogDescriptionMaxLength）"
+    $skKw = @('开工确认', 'check.ps1', '红灯', '回执') | Where-Object { $skRaw -notmatch [regex]::Escape($_) }
+    Check (-not $skKw) "SKILL.md 含四条铁律关键词（缺：$($skKw -join ', ')）"
+    $skRefs = @([regex]::Matches($skRaw, 'playbook/([^/\s|]+)\.md') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+    $skDead = @($skRefs | Where-Object { -not (Test-Path (Join-Path $pb "$_.md")) })
+    Check ($skRefs.Count -ge 20) "SKILL.md 路由覆盖卡数 $($skRefs.Count) >= 20"
+    Check (-not $skDead) "SKILL.md 引用的卡全部存在（幽灵引用：$($skDead -join ', ')）"
+}
+
+Write-Host "== 5. 结论 =="
 Write-Host "通过 $pass 项；失败 $($fail.Count) 项"
 if ($fail.Count -gt 0) { $fail | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }; exit 1 }
 Write-Host "Roadbook（路书）V6 母版完整性校验：全部通过" -ForegroundColor Green

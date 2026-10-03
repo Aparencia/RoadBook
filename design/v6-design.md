@@ -28,7 +28,7 @@
 ```
 母版（本工作区）                          每个项目（11 号卡生成）
 ├── START-HERE.md    人唯一要读          ├── AGENTS.md      宪法（agent 自动读）
-├── playbook/        21 张卡             ├── STATE.md       状态仪表盘
+├── SKILL.md         DSH skill 入口      ├── STATE.md       状态仪表盘
 ├── template/        项目模板             ├── README.md / CHANGELOG.md / .tool-versions / check.ps1 / doctor.ps1 / gate.ps1 / orphans.ps1 / .env.example
 ├── design/          本设计文档+契约      ├── src/ tests/ …（按栈生成）
 ├── _qc/check.ps1    一致性校验           └── docs/          机制配套文档（见 §5）
@@ -157,7 +157,7 @@
 2. 每个判断给 ❌反例/✅正例 对照
 3. 每个人要做的判断给照着念的清单
 4. 每个命令给可直接复制的一行
-5. 每张卡 ≤150 行；宪法 ≤200；START-HERE ≤60；ARCHITECTURE ≤100；RUNBOOK ≤80——超了就是设计错误，回去砍
+5. 每张卡 ≤150 行；宪法 ≤200；START-HERE ≤60；ARCHITECTURE ≤100；RUNBOOK ≤80；`SKILL.md` ≤120——超了就是设计错误，回去砍
 6. 全部脚本一律 .ps1（Windows 优先）；必须用 .sh 时卡内附一行 Git Bash 跑法
 7. 卡内对母版内部文件的引用 = 0（判据内联）；对项目文件的引用 = 具体路径
 8. 卡头部元信息 ≤3 行（卡号/名/触发），不写"来源/定位/生成日期"长前缀
@@ -189,6 +189,7 @@
 9. ✅ 生成多删除少的治理机制（2026-10-03，见 §12）：22 卡改造 vs 重写判据 / 23 卡净增量账本+取代即删除（STATE.md 并行态登记簿）+新增即登记+文件数基线回写 / 24 卡取代与废弃检查 / 40 卡归档十查含孤儿三查 / 43 卡八类信号 / 52 卡 T 批与 P 清理批 / 新建 `template/orphans.ps1`（58 行）+ `template/check.ps1` 文件数预算断言 + STATE.md 两处接口字段；QC 109/109 通过
 10. ✅ 项目定名与落地（2026-10-03）：正式名 **Roadbook（路书）**（英文名为准，中文名「路书」），仓库名 / skill 名 `roadbook`，`V6` 为版本号。名字写进 6 个文件——README / START-HERE / 本文件标题 / 00 卡首段 / `template/README.md` / `template/AGENTS.md`（另在 `template/docs/README.md` 留一句流程出处），QC 断言覆盖这 6 个文件防丢；同时把 23/24 卡的账本与废弃扫描口径从 `HEAD~1` 统一为 `<起点锚点>..HEAD`（一批多提交不再漏算）；QC 110/110 通过
 11. ✅ 远端仓库（2026-10-03）：母版目录建独立 git 仓库并推送 GitHub `https://github.com/Aparencia/RoadBook`（public，默认分支 `main`）；首个提交 = 母版全量 63 个文件（21 卡 + 项目模板 + 设计 2 份 + `_qc` + 封存区），仓库根新增 `.gitattributes`（`* text=auto eol=lf`，全库 LF 口径）与 `.gitignore`（挡 `_qc` 运行产物）；此后 §9「git 历史即版本记录」与 40 卡「以 git 为基准」有了实际载体；QC 110/110 通过
+12. ✅ skill 分发（2026-10-03，见 §13）：仓库根新增 `SKILL.md`（路由表 21 行 + 四条铁律，**不复写判据**）→ 装成 DSH 用户级 skill（`~/.dsh/skills/roadbook` = 本仓库 clone，靠目录型布局让相对路径落回母版根）；`_qc/check.ps1` 增 8 项断言（存在 / 行数 ≤120 / 首行严格 `---` / `name=roadbook` / `description` ≤500 / 铁律关键词 / 路由覆盖 ≥20 张卡 / 引用的卡不指空）；版本口径 = 世代号 `V6`（第 6 代流程）+ 发布 tag `v0.6.0`；QC 118/118 通过
 
 ## 11. 维护规则（写进 START-HERE）
 
@@ -212,3 +213,20 @@
 **阈值一览（内联进卡，不靠记忆）**：改动面 40%/60%｜改存量批次删除行 0 且新增 >50 行 = 红灯｜单批新增文件 >20 = 红灯｜文件数 > `STATE.md` 文件数基线 + 20 由 `check.ps1` 判红｜P 批净减 ≥200 行 或 ≥3 文件｜`orphans.ps1` 汇总行两轮不减触发 43 卡提案。
 
 **为什么分三道闸而不是一道**：预防（22）管"别多建"，记账与同批处置（23/24）管"建了要交代"，发现与清理（40/43/52）管"漏了兜底"。任何一道单独存在都会被绕过：只有审查没有账本 → 审查凭印象；只有账本没有清理批 → 红灯永远亮着没人处理。
+
+## 13. skill 分发（2026-10-03 增补）
+
+**形态**：仓库根新增 `SKILL.md` → 装成 DSH 用户级 skill：
+
+```powershell
+git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE\.dsh\skills\roadbook"   # 安装
+git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                                  # 更新
+```
+
+**为什么必须是"目录型"**：DSH 有两种布局——`<skills根>/roadbook/SKILL.md`（目录型，资源基目录 `resourceBase` = 该目录本身）与 `<skills根>/roadbook.md`（平铺型，基目录 = skills 根，源码 `packages/skill/skill-filesystem/src/index.ts:723-748 discoverRoot()`）。只有目录型能让 `SKILL.md` 里的 `playbook/xx.md` 相对路径落回母版根，所以 skill 目录必须**就是仓库的 clone**，正文一个字都不写绝对路径（换机器、换用户名都不用改）。
+
+**机制要点（决定 SKILL.md 怎么写）**：① 会话目录只注入 `name` + `description`，`description` 截断到 `catalogDescriptionMaxLength`（默认 500）——所以 description 必须写"什么时候用"而不是"是什么"；② 正文按需加载（`skill` 工具），frontmatter 首行必须严格是 `---`，**前置 BOM 或空行会被静默忽略**（`skill-filesystem/src/index.ts:917-929 parseFrontmatter()`）；③ 用户消息首行 `/roadbook` 时宿主直接把正文注入为 user 消息（`tool-skill/src/index.ts:163-204`），所以本卡体系在装了 skill 的会话里可以一步唤起；④ 发现根优先序：项目 `.dsh/skills` → 项目 `.agents/skills` → `customSkillDirs` → 用户 `~/.dsh/skills` → `~/.agents/skills`。
+
+**纪律（防两处真相）**：`SKILL.md` 只做**路由 + 四条铁律 + 红线**，不复制任何判据；判据只在 `playbook/` 卡内，冲突以卡为准并回来修 SKILL.md。`_qc/check.ps1` 用机械断言兜住两点：引用的每张卡必须存在（防卡改名后路由指空）、`description` ≤500 且 `name` 合法（防目录里被截断成看不懂的半句或被 DSH 直接忽略）。
+
+**版本口径**：`V6` 是**世代号**（第 6 代流程），发布用 semver，首个 tag `v0.6.0`。判据变更必须重新打 tag——**打 tag 属不可委托清单**（见 §8 与 41 卡），由人执行或人明确授权。

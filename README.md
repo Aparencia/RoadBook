@@ -14,6 +14,7 @@
 | `template/` | 新项目的模板（11 卡初始化时整套复制） | 11 卡 |
 | `design/` | 设计事实源与写作契约 | 改流程时才看 |
 | `_qc/check.ps1` | 母版一致性校验 | 每次改完跑一次 |
+| `SKILL.md` | DSH skill 入口：路由表 + 四条铁律（不含判据） | agent 自动加载，或你打 `/roadbook` |
 
 ## 三条铁律
 
@@ -28,6 +29,16 @@
 3. 跟着回执走：它提问你回答，它出方案你裁决（绿/黄/红），它干活你照单验收。
 
 具体路径与日常循环见 `START-HERE.md`；看不懂任何一步时，回 `START-HERE.md` 重读一遍即可。
+
+## 装成 DSH skill（可选）
+
+想让 agent 在任意会话自动带上这套流程，把本仓库装成用户级 skill：
+
+```powershell
+git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE\.dsh\skills\roadbook"
+```
+
+之后新会话的 skill 目录里就有 `roadbook`（说「按流程来」会自动加载），也可以直接打 `/roadbook` 主动加载；更新用 `git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only`。
 
 ## 维护这套母版
 
