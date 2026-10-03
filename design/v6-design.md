@@ -32,6 +32,7 @@
 ├── template/        项目模板             ├── README.md / CHANGELOG.md / .tool-versions / check.ps1 / doctor.ps1 / gate.ps1 / orphans.ps1 / .env.example
 ├── design/          本设计文档+契约      ├── src/ tests/ …（按栈生成）
 ├── _qc/check.ps1    一致性校验           └── docs/          机制配套文档（见 §5）
+├── LICENSE          MIT 许可（可自由复用）
 └── _archive/V5/     旧版封存，不维护
 ```
 
@@ -190,6 +191,7 @@
 10. ✅ 项目定名与落地（2026-10-03）：正式名 **Roadbook（路书）**（英文名为准，中文名「路书」），仓库名 / skill 名 `roadbook`，`V6` 为版本号。名字写进 6 个文件——README / START-HERE / 本文件标题 / 00 卡首段 / `template/README.md` / `template/AGENTS.md`（另在 `template/docs/README.md` 留一句流程出处），QC 断言覆盖这 6 个文件防丢；同时把 23/24 卡的账本与废弃扫描口径从 `HEAD~1` 统一为 `<起点锚点>..HEAD`（一批多提交不再漏算）；QC 110/110 通过
 11. ✅ 远端仓库（2026-10-03）：母版目录建独立 git 仓库并推送 GitHub `https://github.com/Aparencia/RoadBook`（public，默认分支 `main`）；首个提交 = 母版全量 63 个文件（21 卡 + 项目模板 + 设计 2 份 + `_qc` + 封存区），仓库根新增 `.gitattributes`（`* text=auto eol=lf`，全库 LF 口径）与 `.gitignore`（挡 `_qc` 运行产物）；此后 §9「git 历史即版本记录」与 40 卡「以 git 为基准」有了实际载体；QC 110/110 通过
 12. ✅ skill 分发（2026-10-03，见 §13）：仓库根新增 `SKILL.md`（路由表 21 行 + 四条铁律，**不复写判据**）→ 装成 DSH 用户级 skill（`~/.dsh/skills/roadbook` = 本仓库 clone，靠目录型布局让相对路径落回母版根）；`_qc/check.ps1` 增 8 项断言（存在 / 行数 ≤120 / 首行严格 `---` / `name=roadbook` / `description` ≤500 / 铁律关键词 / 路由覆盖 ≥20 张卡 / 引用的卡不指空）；版本口径 = 世代号 `V6`（第 6 代流程）+ 发布 tag `v0.6.0`；QC 118/118 通过
+13. ✅ 发布补强（2026-10-03）：仓库根新增 `LICENSE`（MIT，版权人 Aparencia，README 加许可行）；GitHub 侧建 Release `v0.6.0`（tag 仍指向 skill 分发那次提交，未移动）并补仓库 topics（`dsh-skill` / `ai-coding-workflow` / `ai-agent`）；`_qc/check.ps1` 增 1 项 LICENSE 存在性断言；QC 119/119 通过
 
 ## 11. 维护规则（写进 START-HERE）
 

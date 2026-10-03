@@ -30,6 +30,7 @@ if (Test-Path $rm) {
 Check (Test-Path (Join-Path $root 'design\v6-design.md')) 'design/v6-design.md 存在'
 Check (Test-Path (Join-Path $root 'design\playbook-contract.md')) 'design/playbook-contract.md 存在'
 Check (Test-Path (Join-Path $root '_archive\V5')) '_archive/V5/ 封存目录存在'
+Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\00-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
