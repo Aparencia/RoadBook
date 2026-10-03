@@ -1,0 +1,6 @@
+# 全库 LF 口径：行数/字节数断言与脚本解析都以 LF 为准（见 docs/lessons/2026-09-11_数字口径与CRLF.md）
+* text=auto eol=lf
+
+# .ps1 必须存成 UTF-8 **带 BOM**——这是保存约定，不是自动转换：
+# Windows PowerShell 5.1 读无 BOM 的 .ps1 会按系统码页（中文机 = GB2312）解码，中文判词直接乱码甚至 ParserError。
+# 新建/改写脚本时用带 BOM 的编辑器保存（VS Code 右下角编码选 "UTF-8 with BOM"）。

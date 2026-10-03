@@ -71,6 +71,19 @@ test('手打 /roadbook 时让路给内置手势', () => {
   assert.equal(hasGesture('/other', ['roadbook']), false)
 })
 
+test('/roadbook 手势容忍前导与句中空白（含全角空格 U+3000、Tab）', () => {
+  assert.equal(hasGesture('/roadbook', ['roadbook']), true)
+  assert.equal(hasGesture('  /roadbook 开工', ['roadbook']), true)
+  assert.equal(hasGesture('\t/roadbook\t开工', ['roadbook']), true)
+  assert.equal(hasGesture('\u3000/roadbook\u3000开工', ['roadbook']), true)
+  assert.equal(hasGesture('那先\u3000/roadbook，开始', ['roadbook']), true)
+  assert.equal(hasGesture('/roadbook：开始', ['roadbook']), true)
+  assert.equal(hasGesture('见 https://example.com/roadbook', ['roadbook']), false)
+  assert.equal(hasGesture('/roadbookx', ['roadbook']), false)
+  assert.equal(hasGesture('', ['roadbook']), false)
+  assert.equal(hasGesture(' /roadbook', []), false)
+})
+
 test('子代理会话识别', () => {
   assert.equal(isSubagentHeader({ id: 'session-a', delegationDepth: 0 }), false)
   assert.equal(isSubagentHeader({ id: 'session-a', parentSession: 'session-b' }), true)

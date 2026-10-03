@@ -2,6 +2,7 @@
 # 用法：powershell -NoProfile -File _qc/check.ps1
 # 退出码：0=全部通过；1=存在失败项（清单见输出）
 $ErrorActionPreference = 'Stop'
+try { [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false) } catch { }
 $root = Split-Path -Parent $PSScriptRoot
 $fail = @()
 $pass = 0
@@ -31,6 +32,8 @@ Check (Test-Path (Join-Path $root 'design\v6-design.md')) 'design/v6-design.md �
 Check (Test-Path (Join-Path $root 'design\playbook-contract.md')) 'design/playbook-contract.md 存在'
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件 2026-10-03 已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
+$selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
+Check ($selfN -le 260) "行数 $selfN <= 260 ：_qc/check.ps1 自身（校验器也要有上限；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\00-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -38,6 +41,10 @@ Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与�
 Write-Host "== 2. Playbook 卡组（21 张）=="
 $cards = @('00-驱动卡','10-想法调研','11-选型初始化','12-接入已有项目','20-功能调研','21-需求范围','22-设计','23-分批编码','24-代码审查','25-验证','30-根因分析','31-修复','32-回归验证','40-归档','41-发布','42-复盘','43-流程体检','50-UI改动','51-依赖升级','52-技术债清偿','53-功能下线')
 $pb = Join-Path $root 'playbook'
+$onDisk = @(Get-ChildItem $pb -Filter '*.md' -File -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName })
+Check ($onDisk.Count -eq $cards.Count) "playbook 目录实际卡片数 $($onDisk.Count) = 清单数 $($cards.Count)（新增/删除卡必须同步本清单与 README/SKILL 路由表）"
+$cardDiff = @(@($onDisk | Where-Object { $cards -notcontains $_ }) + @($cards | Where-Object { $onDisk -notcontains $_ }))
+Check ($cardDiff.Count -eq 0) "磁盘卡片与硬编码清单逐张对齐（不一致：$($cardDiff -join ', ')）"
 $sections = @('## ① 开工确认','## ② 执行','## ③ 证据回执','## ④ 状态回写')
 $metaMarkers = @('【第一次运行','【把意图路由到卡','【执行任何卡时的硬规则','【每轮收尾')
 # 禁引用 design/ _archive/ playbook/ template/；下列卡例外，理由随行写明（禁止静默放宽）
@@ -69,19 +76,23 @@ Check ($null -eq $extra) "playbook/ 无未注册卡（多出：$($extra.BaseName
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 200; 'docs\ARCHITECTURE.md' = 100; 'docs\RUNBOOK.md' = 80; 'check.ps1' = 80; 'doctor.ps1' = 60; 'gate.ps1' = 70; 'orphans.ps1' = 60 }
-foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','.env.example','.gitignore','docs\README.md','docs\ARCHITECTURE.md','docs\RUNBOOK.md','docs\registry\COMPONENTS.md','docs\registry\DATA_DICT.md','docs\registry\APIS.md','docs\pool\IDEAS.md','docs\TECH_DEBT.md')) {
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 200; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs\README.md' = 35; 'docs\registry\COMPONENTS.md' = 30; 'docs\ARCHITECTURE.md' = 100; 'docs\RUNBOOK.md' = 80; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90 }
+foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','.env.example','.gitignore','.gitattributes','docs\README.md','docs\ARCHITECTURE.md','docs\RUNBOOK.md','docs\registry\COMPONENTS.md','docs\registry\DATA_DICT.md','docs\registry\APIS.md','docs\pool\IDEAS.md','docs\TECH_DEBT.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
 foreach ($k in $budget.Keys) {
     $p = Join-Path $tpl $k
     if (Test-Path $p) { $n = [System.IO.File]::ReadAllLines($p, [Text.Encoding]::UTF8).Count; Check ($n -le $budget[$k]) "行数 $n <= $($budget[$k]) ：template/$k" }
+    else { Check $false "预算表列了 $k 但文件不存在（旧版静默跳过 = 这份文件的行数无人管）" }
 }
 $smTxt = ''
 $smp = Join-Path $tpl 'STATE.md'
 if (Test-Path $smp) { $smTxt = [IO.File]::ReadAllText($smp, [Text.Encoding]::UTF8) }
 Check ($smTxt -match '(?m)^\s*[-*]?\s*文件数基线\s*[:：]\s*\d+') 'STATE.md 有「文件数基线」（check.ps1 预算断言的数据源）'
 Check ($smTxt -match '## 并行态登记簿') 'STATE.md 有「并行态登记簿」（23 卡取代即删除的登记处）'
+foreach ($f in @('当前文件数','工作树状态','远端仓库','起点锚点','档位','体检计数','最近完成','未决问题','下一步')) {
+    Check ($smTxt -match ("(?m)^[\s#\-*|]*" + [regex]::Escape($f))) "STATE.md 含 design §7 字段「$f」（须是**行首字段**；正文里提一句不算——防字段被静默删掉）"
+}
 $ckTxt = ''
 $ckp = Join-Path $tpl 'check.ps1'
 if (Test-Path $ckp) { $ckTxt = [IO.File]::ReadAllText($ckp, [Text.Encoding]::UTF8) }
@@ -92,6 +103,14 @@ $p23 = Join-Path $pb '23-分批编码.md'
 Check ((Test-Path $p23) -and ([IO.File]::ReadAllText($p23, [Text.Encoding]::UTF8) -match '文件数基线')) '23 卡有「文件数基线」回写义务（防预算机制空转）'
 foreach ($d in @('decisions','specs','reviews','versions','lessons','archive')) {
     Check (Test-Path (Join-Path $tpl "docs\$d")) "模板目录存在：docs/$d"
+}
+# 种子教训卡：张数与体例（30 卡动作要写「最近确认」、43 卡信号 3 读它；张数漂移 = design §5/§10 与 40 卡「6 张种子卡不参加淘汰」口径失配）
+$seed = @(Get-ChildItem (Join-Path $tpl 'docs\lessons') -Filter '*.md' -File -ErrorAction SilentlyContinue)
+Check ($seed.Count -eq 6) "模板种子教训卡 6 张（实际 $($seed.Count) 张；增删须同步 design §5 目录树 / §10 记录 / 40 卡豁免句）"
+foreach ($s in $seed) {
+    $sl = [System.IO.File]::ReadAllLines($s.FullName, [Text.Encoding]::UTF8)
+    Check ($sl.Count -le 12) "行数 $($sl.Count) <= 12 ：docs/lessons/$($s.Name)"
+    Check ([string]::Join("`n", $sl) -match '最近确认') "种子卡含「最近确认」字段（30 卡动作 / 43 卡信号 3 的落点）：$($s.Name)"
 }
 
 Write-Host "== 4. Skill 分发（SKILL.md）=="
@@ -165,7 +184,40 @@ $plgRdm = [IO.File]::ReadAllText((Join-Path $plg 'README.md'), [Text.Encoding]::
 Check ($plgRdm -match 'trigger\.test\.mjs') '插件 README 写了离线单测命令'
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match 'plugin/roadbook-autoload') '根 README 指向自动加载插件（可发现）'
 
-Write-Host "== 7. 结论 =="
+Write-Host "== 7. 脚本可执行性与口径统一 =="
+$ps1s = @('_qc\check.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')
+foreach ($rel in $ps1s) {
+    $p = Join-Path $root $rel
+    if (-not (Test-Path $p)) { Check $false "脚本存在：$rel"; continue }
+    $bytes = [IO.File]::ReadAllBytes($p)
+    $hasBom = ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)
+    Check $hasBom "UTF-8 BOM 存在（PS 5.1 无 BOM 会按 GB2312 解中文并 ParserError）：$rel"
+    $parseErr = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$null, [ref]$parseErr)
+    Check ($parseErr.Count -eq 0) "语法解析零错误（$($parseErr.Count) 处）：$rel"
+}
+$gaTxt = ''
+$gap = Join-Path $tpl '.gitattributes'
+if (Test-Path $gap) { $gaTxt = [IO.File]::ReadAllText($gap, [Text.Encoding]::UTF8) }
+Check ($gaTxt -match 'eol=lf') 'template/.gitattributes 锁定 LF（防 Windows 检出变 CRLF 打乱行数口径）'
+$cardTail = @($cards | Where-Object { $_ -ne '00-驱动卡' -and ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -notmatch '等待你裁决。回复' })
+Check (-not $cardTail) "每张动作卡有固定收尾语（缺：$($cardTail -join ', ')）"
+$scanUni = @((Join-Path $root 'README.md'), (Join-Path $root 'START-HERE.md'), (Join-Path $root 'SKILL.md'), (Join-Path $root 'design\playbook-contract.md'))
+$scanUni += @(Get-ChildItem $pb -File | ForEach-Object { $_.FullName })
+$scanUni += @(Get-ChildItem $tpl -Recurse -File | Where-Object { $_.Extension -in @('.md', '.ps1') } | ForEach-Object { $_.FullName })
+$noPp = @($scanUni | Where-Object { (Test-Path $_) -and ([IO.File]::ReadAllText($_, [Text.Encoding]::UTF8) -match 'powershell(\.exe)?\s+-File') })
+Check (-not $noPp) "命令统一 powershell -NoProfile -File（缺 -NoProfile：$(($noPp | ForEach-Object { Split-Path $_ -Leaf }) -join ', ')）"
+$nodeExe = Get-Command node -ErrorAction SilentlyContinue
+if ($null -eq $nodeExe) {
+    Write-Host "  [--] 未装 node，跳过插件离线单测"
+} else {
+    $pTest = Join-Path $plg 'test\trigger.test.mjs'
+    if (Test-Path $pTest) { & node $pTest *> $null; Check ($LASTEXITCODE -eq 0) '插件 trigger 离线单测通过（node test/trigger.test.mjs）' }
+    $iTest = Join-Path $plg 'test\index.test.mjs'
+    if (Test-Path $iTest) { & node $iTest *> $null; Check ($LASTEXITCODE -eq 0) '插件 Host 半区单测通过（node test/index.test.mjs）' }
+}
+
+Write-Host "== 8. 结论 =="
 Write-Host "通过 $pass 项；失败 $($fail.Count) 项"
 if ($fail.Count -gt 0) { $fail | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }; exit 1 }
 Write-Host "Roadbook（路书）V6 母版完整性校验：全部通过" -ForegroundColor Green

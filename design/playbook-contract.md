@@ -32,7 +32,7 @@
 - **只写动作，不写要求**。每条是"做 X"，不是"应该注意 X"
 - 每个判断给 **❌反例 / ✅正例** 对照（模拟实测：反例比定义有效十倍）
 - 每个人要做的判断给**照着念的清单**（用户可以逐条念给 agent 听）
-- 每个命令给**可直接复制的一行**（Windows 优先 PowerShell；必须 bash 时附一行 Git Bash 跑法）
+- 每个命令给**可直接复制的一行**（Windows 优先 PowerShell；必须 bash 时附一行 Git Bash 跑法）。命令**一律用正斜杠路径**（`powershell -NoProfile -File _qc/check.ps1`），且**禁止出现 `<占位符>`**——`<` 在 Windows PowerShell 是保留运算符，直接粘贴会 `ParserError`；要给变量就写成"先赋值再调用"（如 `$anchor = git rev-parse HEAD` 再 `-Anchor $anchor`）
 - 分批与停下点显式写明（如编码卡 ≤300 行/批）
 - 禁令用"禁止"列表单独列，违反 = 输出作废
 - 判据**内联**：本文需要的一切阈值、清单、格式都在本卡内写全。**禁止**引用 playbook/ 内其他卡、design/、_archive/（对项目文件的引用可以且应该写具体路径）
@@ -40,7 +40,8 @@
 ### ③ 证据回执
 - 规定本卡收尾必须粘贴的证据：命令真实输出 / 文件路径 / 提交哈希
 - "完成"的声明必须逐条对应证据；没有证据 = 未完成
-- 需要跑 guardrail 的卡，写明命令：`powershell -File check.ps1`（退出码必须 0）
+- 需要跑 guardrail 的卡，写明命令：`powershell -NoProfile -File check.ps1`（退出码必须 0）
+- **阶段顺序**：状态回写（STATE.md / 账本 / registry / 计数）必须发生在**提交之前**；末段固定"回写状态 → 提交 → 复跑 check.ps1 取 0"。提交后才回写状态 = 收工必脏树，属违规
 
 ### ④ 状态回写
 - 要求 agent 更新 `STATE.md` 的哪些字段（具体到字段名）
@@ -69,9 +70,9 @@
 | 债务登记 | `docs/TECH_DEBT.md` |
 | 教训沉淀 | `docs/lessons/<日期>_<主题>.md` |
 | 版本详情 | `docs/versions/vX.Y.Z.md`；索引=根 `CHANGELOG.md` |
-| 归档 | `docs/archive/<日期>/`，用 `git mv`，原子提交，**禁止 `git add -A` / `git add .`** |
+| 归档 | `docs/archive/<日期>_<slug>/`，用 `git mv`，原子提交，**禁止 `git add -A` / `git add .`** |
 | 状态仪表盘 | `STATE.md`（项目根） |
-| 环境自检 / 收工仪式 | `powershell -File doctor.ps1` / `powershell -File check.ps1` |
+| 环境自检 / 收工仪式 | `powershell -NoProfile -File doctor.ps1` / `powershell -NoProfile -File check.ps1` |
 
 ## 5. 常见错误（建卡者自查）
 

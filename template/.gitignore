@@ -9,6 +9,12 @@ coverage/
 .venv/
 venv/
 
+# 工具缓存与增量产物（不收进来 = 首次收工就被 check.ps1 判红：工作树不干净）
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.tsbuildinfo
+
 # 环境与密钥（永不提交）
 .env
 .env.local
@@ -18,6 +24,8 @@ venv/
 # 系统与编辑器
 .DS_Store
 Thumbs.db
+desktop.ini
+~$*
 .idea/
 .vscode/
 *.log

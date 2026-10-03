@@ -1,6 +1,6 @@
-# .tool-versions · 环境版本锁定（与产品版本无关；按 11 卡选型填）
-# agent 与人安装依赖、排查环境时以此为准；改这里的任何一行都算环境变更，需要在归档回执里说明。
-language = <python 3.12 / node 20>
-package-manager = <pnpm 9 / pip>
-runtime = <如 uvicorn / node>
-database = <postgresql 16 / 无>
+# .tool-versions · 工具版本锁（与产品版本无关；11 卡按选型填）
+# 格式：一行一个「工具名 版本」，工具名用 asdf/mise 的插件名（nodejs / python / postgres …），# 开头整行是注释。
+# 谁读它：doctor.ps1 每次体检逐项比对（装不上或版本不符会点名）；人装依赖、排查"我这能跑他那不能跑"也以它为准。
+# 何时读：每次会话开工跑 doctor.ps1 时；以及要改环境版本时——改这里任何一行都算环境变更，归档回执必须说明。
+nodejs 22.11.0
+python 3.13.1

@@ -85,7 +85,9 @@ export function hasGesture(text, names) {
   for (const name of asList(names, [])) {
     if (typeof name !== 'string' || name.length === 0) continue
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    if (new RegExp(`(^|\\s)/${escaped}(?=\\s|$)`).test(source)) return true
+    // 手势前面必须是行首或空白（半角空格、全角空格 U+3000、Tab 都算），后面是行尾、空白或常见中英标点：
+    // 「  /roadbook 开工」「那先\u3000/roadbook，开始」算手势，而「/roadbook-x」「https://x/roadbook」不算。
+    if (new RegExp(`(?:^|[\\s\\u3000])/${escaped}(?=$|[\\s\\u3000，。！？；：、,.!?;:])`).test(source)) return true
   }
   return false
 }
