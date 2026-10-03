@@ -135,6 +135,27 @@
 | 用户文档 | user documentation |
 | 国际化 | internationalization (i18n) |
 | 可访问性 | accessibility (a11y) |
+| 界面与交互设计 | UI and interaction design |
+| 状态矩阵（8 态） | state matrix (8 states) |
+| 色彩与风格 | color and style |
+| 设计令牌 | design tokens |
+| 中性色阶 | neutral color ramp |
+| 语义色 | semantic color |
+| 对比度 | contrast ratio |
+| 动效 | motion |
+| 微交互 | microinteraction |
+| 缓动曲线 | easing curve |
+| 降级策略（减少动态效果） | reduced-motion fallback |
+| 项目重构 | refactoring |
+| 外部行为不变 | external behavior unchanged |
+| 净减目标 | net-reduction target |
+| 智能体团队 | Agent Teams |
+| 任务板 | shared task board |
+| 写作用域 | write scope |
+| 并行写者 | concurrent writer |
+| 上下文预算 | context budget |
+| 热记忆 | hot memory |
+| 交接三件 | handover triad |
 
 ## 5. 禁止翻译（原样保留）
 

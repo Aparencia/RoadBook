@@ -28,11 +28,12 @@
 **② Compatibility affected surface**:
 ```powershell
 $dep = 'requests'          # the dependency to be upgraded this time
-Select-String -Path src, tests -Recurse -Pattern $dep | Select-Object Path, LineNumber, Line
+Get-ChildItem -Path src, tests -Recurse -File | Select-String -Pattern $dep | Select-Object Path, LineNumber, Line
 ```
 List all call sites, and judge "whether this project is affected" item by item against the changelog's breaking changes.
 ❌ Counter-example: `grep -rn "<依赖名>" src` (a bash-only command + a placeholder; it will not run on Windows, and it also misses call sites outside src)
-✅ Good example: the `Select-String -Path src, tests -Recurse -Pattern $dep` above (runs on PowerShell 5.1, outputs Path/LineNumber/Line)
+✅ Good example: the `Get-ChildItem -Path src, tests -Recurse -File | Select-String -Pattern $dep` above (runs on PowerShell 5.1, outputs Path/LineNumber/Line)
+(Note: on PowerShell 5.1 `-Recurse` is not a valid parameter of `Select-String`; only the pipeline form above runs)
 
 **③ Prepare the upgrade changes (lockfile and code adaptation committed separately; the commit action goes in §④, this section does not commit)**:
 ```powershell
@@ -44,7 +45,14 @@ $adapter = 'src/export_limit.py'  # the code adaptation files this time, listed 
 - The lockfile gets its own commit (preserving rollback granularity), and the code adaptation gets another commit
 - The adaptation for breaking changes must state "behavior before the change → behavior after the change"
 
-**④ Full verification**: `powershell -NoProfile -File check.ps1` exit code 0 + paste the output (run after the §④ commit). If it does not pass → roll back the lockfile commit (`git revert`); a failed upgrade is also a valid conclusion.
+**④ Full verification**: `powershell -NoProfile -File check.ps1` exit code 0 + paste the output (run after the §④ commit). If it does not pass, roll back through one of the two branches below depending on what failed (a failed upgrade is also a valid conclusion):
+```powershell
+$lockCommit = 'abc1234'      # §④ first commit (lockfile); read it with git log --oneline -2
+$adapterCommit = 'def5678'   # §④ second commit (code adaptation)
+git revert $lockCommit       # the dependency itself is bad → drop the lockfile (the adaptation commit should be dropped too)
+git revert $adapterCommit    # the dependency is fine, only the adaptation is wrong → drop just the adaptation, keep the upgrade
+```
+(One `git revert` handles one commit; to drop both, run the two commands in order — never put two hashes into one command.)
 
 **Prohibitions:**
 - Upgrading multiple **major versions** in one task is forbidden (mutual interference makes localization impossible)
@@ -78,4 +86,5 @@ git commit -m "7-2 fix(deps): adapt to $dep $new"
 powershell -NoProfile -File check.ps1
 ```
 
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+Fixed closing line:
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

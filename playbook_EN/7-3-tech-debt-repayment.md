@@ -8,10 +8,13 @@
 1. **Batch type decision (decide the type before acting)**:
    - **T batch (debt repayment batch)**: clear entries one by one from the ledger; scope = the number of entries the user picked
    - **P batch (cleanup batch)**: only deletion / merging / renaming / convergence are allowed, **adding features is not allowed**; the reduction target must be written down at start (see §② P1); no written target = it does not count as a P batch
-   - P batch triggers (any one): forced once after every 3–5 feature batches | triggered by the card 6-6 audit | ≥5 entries of the "rot" class in the ledger
+   - P batch triggers (any one): forced once after every 3–5 feature batches | triggered by the card 6-6 audit | ≥5 ledger entries whose description contains "腐化/重复/上帝类" (rot / duplication / god class)
 2. **Assumptions list**: the 3~5 default assumptions you made on the user's behalf (e.g. "these debts have no hidden dependencies", "the files to be deleted have no external references"), each noting how it will be verified.
 3. **Clarifying questions (≤5, save any that can be saved)**: the default three questions — how many entries to clear this round? Which entries (let the human pick)? Should a P batch be opened along the way? Anything findable in the ledger and the code must not be asked of the human.
-4. **Ledger view**: read `docs/TECH_DEBT.md` and output a priority view (sorted by source severity / affected surface / how long it has been sitting, one line each), and list the "rot" class entries separately.
+4. **Ledger view**: read `docs/TECH_DEBT.md` and output a priority view (sorted by source severity / affected surface / how long it has been sitting, one line each), and list separately the entries whose description contains those keywords — the filter is: the description column contains "腐化/重复/上帝类"; pull the list with:
+```powershell
+Select-String -Path docs/TECH_DEBT.md -Pattern '腐化|重复|上帝类'
+```
 5. **Repayment recommendation**: pick the 1~3 entries with the "best value for effort" from the view (large impact / small change first) and explain why.
 6. **Quote the checklist verbatim** (paste the "three repayment rules" from §② of this card word for word; for a P batch also paste the "four steps of a P batch").
 
@@ -24,7 +27,7 @@ Wait for the user to pick which entries to clear (for a P batch: wait for the us
 **Three repayment rules:**
 
 **Rule 1: route by nature; do not force a fix**
-- Code debt → follow the discipline of 4-1 batch coding (start anchor / batching / the five compliance checks), one task per debt entry
+- Code debt → follow the discipline of 4-1 batch coding (three criteria inlined: ① record the start anchor at kickoff with `git rev-parse --short HEAD`; ② one commit per batch and `git status --short` prints nothing between batches; ③ run 4-1's "每批必念五查" item by item each batch and put the result in the receipt), one task per debt entry
 - Documentation debt (missing registry rows / stale RUNBOOK) → fix directly, clearing it all in one go
 - "Cannot reproduce" known-issues → must not be cleared; they can only be renewed or downgraded to "under observation"
 
@@ -101,4 +104,5 @@ powershell -NoProfile -File check.ps1
 ```
 (`git add -A` / `git add .` are forbidden; fill the commit hash back into item 2 of §③.)
 
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+Fixed closing line:
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

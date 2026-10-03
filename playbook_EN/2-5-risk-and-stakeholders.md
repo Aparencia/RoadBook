@@ -1,5 +1,5 @@
 # Card 2-5 · Risk and stakeholders (tier L, or this task involves ≥2 parties)
-> Trigger: tier = L, or someone other than the user — another person / a team / an external system — takes part in this task ｜ Output: docs/specs/<date>_<slug>/RISK.md + one summary line in STATE.md ｜ Next: 3-1 Design (tier L); tier M (only triggered by multiple parties) → 3-3 Test strategy; tier S → 4-1 Batch coding
+> Trigger: tier = L, or someone other than the user — another person / a team / an external system — takes part in this task ｜ Output: docs/specs/<date>_<slug>/RISK.md + the STATE.md `风险摘要` line ｜ Next: 3-1 Design (tier L); non-L tiers → 3-3 Test strategy
 
 ---
 
@@ -18,7 +18,7 @@ After receiving the start instruction, first receipt the following five items be
    - [ ] ③ Every risk takes one of two paths: a mitigation, or explicit acceptance (acceptance must state the reason + who accepted it and when)
    - [ ] ④ The stakeholder table has all four columns: who / what they care about / how to notify / when to notify
    - [ ] ⑤ The go-live notification targets and the one-line register summary are written into STATE.md (not written = this card is not complete)
-5. **Landing declaration**: output = `docs/specs/<date>_<slug>/RISK.md` + the STATE.md summary line; next card = 3-1 Design (tier L), non-L tiers → 3-3 Test strategy.
+5. **Landing declaration**: output = `docs/specs/<date>_<slug>/RISK.md` + the STATE.md `风险摘要` line; next card = 3-1 Design (tier L); non-L tiers → 3-3 Test strategy.
 "≥2 parties" counts the user as one party [disambiguated].
 
 ---
@@ -56,9 +56,10 @@ Prohibition: writing real phone numbers, private email addresses or home address
 
 **Action 4: go-live notification targets (write into the 「上线通告」 ("go-live notification") section of RISK.md, three lines)**
 ① who will use it; ② who is affected by it (people who see "no change, nothing to do" still get told); ③ who must know before it happens (for example the person who owns backups, the contact on the downstream interface).
+Single-person mode (nobody other than the user — no other person / team / external system): skip the stakeholder table and the go-live notification sections, and write one line of reason in STATE.md `裁剪记录` ("trim record").
 
 **Action 5: one summary line into STATE.md**
-Write the single highest-level risk as one line in STATE.md `未决问题` (awaiting the user's verdict on acceptableness); with no red or amber, write `风险登记册：N 条，均已缓解或显式接受` ("risk register: N items, all mitigated or explicitly accepted"). When a red-line area is touched, also update `红线摘要`.
+Write the single highest-level risk as one line in STATE.md `风险摘要` (= the biggest risk + mitigation + trigger signal; with no red or amber, write `无` ("none")); open questions (awaiting the user's verdict on acceptableness) are registered separately under `未决问题`. When a red-line area is touched, also update `红线摘要`.
 
 **Action 6: commands (assign first, then call; a hit on one line = one unobservable signal or one slogan-style mitigation)**
 ```powershell
@@ -85,15 +86,16 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 5. Number of stakeholder table rows + the three go-live notification lines verbatim
 6. The STATE.md summary line verbatim (paste the actual line)
 7. The slogan self-check command output (a `Select-String` with no output is the pass)
+8. This commit's hash (verbatim `git rev-parse HEAD`)
 
 ---
 
 ## ④ State write-back
 
 **Write back first, commit second**. Update STATE.md:
-- `未决问题` = risks that are explicitly accepted (awaiting the user's verdict on acceptableness) + the summary line of the highest-level risk
+- `风险摘要` = the biggest risk + mitigation + trigger signal (write `无` ("none") when there is none); `未决问题` = risks that are explicitly accepted (awaiting the user's verdict on acceptableness)
 - `红线摘要` = the red-line areas touched this time (leave it alone when there are none)
-- `下一步` = 3-1 Design (tier L); tier M (only triggered by multiple parties) → 3-3 Test strategy; tier S (only triggered by multiple parties) → 4-1 Batch coding
+- `下一步` = 3-1 Design (tier L); non-L tiers → 3-3 Test strategy
 
 After the write-back, the closing triple (write back state → commit → re-run the gate for a 0):
 ```powershell

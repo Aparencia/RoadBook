@@ -14,7 +14,7 @@ After receiving the start instruction, first issue a receipt for the following f
    ✅ Example: "月度统计需要包含已删除的账单吗？" ("should the monthly statistics include deleted bills?")
 4. **Quote the checklist verbatim** (paste verbatim this card's §② "five scope-compliance checks").
 
-Also state: the output lands at `docs/specs/<日期>_<slug>/SCOPE.md`, and the next card is 4-1 (batch coding). [disambiguated]
+Also state: the output lands at `docs/specs/<日期>_<slug>/SCOPE.md`, and the next card = 2-4 non-functional requirements (tiers M/L); tier S → 4-1 batch coding; tier L → 3-1 design after 2-4. [disambiguated]
 
 ---
 
@@ -81,7 +81,7 @@ At wrap-up, the following must be given item by item:
 Update STATE.md:
 - `current task` = <feature name> (SCOPE link)
 - `tier` = the S/M/L the user confirmed
-- `next` = 4-1 batch coding (tier L = 3-1 design)
+- `next` = 2-4 non-functional requirements (tiers M/L); tier S → 4-1 batch coding; tier L → 3-1 design after 2-4
 - `open questions` = the questions the user did not answer during clarification (list them if there are any)
 
 After writing back, wrap up with the fixed three steps (write back → commit → re-run check.ps1):

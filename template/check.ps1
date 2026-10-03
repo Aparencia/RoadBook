@@ -49,7 +49,7 @@ else {
         $dirty | Select-Object -First 10 | ForEach-Object { Write-Host "        $_" }
         $fail++
     } else { Write-Host "[OK] 工作树干净（本批改动都已提交）" -ForegroundColor Green }
-    # 起点锚点为空是合法状态（5-1 卡归档会清空它，见 playbook/5-1-归档.md:97），故此处仍只提示不判失败。
+    # 起点锚点为空是合法状态（归档不清空它，新任务开工时覆盖；空 = 还没开工任务），故此处仍只提示不判失败。
     $am = if (Test-Path $sm) { [regex]::Match([IO.File]::ReadAllText($sm, [Text.Encoding]::UTF8), '(?m)^\s*[-*]?\s*起点锚点\s*[:：]\s*([0-9a-fA-F]{7,40})') } else { $null }
     if ($null -eq $am -or -not $am.Success) { Write-Host "[--] STATE.md 起点锚点未填（归档后为空属正常）：跳过本批提交计数断言" -ForegroundColor Yellow }
     else {

@@ -23,6 +23,7 @@ After receiving the start instruction, first receipt:
 **1. Registry write-back verification (diff-driven; answering "did I change it?" from memory is forbidden)**:
    - a. Read `起点锚点` from STATE.md into `$anchor`; run `git diff --name-only "$anchor..HEAD"` + changed-symbol extraction → the **change list** (ground truth)
    - b. Classify the list by domain (UI / table / interface / configuration / dependency); for each changed item → mark the corresponding registry row: written back ✓ / not applicable — (reason) / not handled ○ (**fix it on the spot**; ○ must not be left blank)
+   - c. If this task came from an idea row in `docs/pool/IDEAS.md` → in the same batch set that row's `状态` to `done` and chain this commit's hash into its conclusion column; the only status words are `idea / researching / approved / done / killed`
 
 **2. Lesson distillation**: did you step on a mine this time? If yes → write `docs/lessons/<日期>_<主题>.md` (≤12 lines: symptom → root cause → fix → how to locate it next time). **Check for duplicates first**: update the old card for the same symptom, do not create a new one.
 
@@ -32,20 +33,20 @@ After receiving the start instruction, first receipt:
 
 **5. Standing-document staleness and over-limit check (run item by item; update anything over the limit or inconsistent)**:
 ```powershell
-$budget = @{ 'AGENTS.md' = 200; 'docs\ARCHITECTURE.md' = 100; 'docs\RUNBOOK.md' = 80 }
+$budget = @{ 'AGENTS.md' = 240; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100 }
 foreach ($f in $budget.Keys) { "$f = $(@(Get-Content $f).Count) lines (limit $($budget[$f]))" }
 Select-String -Path README.md -Pattern 'powershell'
 ```
-   - AGENTS.md has stale rules → delete them (hard limit 200 lines: before adding one, first ask "which real rework did this rule prevent?")
+   - AGENTS.md has stale rules → delete them (hard limit 240 lines: before adding one, first ask "which real rework did this rule prevent?")
    - Run every README startup/check/test command for real; anything that does not run = fix it on the spot
    - Does docs/ARCHITECTURE.md's module diagram match the real directories in `git ls-files`?
    - Do docs/RUNBOOK.md's deploy/rollback/backup steps match this change?
 
 **6. Anti-bloat execution (act as soon as a limit is exceeded; do not let it pile up)**:
 ```powershell
-@(Get-ChildItem docs\lessons -Filter *.md).Count
-@(Get-ChildItem docs\decisions -Filter *.md).Count
-@(Get-ChildItem docs\specs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) }).Name
+@(Get-ChildItem docs/lessons -Filter *.md).Count
+@(Get-ChildItem docs/decisions -Filter *.md).Count
+@(Get-ChildItem docs/specs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) }).Name
 ```
    - lessons/ and decisions/ each over 30 cards → move the oldest with no references for 90 days into `docs/archive/`
    - **The 6 seed lesson cards do not take part in this 30-card ranking elimination** (seeds are only proposed for promotion by the 6-6 card when they recur across projects)
@@ -58,8 +59,14 @@ $slug = 'export-limit'                     # same source as this task's director
 $src  = "docs/specs/${date}_$slug"
 $dest = "docs/archive/${date}_$slug"
 git mv $src $dest
+$rows    = Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-' | ForEach-Object { $_.Line }
+$open    = @($rows | Where-Object { $_ -match '\|\s*open\s*\|' }).Count
+$carried = @($rows | Where-Object { $_ -match '\|\s*carried\s*\|' }).Count
+$closed  = @($rows | Where-Object { $_ -match '\|\s*closed\s*\|' }).Count
+$keyItem = ($rows | Where-Object { $_ -match '\|\s*open\s*\|' } | Select-Object -First 1)
+Set-Content -Path "$dest/tech-debt.md" -Encoding UTF8 -Value @("# 债务快照 $date", "open $open ｜ carried $carried ｜ closed $closed", "关键项：$keyItem")
 ```
-The debt snapshot is written to `$dest/tech-debt.md` (3 lines: `"# 债务快照 $date"` / `"open $open ｜ carried $carried ｜ closed $closed"` / `"关键项：$keyItem"`; the three counts and the key item come from the debt-rolling result in 3). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
+The debt snapshot is written to `$dest/tech-debt.md` (3 lines: title / the three counts / the key item). The counts **must be derived by the command above from the `状态` column of `docs/TECH_DEBT.md`** (assign `$open`/`$carried`/`$closed`/`$keyItem` before writing the file; referencing an unassigned variable silently writes empty numbers, which is no measurement at all). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
    - ❌ Counter-example: writing `docs/archive/2026-10-03/` (no slug; two tasks on the same day overwrite each other)
    - ✅ Good example: `docs/archive/2026-10-03_export-limit/` (date + slug, unique and searchable)
 
@@ -82,7 +89,7 @@ git ls-files | Measure-Object -Line | Select-Object -ExpandProperty Lines
    - Register as tech debt — write it into `docs/TECH_DEBT.md`
    - Add the registration in COMPONENTS.md
    - ❌ Counter-example: a pile of orphans is scanned out and the receipt says "acknowledged, handled next round" (= nothing was done)
-   - ✅ Good example: every item has an owner, and the receipt gives the counts "deleted x / registered as TD x / registered x"; **the counts added up after deduplication = the sum of the summary line's five classes**
+   - ✅ Good example: every item has an owner, and the receipt gives the counts "deleted x / registered as TD x / registered x", and asserts **the sum of the five class counts ≥ the number of deduplicated files** (the five classes are not deduplicated against each other, so one file can fall into several at once; the three handling counts are compared only against the deduplicated item count, never forced to equal the five-class sum)
 
 **9. Rollback confirmation**: how are this task's changes reverted? (First check the scope with `git log --oneline "$anchor..HEAD"`, then decide `git revert` or `git reset`; has the migration down been dry-run?) Write a one-line conclusion into the receipt.
 
@@ -97,7 +104,7 @@ git check-ignore -v .env
    - Two consecutive archive cycles without a push = 6-6 card signal 10 (push lag)
 
 **Close-out order (this section performs no commit or push; it only declares the numbering so that §③ can reference it number by number)**:
-1. Write back STATE.md / registry / the file-count snapshot (see §④)
+1. Write back STATE.md (`最近完成` / `体检计数` / `未来 3 步` / `最近归档` / `当前文件数`; field semantics in §④) + the write-back of the affected rows in the three registry tables: `COMPONENTS.md` add 文件·搜索词·影响面·最近确认 (fill in the archive date), `APIS.md` add 错误码·说明, `DATA_DICT.md` add 校验·敏感度
 2. Commit: `git add $dest STATE.md docs/TECH_DEBT.md` (add the other files changed this time one by one: `docs/lessons/…`, `CHANGELOG.md`, etc.) → `git commit -m "5-1 docs(archive): archive ${date}_$slug"`
 3. Re-run `powershell -NoProfile -File check.ps1` and take exit code 0
 4. Remote sync: `git push origin HEAD` (record "local-only" when there is no remote)
@@ -116,7 +123,7 @@ git check-ignore -v .env
 ## ③ Evidence receipt
 
 Give, item by item:
-1. The archive ten checks' results item by item (1–10; each item states the action or "confirmed none" + its basis); for 8 attach the verbatim `orphans.ps1` summary line + the three-class handling counts (deleted x / registered as TD x / registered x), where the counts added up after deduplication = the sum of the summary line's five classes
+1. The archive ten checks' results item by item (1–10; each item states the action or "confirmed none" + its basis); for 8 attach the verbatim `orphans.ps1` summary line + the three-class handling counts (deleted x / registered as TD x / registered x), and assert **the sum of the five class counts ≥ the deduplicated file count** (the five classes are not deduplicated against each other, so one file can fall into several at once)
 2. The archive list (source paths → `docs/archive/<date>_<slug>/`)
 3. The debt-change summary (closed x / carried x / added x, with the key item on one line)
 4. The real evidence for close-out steps 1–5: `git status --porcelain` (must be empty), the commit hash, the complete output of `check.ps1` with exit code 0, the `git push` output (or "no remote: local-only")
@@ -131,8 +138,8 @@ Update STATE.md:
 - `最近完成` insert one entry at the top (rolling, keep 5): date + a one-line task summary + commit
 - `体检计数` +1 (create it as 1 if the field does not exist; **cumulative ≥15 → `下一步` = 6-6 process audit**)
 - `未来 3 步` rolled as needed (the roadmap)
-- `最近归档` insert one entry at the top (rolling, keep 2: date / slug / commit hash / this task's start anchor / current file count; create the field if it does not exist) — the 6-6 card's signals 8, 9, 10 read only these 2 entries
-- `起点锚点` **kept unchanged** (= the commit at this task's start; the archive does not clear it — the 6-6 card relies on it to judge commit cadence)
+- `最近归档` insert one entry at the top (rolling, keep 2; one line with **6 fields**: date / slug / commit hash / start anchor / current file count / push result — write "已 push origin HEAD" or "本地-only" as the push result; create the field if it does not exist) — the 6-6 card's signals 8, 9, 10 read only these 2 entries
+- `起点锚点` **kept unchanged** (= the commit at this task's start; the archive does not clear it — the 6-6 card relies on it to judge commit cadence; a new task overwrites it in ① start confirmation, and the old value is already on record in the `最近归档` line above, so nothing is lost)
 - `文件数基线` **kept unchanged** (set only once at onboarding / the first batch; the archive does not reset it, otherwise the budget mechanism idles)
 - `当前任务` cleared; `工作树状态` = clean
 - `下一步` = awaiting a new intent (the driver card 9 guides the user on a vague intent); if the health-check count triggers, the 6-6 card governs [disambiguated]

@@ -95,6 +95,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 5. Fixture sources + the production-data self-check command output (it must have no output)
 6. Number of "what is not tested" items and the reason for each
 7. The "commands for 4-3 to run" text verbatim
+8. This commit's hash (verbatim `git rev-parse HEAD`)
 
 ---
 

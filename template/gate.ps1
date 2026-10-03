@@ -3,7 +3,7 @@
 #   黄 = 通过但有需注意项（重命名条目、变更清单为空），仍 exit 0；绿 = exit 0。
 # 用法（复制即用；缺参数或指错仓库时脚本会把这两行原样打回来）：
 #   powershell -NoProfile -File gate.ps1 -Anchor HEAD~1 -ScopeFiles "src/a.ts,src/b.ts" -RepoRoot .
-#   powershell -NoProfile -File gate.ps1 -Anchor <起点提交哈希> -ScopeFiles "src/" -RepoRoot .
+#   powershell -NoProfile -File gate.ps1 -Anchor 9f8e7d6 -ScopeFiles "src/" -RepoRoot .   （9f8e7d6 换成你本批的起点提交哈希）
 # 参数：-Anchor 本批起点锚点（git 提交）｜-ScopeFiles 本批允许改动的文件或目录（多个用**逗号**写在同一个引号里；目录项写 "src/" 或写到已存在的目录名）
 #   ｜-LineLimit/-TestLineLimit 行数硬阈值（测试文件豁免到后者）｜-RepoRoot git 工作树根，默认当前目录。
 # 为什么 -Anchor 与 -ScopeFiles 必填：没有锚点划不出"本批"范围，没有 scope 判不了越界——旧版本遇到这两种情况会整段跳过检查（假绿）。

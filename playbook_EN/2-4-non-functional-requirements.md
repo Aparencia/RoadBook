@@ -1,5 +1,5 @@
-# Card 2-4 · Non-functional requirements (mandatory for feature tiers; tier S fills only the performance / security rows)
-> Trigger: after 2-2 Requirement scope is confirmed by the user ｜ Output: docs/specs/<date>_<slug>/NFR.md ｜ Next: 2-5 Risk and stakeholders (tier L / multiple parties); tier M → 3-3 Test strategy; tier S → 4-1 Batch coding
+# Card 2-4 · Non-functional requirements (mandatory for tiers M/L; tier S does not run it — its performance / security rows go straight into SCOPE)
+> Trigger: after 2-2 Requirement scope is confirmed by the user (tiers M/L) ｜ Output: docs/specs/<date>_<slug>/NFR.md ｜ Next: 2-5 Risk and stakeholders (tier L or ≥2 parties), otherwise 3-3 Test strategy
 
 ---
 
@@ -19,7 +19,7 @@ After receiving the start instruction, first receipt the following five items be
    - [ ] ③ Every threshold has one verification action 4-3 can execute directly (the text is written into this card's output)
    - [ ] ④ Thresholds are measurable boundaries (P95 ≤ 800 ms), not adjectives (the response should be fast)
    - [ ] ⑤ The user has looked at every threshold and confirmed it (quote their words; without confirmation entry into 4-1 is forbidden)
-5. **Landing declaration**: output = `docs/specs/<date>_<slug>/NFR.md`; next card = 2-5 Risk and stakeholders (tier L / multiple parties), otherwise 3-3 Test strategy (tiers M/L).
+5. **Landing declaration**: output = `docs/specs/<date>_<slug>/NFR.md`; this card runs for tiers M/L — tier S does not run it (its performance / security rows go straight into SCOPE, unless the user explicitly asks); next card = 2-5 Risk and stakeholders (tier L or ≥2 parties), otherwise 3-3 Test strategy.
 
 ---
 
@@ -53,7 +53,7 @@ Criterion: pasting this line as-is into VERIFY.md makes it executable, without l
 
 **Action 4: write `N/A（理由）` where no threshold can be given**
 Example: `可用性：N/A（本地单人桌面工具，无服务端，不存在停机概念）` ("availability: N/A (local single-user desktop tool; there is no server, so downtime does not exist)").
-Tier S fills only the [Performance] and [Security] rows and writes `N/A（S 档豁免）` for the other four dimensions. Writing "待定" ("to be decided") or "后续再补" ("fill it in later") is forbidden.
+Tier S does not run this card (its performance / security rows go straight into SCOPE, unless the user explicitly asks for this card); a dimension the user cannot give a threshold for always gets `N/A（理由）`. Writing "待定" ("to be decided") or "后续再补" ("fill it in later") is forbidden.
 
 **Action 5: two lines of commands (assign first, then call; a hit on the second line = one non-measurable statement)**
 ```powershell
@@ -79,6 +79,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 4. One line per threshold: threshold text → verification-action text (write `N/A` items the same way)
 5. The blank-value self-check command output (a `Select-String` with no output is the pass)
 6. A quote of the user's words confirming the thresholds (without that confirmation the next card must not start)
+7. This commit's hash (verbatim `git rev-parse HEAD`)
 
 ---
 
@@ -88,7 +89,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 - `当前任务` = <feature name> (link SCOPE.md and NFR.md)
 - `未决问题` = the thresholds the user has not confirmed yet (item by item)
 - `docs/ARCHITECTURE.md` §5 = write back in the same batch the thresholds that "constrain how a module is built" (the performance / capacity / compatibility rows most easily become architecture constraints)
-- `下一步` = 2-5 Risk and stakeholders (tier L or ≥2 parties); otherwise 3-3 Test strategy (tiers M/L); tier S = 4-1 Batch coding
+- `下一步` = 2-5 Risk and stakeholders (tier L or ≥2 parties), otherwise 3-3 Test strategy
 
 After the write-back, the closing triple (write back state → commit → re-run the gate for a 0):
 ```powershell
@@ -99,7 +100,7 @@ powershell -NoProfile -File check.ps1
 ```
 `git status --porcelain` empty + check.ps1 exit code 0 = the close-out is done.
 
-Tier note: tier S walks the short version (performance / security rows + four `N/A（S 档豁免）` rows); tiers M/L fill all six dimensions.
+Tier note: tiers M/L fill all six dimensions; tier S does not run this card — its performance / security rows go straight into SCOPE (the other dimensions get `N/A（理由）`).
 
 Fixed closing line:
 `The NFR document is ready and every threshold is paired with a verification action. Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

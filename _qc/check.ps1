@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 340) "行数 $selfN <= 340 ：_qc/check.ps1 自身（2026-10-03 由 260 上调：卡清单改从 §4 解析 + 双语对齐；上调须同时改本行与 design §8）"
+Check ($selfN -le 360) "行数 $selfN <= 360 ：_qc/check.ps1 自身（2026-10-03 由 340 上调：43 张卡 + 新文档骨架 + 收尾语逐字断言；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -60,7 +60,7 @@ foreach ($ln in $designLines) {
     if ($cells.Count -eq 7 -and $cells[0] -match '^\d+-\d+$') { $cardNo += $cells[0]; $cardName += $cells[1] }
     elseif ($cells.Count -eq 2 -and $cells[0] -match '^\d+-\d+$' -and $cells[1] -match '\.md$') { $enMap[$cells[0]] = $cells[1] }
 }
-Check ($cardNo.Count -eq 36) "design §4 表解析出 36 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
+Check ($cardNo.Count -eq 43) "design §4 表解析出 43 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
 Check ($enMap.Count -eq $cardNo.Count) "design §4.1 表为每张卡给出英文文件名（实际 $($enMap.Count) 条）"
 $cards = @()
 for ($i = 0; $i -lt $cardNo.Count; $i++) { $cards += ($cardNo[$i] + '-' + ($cardName[$i] -replace '\s', '')) }
@@ -81,11 +81,23 @@ Check ($enDiff.Count -eq 0) "英文卡文件名与 §4.1 表逐张对齐（不�
 $sections = @('## ① 开工确认','## ② 执行','## ③ 证据回执','## ④ 状态回写')
 $enSections = @('## ① Start confirmation','## ② Execution','## ③ Evidence receipt','## ④ State write-back')
 $metaMarkers = @('【第一次运行','【把意图路由到卡','【执行任何卡时的硬规则','【每轮收尾')
+$enMetaMarkers = @('[ First run','[ Route the intent to a card','[ Hard rules when executing any card','[ End of each round')
 # 禁引用 design/ _archive/ playbook/ template/；下列卡例外，理由随行写明（禁止静默放宽）
 $tplRefAllowed = @{
     '1-2-选型初始化'   = '施工卡：整套复制母版 template/ 生成项目'
     '1-3-接入已有项目' = '施工卡：从母版 template/ 复制宪法与 STATE'
     '1-1-想法调研'     = 'template/ 仅出现在禁令行（禁止拷贝），是负面清单不是执行引用'
+}
+# 注意：判定"某行是否含某个针"必须先在循环外固定 $n，不能在 Where-Object 里写
+# "$_ -like \"$n*\""——脚本块里的 $_ 会被内层 Where-Object 重绑定，条件恒真，断言变假绿。
+function Get-MissingNeedle {
+    param([string[]]$Lines, [string[]]$Needles, [switch]$AtLineStart)
+    $miss = @()
+    foreach ($n in $Needles) {
+        $hit = @($Lines | Where-Object { if ($AtLineStart) { $_.StartsWith($n) } else { $_.Contains($n) } })
+        if ($hit.Count -eq 0) { $miss += $n }
+    }
+    return $miss
 }
 $badH1 = @(); $badSec = @(); $badRef = @(); $badTail = @(); $longCards = @()
 foreach ($c in $cards) {
@@ -97,18 +109,18 @@ foreach ($c in $cards) {
     if ($lines[0] -notmatch ('^# 卡 ' + [regex]::Escape($no) + ' ·')) { $badH1 += $c }
     if ($lines.Count -gt 150) { $longCards += "$c($($lines.Count))" }
     if ($c -eq '0-1-驱动卡') {
-        $missing = @($metaMarkers | Where-Object { -not ($lines | Where-Object { $_ -like "*$_*" }) })
+        $missing = Get-MissingNeedle -Lines $lines -Needles $metaMarkers
         if ($missing) { $badSec += "0-1 驱动卡关键段缺：$($missing -join '/')" }
     } else {
-        $missing = @($sections | Where-Object { -not ($lines | Where-Object { $_ -like "$_*" }) })
+        $missing = Get-MissingNeedle -Lines $lines -Needles $sections -AtLineStart
         if ($missing) { $badSec += "$c 缺 $($missing -join '/')" }
         $hitForbidden = @('design/','_archive/','playbook/','template/') | Where-Object { $lines -match [regex]::Escape($_) }
         $hitReal = @($hitForbidden | Where-Object { $_ -ne 'template/' -or -not $tplRefAllowed.ContainsKey($c) })
         if ($hitReal) { $badRef += "$c 命中 $($hitReal -join '/')" }
-        if ($txt -notmatch '等待你裁决。回复') { $badTail += $c }
+        if ($txt -notmatch [regex]::Escape('等待你裁决。回复"继续"执行下一张卡，或说新指令。')) { $badTail += $c }
     }
 }
-$badEn = @(); $badRefEn = @(); $enTail = 'Awaiting your verdict\. Reply'
+$badEn = @(); $badRefEn = @(); $enTail = [regex]::Escape('Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.')
 foreach ($c in $cards) {
     $no = [regex]::Match($c, '^(\d+-\d+)-').Groups[1].Value
     $ep = Join-Path $pen $enMap[$no]
@@ -116,8 +128,13 @@ foreach ($c in $cards) {
     $el = [System.IO.File]::ReadAllLines($ep, [Text.Encoding]::UTF8)
     $etxt = [IO.File]::ReadAllText($ep, [Text.Encoding]::UTF8)
     if ($el[0] -notmatch ('^# Card ' + [regex]::Escape($no) + ' ·')) { $badEn += "$no H1" }
-    $miss = @($enSections | Where-Object { -not ($el | Where-Object { $_ -like "$_*" }) })
-    if ($miss) { $badEn += "$no 四段缺 $($miss.Count)" }
+    if ($no -eq '0-1') {
+        $miss = Get-MissingNeedle -Lines $el -Needles $enMetaMarkers
+        if ($miss) { $badEn += "0-1 关键段缺 $($miss.Count)" }
+    } else {
+        $miss = Get-MissingNeedle -Lines $el -Needles $enSections -AtLineStart
+        if ($miss) { $badEn += "$no 四段缺 $($miss.Count)" }
+    }
     if ($c -ne '0-1-驱动卡' -and $etxt -notmatch $enTail) { $badEn += "$no 收尾语" }
     $enForbidden = @('design/','_archive/','playbook/','template/') | Where-Object { $el -match [regex]::Escape($_) }
     # 驱动卡必须点名两份卡（playbook_EN/ 英文执行版 + playbook/ 中文判据版）与 template/ 的位置；design/ 与 _archive/ 仍禁（与中文卡同一豁免理由）
@@ -139,8 +156,8 @@ Check ($extraEn.Count -eq 0) "playbook_EN/ 无未注册卡（多出：$($extraEn
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs\README.md' = 55; 'docs\registry\COMPONENTS.md' = 50; 'docs\ARCHITECTURE.md' = 120; 'docs\RUNBOOK.md' = 100; 'docs\OBSERVABILITY.md' = 80; 'docs\PRIVACY.md' = 80; 'docs\I18N.md' = 60; 'docs\USER_GUIDE.md' = 60; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90 }
-foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','.env.example','.gitignore','.gitattributes','docs\README.md','docs\ARCHITECTURE.md','docs\RUNBOOK.md','docs\OBSERVABILITY.md','docs\PRIVACY.md','docs\I18N.md','docs\USER_GUIDE.md','docs\registry\COMPONENTS.md','docs\registry\DATA_DICT.md','docs\registry\APIS.md','docs\pool\IDEAS.md','docs\TECH_DEBT.md')) {
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 90; 'docs/DESIGN_TOKENS.md' = 80; 'docs/MOTION.md' = 70; 'docs/TOOLING.md' = 60; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90 }
+foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/TOOLING.md','docs/refactor/README.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
 foreach ($k in $budget.Keys) {
@@ -153,13 +170,20 @@ $smp = Join-Path $tpl 'STATE.md'
 if (Test-Path $smp) { $smTxt = [IO.File]::ReadAllText($smp, [Text.Encoding]::UTF8) }
 Check ($smTxt -match '(?m)^\s*[-*]?\s*文件数基线\s*[:：]\s*\d+') 'STATE.md 有「文件数基线」（check.ps1 预算断言的数据源）'
 Check ($smTxt -match '## 并行态登记簿') 'STATE.md 有「并行态登记簿」（4-1 卡取代即删除的登记处）'
-foreach ($f in @('当前文件数','工作树状态','远端仓库','起点锚点','档位','体检计数','风险摘要','最近完成','未决问题','下一步')) {
+foreach ($f in @('当前文件数','工作树状态','远端仓库','起点锚点','档位','体检计数','风险摘要','最近完成','未决问题','下一步','最近归档','裁剪记录')) {
     Check ($smTxt -match ("(?m)^[\s#\-*|]*" + [regex]::Escape($f))) "STATE.md 含 design §7 字段「$f」（须是行首字段；正文里提一句不算——防字段被静默删掉）"
 }
 $drmTxt = ''
 $drm = Join-Path $tpl 'docs\README.md'
 if (Test-Path $drm) { $drmTxt = [IO.File]::ReadAllText($drm, [Text.Encoding]::UTF8) }
 Check ($drmTxt -match '产出卡' -and $drmTxt -match '消费卡') 'docs/README.md 是「文档↔卡」对应表（每份文档能指回产出卡与消费卡，无对应 = 分裂文档）'
+# 新增体验/工具文档：必须同时出现在 docs/README.md 对应表与 design §5 目录树，否则 = 孤儿文档或幽灵引用
+$newDocs = @('UI.md','DESIGN_TOKENS.md','MOTION.md','TOOLING.md','refactor/')
+$missDrm = @($newDocs | Where-Object { $drmTxt -notmatch [regex]::Escape($_) })
+Check (-not $missDrm) "docs/README.md 对应表含新增文档（缺：$($missDrm -join ', ')）"
+$designRaw = [IO.File]::ReadAllText((Join-Path $root 'design/v6-design.md'), [Text.Encoding]::UTF8)
+$missDsn = @($newDocs | Where-Object { $designRaw -notmatch [regex]::Escape($_) })
+Check (-not $missDsn) "design §5 目录树含新增文档（缺：$($missDsn -join ', ')）"
 $ckTxt = ''
 $ckp = Join-Path $tpl 'check.ps1'
 if (Test-Path $ckp) { $ckTxt = [IO.File]::ReadAllText($ckp, [Text.Encoding]::UTF8) }

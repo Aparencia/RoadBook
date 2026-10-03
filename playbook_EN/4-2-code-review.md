@@ -9,6 +9,7 @@ This card must be executed in a **new session that did not take part in coding**
 
 **Human-review substitute lane (the user may choose it; open only for tier M and below with total changed lines ≤150 and no red-line domain touched)**: the user says "I will look at it myself" → this card degrades to: tidy `git diff $anchor..HEAD` into an easy-to-read form + a three-sentence change summary + point out the two spots most worth a human look, then wait for the user to answer "pass/fail" (the 4-3 card guardrail still runs as the fallback). Red-line domains (authentication / payment / deleting data) do not qualify for this lane.
 **The mechanical criterion for "total changed lines"**: read the start anchor from STATE.md into `$anchor`, then run `git diff --shortstat "$anchor..HEAD"` — the output looks like `3 files changed, 120 insertions(+), 30 deletions(-)`, and **total changed lines = 120 + 30 = 150, that is, the sum of the insertions + deletions numbers** (not net lines: deleting 200 and changing 200 would be counted as 0 by net lines, hiding a large change); only ≤150 opens this lane.
+**Exit of the human-review lane (three steps; write them exactly like this)**: ① the user answers "pass" → the four-section full report may be skipped; land only a 3-line substitute record (change summary / the two spots worth looking at / the user's verdict verbatim) in `docs/reviews/CODE_<date>_<slug>.md`, and write 4-3 verification into STATE.md `下一步`; ② the user answers "fail" → turn the spots the user named into P1/P2 items (file:line + trigger condition), write "back to 4-1 to fix" into STATE.md `下一步`, and set the suggested color 🔴/🟡; ③ when the lane is done, the text before the closing line is `下一步：4-3 验证（回复"继续"即执行）`.
 
 If the lane is not taken, first receipt these eight items; a missing item means do not start:
 
@@ -37,7 +38,7 @@ Phase 1 data layer and backend → Phase 2 frontend and interface integration �
    ❌ Counter-example: the page component and the API are both written, but the route table does not mount it → judge P2 "minor issue, next batch"
    ✅ Good example: walking the three-layer chain finds layer ① broken → judge P1, write "file:line + which layer is missing" in the report
 2. **Logic**: null values / out-of-range / concurrent duplicate submission / failure paths (not an empty catch) / input validation, go through every newly added and modified function one by one; **do multi-step write operations (such as create + deduct) have a transaction boundary — either all succeed or all fail, a half-finished state is forbidden**; asynchronous races and idempotency of write interfaces (retry / duplicate submission must not produce dirty data); time zone and date boundaries, money precision (storing money as floats is forbidden).
-3. **Ripple effects**: assign first, then search — `$sym = '新符号名'; Select-String -Path src -Pattern $sym -Recurse | Select-Object Path,LineNumber` finds all callers; **for a modified symbol, confirm each existing caller is behaviorally compatible (signature changed / default value changed / return structure changed → has the caller kept up)**; for a deleted symbol confirm zero residual references; check whether the **four documents** need syncing but have not been synced: registry/APIS.md (interfaces together with error codes), CHANGELOG.md, registry/DATA_DICT.md, docs/TECH_DEBT.md — **if any does not exist → N/A + reason** (silently skipping or inventing "already checked" is forbidden).
+3. **Ripple effects**: assign first, then search — `$sym = '新符号名'; Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $sym | Select-Object Path,LineNumber` finds all callers; **for a modified symbol, confirm each existing caller is behaviorally compatible (signature changed / default value changed / return structure changed → has the caller kept up)**; for a deleted symbol confirm zero residual references; check whether the **four documents** need syncing but have not been synced: registry/APIS.md (interfaces together with error codes), CHANGELOG.md, registry/DATA_DICT.md, docs/TECH_DEBT.md — **if any does not exist → N/A + reason** (silently skipping or inventing "already checked" is forbidden).
 4. **Performance**: six typical kinds — N+1 queries / unbounded queries (missing LIMIT) / IO inside loops / repeated rendering of large lists / long synchronous tasks on the request path / WHERE without an index; **resource leaks — unclosed connections/files/timers/event subscriptions, frontend effects without cleanup**.
 5. **Redundant dead code**: count the usage count of every newly added and modified symbol (use the same search result, do not run it twice); copy-pasted blocks with only the name changed; branches that are always true/false. A suspected retention must state the reason.
 6. **Development standards**: naming consistency / comments say Why and not What / type safety (is there any `any`) / functions >50 lines and files >500 lines must be raised (>1000 always split; **test files are exempt up to ≤1000 lines**) / commit message format; and re-check the six items of constitution §11 "hard standards for code generation" one by one (structure / naming / Why comments / defense / testability / environment injection).
@@ -62,7 +63,7 @@ Phase 1 data layer and backend → Phase 2 frontend and interface integration �
 1. **Parallel implementation not deleted**: an old implementation that has been replaced but not deleted (old file / old function / old branch / old constant) appears in the files this batch touches, and `STATE.md`'s parallel-state register has no corresponding registration row → red light.
    The registration row format is fixed (column names not changed by one character): `并行态 | 旧实现 | 新实现 | 删除条件（可判定） | 到期 | 登记批次`.
    Even with a registration row, check two things: is the deletion condition decidable? Has the expiry batch already passed (passed and still not deleted → red light)?
-   There are only three legitimate retention reasons: ① progressive delivery / rollback (with a deadline) ② external compatibility contract (with a deprecation period) ③ evidence retention — **the answer for evidence retention is git history**; a "second evidence copy" in the working tree is a violation (see the 4-1 card for the example; this card does not repeat it). [disambiguated]
+   There are only three legitimate retention reasons: ① progressive delivery / rollback (with a deadline) ② external compatibility contract (with a deprecation period) ③ evidence retention — **the answer for evidence retention is git history**; a second evidence copy in the working tree (`.bak`, `旧版/`, `副本 2`) is a violation (inlined in this card: creating `xxx_v2.ts` in this batch while keeping the old `xxx.ts`, or leaving a `.bak` copy in the same batch, both count).
    ❌ Counter-example: create `xxx_v2.ts` and implement it again, keep the old `xxx.ts` around "just in case", the register has no row → judge P2 and let it pass
    ✅ Good example: old deleted in the same batch + registration row's deletion condition decidable + expiry batch not passed → write the closing evidence in the passing items
 2. **Deprecation marker not declared**: the batch's **newly added lines** hit any of `_old\b|_legacy|_v2\b|Deprecated|暂时保留|废弃|TODO[:：]\s*(删|remove|delete)` (the body and the command use exactly the same regex; inconsistent strictness is not allowed) → the report must state the retention reason and (if any) the deletion condition, otherwise red light.
@@ -121,8 +122,9 @@ After the write-back, the closing triple (the order cannot be changed: write bac
 
 ```powershell
 $report = 'docs/reviews/CODE_2026-10-03_login.md'   # replace with this run's real report path
+$color = '绿'   # suggested color: 红/黄/绿, filled in per the suggested-color matrix
 git add $report STATE.md
-git commit -m "4-2 docs(review): 建议色 <红或黄或绿> + STATE 回写"
+git commit -m "4-2 docs(review): 建议色 $color + STATE 回写"
 powershell -NoProfile -File check.ps1
 ```
 
@@ -130,5 +132,7 @@ The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not in
 
 **Re-review scope (when reviewing again after going back to 4-1 to fix)**: [disambiguated] the fix diff runs all seven dimensions + the replacement and deprecation check + every old issue closed item by item (fixed / not fixed / newly introduced) + every row of the parallel-state register re-checked (has the deletion condition been honored, has the expiry batch passed) — not just the few fixed lines.
 
+In the conversation, receipt: the four-level counts + suggested color + the replacement-and-deprecation check conclusion; then write `下一步：4-3 验证（回复"继续"即执行）`.
+
 Fixed closing line:
-`Review complete: <counts>. Suggested color: <color>. Awaiting your verdict. Reply "continue" to proceed to 4-3 verification, or "fix" to go back to 4-1.`
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

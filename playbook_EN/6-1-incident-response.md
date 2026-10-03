@@ -94,6 +94,7 @@ Update STATE.md:
 - `当前阶段` = 修复
 - `当前任务` = INC-<序号> <one sentence> (INCIDENT.md link)
 - `未决问题` = severity and bleeding-stop means awaiting the user's verdict; for P0/P1 add one line "止血后必须走 6-5 复盘"
+- `下一步` = 6-2 Root cause analysis
 - `工作树状态` = 干净
 
 ```powershell

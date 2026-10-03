@@ -5,7 +5,7 @@
 
 ## ① Start confirmation
 
-1. **Plain-language restatement and landing point**: turn this period's (this quarter's or this milestone's) quality data into one report and give at least one process adjustment proposal; output = `docs/decisions/QUALITY_<date>_<topic>.md` (the four metrics + one process proposal; process details may go in `docs/reviews/QUALITY_<date>.md`); next card = 6-6 Process audit (when the report calls for a process change).
+1. **Plain-language restatement and landing point**: turn this period's (this quarter's or this milestone's) quality data into one report and give at least one process adjustment proposal; output = `docs/decisions/QUALITY_<date>_<topic>.md` (the 7 metrics + one process proposal; process details may go in `docs/reviews/QUALITY_<date>.md`); next card = 6-6 Process audit (when the report calls for a process change).
 2. **Assumptions list**: write "I assume X; if wrong, then Y is invalid" line by line (for example: "this period's release count can be counted from git tags"), and note the verification method for each; anything that can be looked up from git log / CI records / STATE.md must not be written as an assumption.
 3. **Clarifying questions (≤5, delete any that can be deleted)**: the default three questions — the start and end dates of the counting window? Is the definition consistent with the previous report (if not, explain first)? Who reads the report (this decides whether raw output must be attached)? If there are none, write "none".
 4. **Data source statement**: first state the collection command for each of the 7 metrics and this period's gaps; write `N/A（理由）` for a gap, estimating is forbidden.
@@ -35,7 +35,7 @@ git for-each-ref --sort=-creatordate --format='%(creatordate:short) %(refname:sh
 2. Lead time for changes (how many days from start of work to release) — source: the distance from STATE.md `起点锚点` to the release tag
 ```powershell
 $anchor = ((Select-String -Path STATE.md -Pattern '起点锚点').Line -replace '.*?([0-9a-f]{7,40}).*', '$1')
-git log --date=short --pretty=format:'%h %ad %s' "$anchor..HEAD"
+if ($anchor -notmatch '^[0-9a-f]{7,40}$') { "anchor empty or not a hash: write N/A（无锚点，理由…） for this metric and skip git log" } else { git log --date=short --pretty=format:'%h %ad %s' "$anchor..HEAD" }
 ```
 3. Change failure rate (the share of releases that had to be rolled back or hot-fixed) — source: the number of INCIDENT.md files under docs/specs/ ÷ this period's release count
 ```powershell
@@ -50,9 +50,8 @@ Get-ChildItem docs/specs -Recurse -Filter INCIDENT.md | Select-String -Pattern '
 Get-ChildItem docs/specs -Recurse -Filter RCA.md | Select-String -Pattern '定级'
 Get-ChildItem docs/reviews -Filter 'CODE_*.md' | Select-String -Pattern '建议色'
 ```
-6. Coverage trend (this period vs the previous report) — source: the coverage line in the check.ps1 output + the previous QUALITY report
+6. Coverage trend (this period vs the previous report) — source: if the project already has a coverage tool, take its command output; if the workspace has no coverage tool, write `N/A（无覆盖率工具，理由…）` and never estimate; the trend compares against the previous QUALITY report
 ```powershell
-powershell -NoProfile -File check.ps1
 Get-ChildItem docs/decisions -Filter 'QUALITY_*.md' | Sort-Object Name | Select-Object -Last 3
 ```
 7. Gate green rate and stop-and-ask hot spots — source: the distribution of the "建议色" column in CODE_*.md under docs/reviews/; grouping of the source column in docs/TECH_DEBT.md

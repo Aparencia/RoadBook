@@ -41,6 +41,8 @@ After receiving the start instruction, first return the following five items bef
 - **"Who receives it" must be written**: an alert sent to a channel nobody watches = no alert; the notification target defaults to the user themself
 - Thresholds must carry a number and a comparison baseline (which version the baseline is, when it was measured); if no baseline can be written → write "baseline = the first day's readings of this observation window" and note that it is an estimate
 - Response times are hard-coded: not writing them = receiving it may still mean not looking
+- **The relation between the two threshold tiers (tight first, looser later — deliberately)**: the release-period threshold = the ×1.2 used at every rollout-ladder level (a fast stop-loss line); 24 hours after full rollout you enter the **observation-window threshold** of ×1.5 (this action's threshold — one notch wider, to avoid steady-state false alarms) — do not treat ×1.5 as the release-period gate, and do not use ×1.2 inside the observation window and cry wolf daily
+- Solo mode (personal tier): the notification target is fixed = you yourself, no channel matrix needed; write one line of reasoning in STATE.md's `裁剪记录` (notified = responded)
 
 **Action 3: Post-release observation window (duration / what to watch / inspection cadence / criteria for rolling back on anomaly)**
 - **Duration**: 24 hours by default (≥48 hours for a tier-L or high-risk release); write it into the version details

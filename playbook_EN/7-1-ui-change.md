@@ -11,8 +11,9 @@
 2. **Assumptions list**: the 3~5 default assumptions you made on the user's behalf (e.g. "this is a shared component", "only the style changes, the layout does not"), each noting how it will be verified.
 3. **Clarifying questions (≤5, save any that can be saved)**: the default three questions — how far should the change go (text only, or the style as well)? Should the other pages affected by the shared component be changed too? Should a screenshot be kept as a record? Anything findable in the registry and the code must not be asked of the human.
 4. **Check `docs/registry/COMPONENTS.md`**: use the "plain-language identifier" column to find the target component, and put the row found (or "not found; will reverse-map") in the receipt.
-5. **Quote the checklist verbatim** (paste the "four steps of a UI change" from §② of this card word for word).
-6. And declare: the output landing point = code changes + the write-back row in `docs/registry/COMPONENTS.md`; the next card is 5-1 (Archive).
+5. **Read the three UI criteria first (required before changing any UI)**: `docs/UI.md` component specs (size / state / spacing) → token names in `docs/DESIGN_TOKENS.md` (colors and font sizes must reference tokens, never hard-coded values) → the motion option table in `docs/MOTION.md` (duration / easing chosen from the table). Name in the receipt whichever one this change touches.
+6. **Quote the checklist verbatim** (paste the "four steps of a UI change" from §② of this card word for word).
+7. And declare: the output landing point = code changes + the write-back row in `docs/registry/COMPONENTS.md`; the next card is 5-1 (Archive).
 
 ---
 
@@ -28,10 +29,11 @@
   3. Search the whole repository for the UI text:
 ```powershell
 $text = 'Search'        # the text on the interface; try them one by one
-Select-String -Path src -Recurse -Pattern $text | Select-Object Path, LineNumber, Line
+Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $text | Select-Object Path, LineNumber, Line
 ```
    - ❌ Counter-example: `grep -rn "<界面上的文字>" src` (a bash-only command + a placeholder; it errors out directly on Windows)
-   - ✅ Good example: the `Select-String -Path src -Recurse -Pattern $text` above (runs on PowerShell 5.1)
+   - ✅ Good example: the `Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $text` above (measured on PowerShell 5.1: 2 hits — `SearchBox.tsx:1 export function SearchBox() {` and `SearchBox.tsx:2   return <input placeholder="Search" aria-label="Search" />;`)
+   - (Note: on PowerShell 5.1 `-Recurse` is not a valid parameter of `Select-String`; only the pipeline form above runs, and the wrong form fails with "找不到与参数名称"Recurse"匹配的参数" [no parameter matches the name "Recurse"])
 - **Create the registry row as soon as localization succeeds** (found in 3 seconds next time), even if this card does not change that component.
 
 **Step 2 Confirm the pre-change state**
@@ -40,6 +42,7 @@ Select-String -Path src -Recurse -Pattern $text | Select-Object Path, LineNumber
 
 **Step 3 The change**
 - Obey the constitution's "no parallel creation": if the problem can be solved with an existing component's property / variant, do not create a new one.
+- Land the change on the three criteria from §① item 5: colors/spacing reference token names from `docs/DESIGN_TOKENS.md`, motion is chosen from the option table in `docs/MOTION.md`, and component specs align with `docs/UI.md`; if a new token or a new motion is needed → stop and go back to 3-5 / 3-6 for scoping.
 - The commit action goes in §④ (write back state first, then commit); this step only prepares the changes and the registry row, and confirms that no other component was changed along the way.
 
 **Step 4 Write-back and acceptance**
@@ -81,4 +84,5 @@ powershell -NoProfile -File check.ps1
 ```
 (The acceptance description of §③ is written as "open which page → what should be seen"; ask the user for a visual inspection and confirmation before proceeding to 5-1 Archive.)
 
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+Fixed closing line:
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

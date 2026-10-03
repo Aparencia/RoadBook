@@ -75,6 +75,7 @@ Give, item by item:
 
 **Write back first, commit after** (the state write-back must come before the commit; reversed order = STATE.md dangling uncommitted, and the closing ritual of card 6-4 will necessarily be judged red). Update STATE.md:
 - `起点锚点` = the fix start hash
+- `档位` = write the new tier after a tier upgrade (keep the old value if the tier did not change; card 6-4 reads it to set the verification strength)
 - `下一步` = 6-4 Regression verification
 - `未决问题` = the record of the amber card approval (if any)
 
@@ -82,14 +83,16 @@ After writing back, run the closing three-step (the order cannot be changed: wri
 
 ```powershell
 $scopeFiles = @('src/a.ts','src/b.ts')   # the exact file list changed by this card (consistent with Action 3)
+$slug = 'export-empty'                   # this bug's slug (same as the RCA.md of 6-2)
+$msg = 'empty-data export no longer crashes'   # what was fixed (one sentence)
 git add $scopeFiles STATE.md
-git commit -m "6-3 fix(<slug>): <修了什么> (BUG-001)"
+git commit -m "6-3 fix(${slug}): $msg (BUG-001)"
 powershell -NoProfile -File check.ps1
 ```
 
 The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not initialized) or non-zero → stop and ask the user; announcing that the fix is complete is forbidden.
 
-Fixed closing line:
-`Fix complete. Awaiting your verdict. Reply "continue" to proceed to 6-4 Regression verification, or say what needs adjusting.`
+Fix complete; next: 6-4 Regression verification (reply "continue" to run it).
 
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+Fixed closing line:
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

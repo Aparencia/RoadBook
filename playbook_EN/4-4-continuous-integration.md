@@ -21,11 +21,12 @@ After receiving the start instruction, first return the following five items bef
 
 **Action 1: Copy out the local mirror (the comparison baseline; do this step before anything else)**
 ```powershell
-Get-Content check.ps1 | Select-String -Pattern '^\s*(npm|pnpm|yarn|npx|node|python|pytest|dotnet|powershell|\./)' 
+$steps = [regex]::Match((Get-Content check.ps1 -Raw), '(?m)^\s*\$STEPS\s*=\s*@\(([^)]*)\)').Groups[1].Value
+$steps -split ',' | ForEach-Object { $_.Trim().Trim("'") } | Where-Object { $_ }
 ```
-Copy every matching line above verbatim into this card's receipt to form the "local mirror list".
-- ❌ Counter-example: local `check.ps1` runs typecheck/lint/test/build, while CI runs only `npm test` (three steps fewer → type errors and lint errors never reach the main branch)
-- ✅ Positive example: the list copied out is the four lines `npm run typecheck` / `npm run lint` / `npm test` / `npm run build`, and every later step matches those four lines
+An empty `$steps` = check.ps1 has not yet been wired to this project's commands per card 1-2 (do not guess the mirror; go back to 1-2); when it is non-empty, copy every line verbatim into the receipt to form the "local mirror list".
+- ❌ Counter-example (measured on this machine): the line-start command grab `Select-String -Pattern '^\s*(npm|pnpm|yarn|...)'` → prints **0 lines** — in a real check.ps1 the commands live inside `$STEPS = @('…')`, so the line starts with `$STEPS`; those 0 lines get read as "this project has no local mirror" → the whole mirror comparison idles and drift goes unnoticed
+- ✅ Good example (measured on this machine): for a check.ps1 with `$STEPS = @('pnpm typecheck', 'pnpm lint', 'pnpm test')` the two lines above print exactly three lines — `pnpm typecheck` / `pnpm lint` / `pnpm test`; copied into the receipt one by one, the CI `run:` lines are exactly those three
 
 **Action 2: Get it passing locally first (skipping this is prohibited)**
 ```powershell
@@ -69,9 +70,9 @@ jobs:
 
 **Action 5: Mirror comparison (machine check, not an eyeball impression)**
 ```powershell
-Select-String -Path .github/workflows/ci.yml -Pattern 'run:' | ForEach-Object { $_.Line.Trim() }
+if (Test-Path '.github/workflows/ci.yml') { Select-String -Path .github/workflows/ci.yml -Pattern 'run:' | ForEach-Object { $_.Line.Trim() } } else { Write-Host '本地-only：无 CI 文件，口径对照 N/A（理由已按动作 6 写进 RUNBOOK）' }
 ```
-Align the "local mirror list" you copied out against this output **line by line**: one line more / one line fewer / a different parameter → fix it on the spot until they agree. Paste the comparison result into the §③ receipt.
+Align the "local mirror list" you copied out against this output **line by line**: one line more / one line fewer / a different parameter → fix it on the spot until they agree. Paste the comparison result into the §③ receipt; on the local-only branch → write `N/A（本地-only）` in all three columns of the comparison table + attach the verbatim RUNBOOK line from Action 6.
 
 **Action 6: RUNBOOK registration (write it for both outcomes; silence is not allowed)**
 - Hosted CI introduced → write three lines in `docs/RUNBOOK.md`: CI file path / trigger conditions / who gets failure notifications.
@@ -96,7 +97,7 @@ Give these one by one (only three kinds of evidence count: real command output /
 2. **Local rehearsal**: the complete `check.ps1` output + exit code 0
 3. **Mirror comparison table**: the line-by-line alignment of the local mirror list vs the CI `run:` list (write "none" for all three of: more / fewer / different parameter)
 4. CI file path + the conclusion of its first run (run it once if a remote exists; if there is no remote, write "not hosted, registered as local-only")
-5. Artifact archiving list (which paths/files were uploaded)
+5. Artifact archiving list (which paths/files were uploaded); local-only has no upload channel → write "not uploaded, kept locally in `dist/` instead", and state it even when nothing is kept
 6. The verbatim CI line of `docs/RUNBOOK.md` (the three hosted lines, or "local-only (trimmed) + reason")
 
 ---
@@ -108,10 +109,14 @@ Give these one by one (only three kinds of evidence count: real command output /
 Update `STATE.md`: `下一步` = awaiting a new intent (**do not write "CI setup complete" as the task's closing line**); `未决问题` = items in the mirror comparison that are not yet aligned, or things on the hosting-platform side (secrets / permissions / notifications) that need the user's decision; roll `未来 3 步` as needed.
 
 ```powershell
-git add .github/workflows/ci.yml docs/RUNBOOK.md STATE.md
+git add docs/RUNBOOK.md STATE.md
+if (Test-Path '.github/workflows/ci.yml') { git add '.github/workflows/ci.yml' }   # the local-only branch has no such file; a bare git add exits 128 (pathspec did not match)
 git commit -m "4-4 ci(build): CI 口径与 check.ps1 对齐"
 powershell -NoProfile -File check.ps1
 ```
+
+- ❌ Counter-example (measured on this machine): in a local-only repository, a bare `git add .github/workflows/ci.yml docs.md` → stderr `fatal: pathspec '.github/workflows/ci.yml' did not match any files`, **exit code 128**, and not one file in that batch gets staged
+- ✅ Good example (measured on this machine): the `if (Test-Path …) { git add … }` guard above → the entry is skipped when the file is absent, **exit code 0**, and `docs/RUNBOOK.md` / `STATE.md` are committed as usual; on a hosted branch the CI file goes in with them
 
 ---
 

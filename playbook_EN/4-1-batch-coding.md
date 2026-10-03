@@ -14,10 +14,10 @@ After receiving the start instruction, first receipt the following nine items be
 5. **Batching plan**: cut the Must items into batches, each batch ≤300 lines or 1 Must item; receipt the list. **Parallel decision (decided mechanically by task volume; improvising on the spot is forbidden)**: estimated total change ≥500 lines AND ≥2 mutually exclusive units can be cut along Files domains (**each unit ≥250 lines**) AND each unit has an independently verifiable criterion → propose a parallel dispatch plan (how many shards / each shard's Files / each shard's criteria) and wait for a one-shot confirmation from the user; if any one condition is not met → serial. **Arithmetic (show the numbers to the human)**: unit threshold × minimum unit count = 250 × 2 = 500 = the lower bound on total change 500 (with the old threshold of 150, 150 × 2 = 300 < 500, so two units could never reach the lower bound, which is why it was raised to 250).
 6. **Paste the reference checklist verbatim** (paste this card's §② "five checks to recite every batch" + "condition-triggered pause list" word for word).
 7. **Declare the generation standard**: every piece of generated code in this task is self-checked item by item against constitution §11 "hard standards for code generation" — structure (≤500 lines / **test files exempt up to ≤1000 lines** / pure logic separated from side effects / dependencies passed in explicitly), naming (business terms consistent / inputs and outputs have type contracts / `any` forbidden), comments say Why, defense (external calls have timeouts and failure branches / empty catch forbidden), core logic is pure functions, hard-coded configuration is forbidden.
-8. **Baseline bookkeeping (the 0 point of the net-increment ledger)**: receipt three baseline numbers — the short hash from `git rev-parse --short HEAD`, the file count from `(git ls-files).Count`, and `git diff --numstat` output empty (working tree clean). If the baseline is not clean → ask the user what to do first; opening the ledger on a dirty tree is forbidden.
-9. **Lesson retrieval (JIT)**: `Select-String -Path docs/lessons/*.md -Pattern "<module or keyword this task touches>" -List` (if that directory does not exist, declare "no historical lessons"); on a hit, receipt the card name + one line on the key point — these are the known minefields of this module, compare against them item by item while writing code.
+8. **Baseline bookkeeping (the 0 point of the net-increment ledger)**: receipt three baseline numbers — the short hash from `git rev-parse --short HEAD`, the file count from `(git ls-files).Count`, and empty `git status --porcelain` output (working tree clean; `git diff --numstat` prints nothing for untracked new files, so it would misjudge). If the baseline is not clean → ask the user what to do first; opening the ledger on a dirty tree is forbidden.
+9. **Lesson retrieval (JIT)**: assign first, `$kw = 'checkout'` (replace with the module or keyword this task touches), then run `Select-String -Path docs/lessons/*.md -Pattern $kw -List` (if that directory does not exist, declare "no historical lessons"); on a hit, receipt the card name + one line on the key point — these are the known minefields of this module, compare against them item by item while writing code.
 
-Also declare: **during this requirement, "batch-level notice, requirement-level gate" applies** — send a one-line progress notice at the end of each batch and continue to the next batch without waiting for a reply; after the whole requirement is done, go into 4-2 review for one verdict. In the middle, stop only when any item of the "condition-triggered pause list" is triggered.
+Also declare: **during this requirement, "batch-level notice, requirement-level gate" applies** — send a one-line progress notice at the end of each batch and continue to the next batch without waiting for a reply; after the whole requirement is done, go into 4-2 review for one verdict (**tier S is exempt from review**: after 4-1 is green go straight to 4-3, with the 4-3 guardrail as the fallback). In the middle, stop only when any item of the "condition-triggered pause list" is triggered.
 
 ---
 
@@ -46,7 +46,8 @@ Before committing: if this batch touches UI/tables/interfaces → **update the c
 ```powershell
 $batchFiles = @('src/a.ts','src/b.ts')   # replace with this batch's real file list; git add -A / git add . are forbidden
 git add $batchFiles
-git commit -m "4-1 feat(<slug>): <本批做了什么>"
+$slug = 'checkout'; $what = '实现购物车结算接口'   # scope short name + what this batch did (one sentence)
+git commit -m "4-1 feat($slug): $what"
 ```
 
 After committing, send a one-line **progress notice** (batch number + a summary of the five-check results + the registry write-back status); **do not wait for a reply, continue to the next batch**.
@@ -132,7 +133,7 @@ After all batches (or the merge of parallel units) are done:
 - `文件数基线` = **set only once, at first initialization** (= the onboarding baseline written at the close-out of the 1-2 / 1-3 cards); from this card on, **rewriting the baseline is forbidden in every batch**
 - `当前文件数` = `(git ls-files).Count` at this batch's close-out (**update only this one each batch**); the bloat criterion = `当前文件数` − `文件数基线` > 20 → red light, first ask the user whether to split the batch or move to the 7-3 card P batch cleanup. If STATE.md has no `当前文件数` field → add the field first, then update
 - `工作树状态` = the result of `git status --short` at this batch's close-out (it must be "clean"; not clean = there are still changes that have not landed in history)
-- `下一步` = 4-2 code review — **tier S: after 4-1 is green go straight to 4-3 (skipping 4-2); tiers M/L: after 4-2 is green and the user gives the go-ahead, go to 4-3**; if this task touches authentication/payment/deleting data → forced upgrade to M, still go through 4-2. [disambiguated]
+- `下一步` = 4-2 code review — **tier S: after 4-1 is green go straight to 4-3 (skipping 4-2); tiers M/L: after 4-2 is green and the user gives the go-ahead, go to 4-3**; if this task touches authentication/payment/deleting data → forced upgrade to M, still go through 4-2; on an upgrade write the new tier into `档位` (otherwise leave it unchanged) — 4-3 / 6-4 read the tier from this field. [disambiguated]
 - `未决问题` = things discovered during coding that need a decision from the user (list them if any)
 
 After the write-back, the closing triple (the order cannot be changed: write back state → commit → re-run the close-out ceremony for a 0):
@@ -145,5 +146,5 @@ powershell -NoProfile -File check.ps1
 
 The exit code must be 0; if it is 2 (`$STEPS` not configured) or non-zero → stop and ask the user; declaring coding complete is forbidden.
 
-Fixed closing line:
-`Coding complete, <N> batches in total<, of which M are parallel units>. Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`
+Fixed closing line (the receipt's last line first states "Coding complete, N batches in total (of which M are parallel units)", then this sentence):
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

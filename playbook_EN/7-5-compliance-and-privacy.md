@@ -12,7 +12,7 @@
 5. **Quote the checklist verbatim** (paste the "five compliance checks" from §② of this card word for word):
    - [ ] The data map has all five columns (what is collected / why it is collected / where it is stored / how long it is kept / who can see it), and every cell has content or `N/A（理由）`
    - [ ] Every personal field is labeled with sensitivity tier D1–D4, and D3/D4 have a landing file and line for encryption or masking
-   - [ ] The four rights — access / correction / deletion / export — each have a copy-pasteable operating path (a specific page or command)
+   - [ ] The four rights — access / correction / deletion / withdrawal of consent — each have a copy-pasteable operating path (a specific page or command)
    - [ ] The license of every third-party dependency has been checked against the root LICENSE item by item, with the result written into the report
    - [ ] Secrets and log masking have been checked (zero real secrets appear, D3/D4 fields do not leak)
 6. **Boundary statement**: the compliance definitions are decided by the user; deletion and export of account secrets and real data are executed by a human — the agent only drafts and supplies evidence.
@@ -24,7 +24,7 @@
 **Checklist of this card (the five compliance checks, tick item by item):**
 - [ ] The data map has all five columns (what is collected / why it is collected / where it is stored / how long it is kept / who can see it), and every cell has content or `N/A（理由）`
 - [ ] Every personal field is labeled with sensitivity tier D1–D4, and D3/D4 have a landing file and line for encryption or masking
-- [ ] The four rights — access / correction / deletion / export — each have a copy-pasteable operating path (a specific page or command)
+- [ ] The four rights — access / correction / deletion / withdrawal of consent — each have a copy-pasteable operating path (a specific page or command)
 - [ ] The license of every third-party dependency has been checked against the root LICENSE item by item, with the result written into the report
 - [ ] Secrets and log masking have been checked (zero real secrets appear, D3/D4 fields do not leak)
 
@@ -32,9 +32,10 @@
 Fill it in field by field: what is collected / why it is collected (purpose) / where it is stored (table or file) / how long it is kept / who can see it (which third parties, which internal roles).
 ```powershell
 $kw = 'email'        # change the keyword field by field: email / phone / address / location
-Select-String -Path src -Recurse -Pattern $kw | Select-Object Path, LineNumber
+Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $kw | Select-Object Path, LineNumber
 Select-String -Path docs/registry/DATA_DICT.md -Pattern $kw | Select-Object LineNumber, Line
 ```
+(Note: on PowerShell 5.1 `-Recurse` is not a valid parameter of `Select-String`; only the pipeline form above runs)
 - ❌ Counter-example: "收集邮箱用于通知" ("collect email for notifications") — it does not say where it is stored, how long it is kept, or who can see it
 - ✅ Good example: "邮箱｜注册与订单通知｜users 表 email 列｜账号注销后 30 天｜仅后端服务与邮件服务商 X" ("email | sign-up and order notifications | users table, email column | 30 days after account closure | backend service and email provider X only")
 - Real user data appearing in the table = a violation; write only field names and types.
@@ -46,7 +47,7 @@ Select-String -Path docs/registry/DATA_DICT.md -Pattern $kw | Select-Object Line
 - D4 sensitive: password hash, payment information, ID document number, precise location, health data → encryption + strong access control + access audit trail + minimization (do not collect what need not be collected)
 ```powershell
 Select-String -Path docs/registry/DATA_DICT.md -Pattern 'D3|D4' | Select-Object LineNumber, Line
-Select-String -Path src -Recurse -Pattern 'phone|id_card|latitude|password' | Select-Object Path, LineNumber
+Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'phone|id_card|latitude|password' | Select-Object Path, LineNumber
 ```
 - ❌ Counter-example: "手机号算普通信息，不用管" ("a phone number counts as ordinary information, no need to bother")
 - ✅ Good example: "手机号 = D3：入库前加密，界面只显示 138****1234，日志禁止打印原值" ("phone number = D3: encrypted before it is stored, the UI shows only 138****1234, printing the raw value in logs is forbidden")
@@ -59,10 +60,10 @@ Select-String -Path src -Recurse -Pattern 'phone|id_card|latitude|password' | Se
 | Access | Account settings → "我的数据" ("My data") page | User self-service | Immediate |
 | Correction | Account settings → profile editing | User self-service | Immediate |
 | Deletion | Submit a deletion request (page / email / ticket) | Human executes (non-delegable) | ≤30 days |
-| Export | Account settings → "导出我的数据" ("Export my data") | User self-service | ≤7 days |
+| Withdraw consent | Settings → "隐私与同意" ("Privacy and consent") page, untick the box (or reply to the unsubscribe email) | User self-service | Immediate |
 
 - The "entry point" must be written down to a specific page or command; writing "联系管理员" ("contact the administrator") is not acceptable.
-- Deletion and export touch real data: the agent only drafts the path and the command draft; a human executes and keeps the record.
+- Deletion touches real data: the agent only drafts the path and the command draft; a human executes and keeps the record.
 
 **Action 4: third-party dependency license check**
 ```powershell
@@ -80,8 +81,8 @@ Write it into the "one page for users" section of `docs/PRIVACY.md`, six sentenc
 
 **Action 6: secret and log masking check**
 ```powershell
-Select-String -Path src -Recurse -Pattern 'api[_-]?key|secret|password\s*='
-Select-String -Path src -Recurse -Pattern 'console\.log|logger|print' | Select-String -Pattern 'email|phone|token|password'
+Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'api[_-]?key|secret|password\s*='
+Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'console\.log|logger|print' | Select-String -Pattern 'email|phone|token|password'
 ```
 - A real secret hit by the first command = red line: stop, have a human revoke and rotate that secret (git history is readable forever), and re-run after the fix to get zero hits.
 - A D3/D4 field hit by the second command = fix the logging (print a masked value or drop it), then re-run to get zero hits.

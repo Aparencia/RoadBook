@@ -1,5 +1,5 @@
 # Card 5-2 · Release
-> Trigger: a milestone / a batch of features has accumulated / the user says "release / go live / let others use it" ｜ Output: docs/versions/vX.Y.Z.md + tag (tagged by a human) + RUNBOOK update ｜ Next: awaiting a new intent (an incident → 6-5 retrospective)
+> Trigger: a milestone / a batch of features has accumulated / the user says "release / go live / let others use it" ｜ Output: docs/versions/vX.Y.Z.md + the root CHANGELOG.md + tag (tagged by a human) + RUNBOOK update ｜ Next: awaiting a new intent (an incident → 6-1 incident response)
 
 ---
 
@@ -9,7 +9,7 @@
 2. **Assumptions list**: the 3~5 default assumptions you are making on the user's behalf (e.g. "no table-structure change this time", "there are no real users"), each with the way it was verified.
 3. **Clarifying questions (≤5, keep them to a minimum)**: the default three questions — where is it deployed (local demo / static hosting / a hosting platform / a cloud server)? Are there real users? Does the data need migrating? Plus which version number to fix (a concrete number, e.g. v0.3.0). Anything findable in RUNBOOK or CHANGELOG must not be asked of a human.
 4. **Paste the reference checklist verbatim** (paste word for word this card's §② "release seven checks").
-5. Also declare: the output lands in = `docs/versions/vX.Y.Z.md` (this release's concrete version number) + a formal version section in the root `CHANGELOG.md` + tag (**tagged by a human**) + the deployment section of `docs/RUNBOOK.md`; next card = awaiting a new intent (an incident → 6-5 retrospective).
+5. Also declare: the output lands in = `docs/versions/vX.Y.Z.md` (this release's concrete version number) + a formal version section in the root `CHANGELOG.md` + tag (**tagged by a human**) + the deployment section of `docs/RUNBOOK.md`; next card = awaiting a new intent (an incident → 6-1 incident response).
 
 ---
 
@@ -28,7 +28,7 @@
 
 **2. Everything green up front**: `check.ps1` exit code 0 + walk the behavior acceptance checklist (of the most recent task) once.
 
-**3. Data and migration**: does this release contain a table-structure change? Migration is **performed by a human** (non-delegable); run the RUNBOOK §3 backup before executing it.
+**3. Data and migration**: does this release contain a table-structure change? Migration is **performed by a human** (non-delegable); run the RUNBOOK §5 backup before executing it.
 
 **4. Rollback plan (write the plan before releasing)**: state clearly "how to back out if the release breaks" — the previous version's redeploy command / the data rollback path, stored in the version details.
 ❌ Counter-example: "Rollback: git revert (we will figure it out then)" (no concrete command and no data handling; when something breaks you can only improvise)

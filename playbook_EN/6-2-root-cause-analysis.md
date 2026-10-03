@@ -30,7 +30,7 @@ After receiving the bug report, first send back a receipt for the following six 
 - Cannot reproduce → register it in `docs/TECH_DEBT.md` (known-issue), give an information-collection plan (such as screenshot + steps + time point), and this card ends.
 
 **Action 2: localization (try in order, stop at the first hit)**
-1. File / module name in the error string → assign first, then search: `$kw = '报错关键字'; Select-String -Path src -Pattern $kw -Recurse | Select-Object Path,LineNumber`
+1. File / module name in the error string → assign first, then search: `$kw = '报错关键字'; Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $kw | Select-Object Path,LineNumber` (Note: on PowerShell 5.1 `Select-String` has no recursion parameter; only the pipeline form above runs)
 2. UI text → search the whole repository for the text (same as above, swapping in the text keyword)
 3. Look up the "plain-language identifier" column of `docs/registry/COMPONENTS.md` to reverse-map to the program name
 4. Check whether a lesson card in `docs/lessons/` covers the same symptom (if yes → first try the old card's fix; on success, update the "most recent confirmation" field on the old card = date + the evidence of this confirmation; **if the old card has no such field → add the field first, then update it**; never skip the update just because the field is missing); **if an existing lesson card is hit (the same symptom occurring a second time) → after the fix is complete you must draft an "upgrade proposal": upgrade this lesson from knowledge to a rule (write it into the constitution's prohibitions or the corresponding process card's check items, landing on a specific file + a specific item), and hand it to the user for a verdict — a pit stepped into twice will come back a third time**
@@ -86,7 +86,7 @@ powershell -NoProfile -File check.ps1
 
 The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not initialized) or non-zero → stop and ask the user; announcing that the root cause analysis is complete is forbidden.
 
-Fixed closing line:
-`Root cause identified: <one sentence>. Awaiting your verdict. Reply "continue" to proceed to 6-3 Bugfix, or raise an objection to the root cause.`
+Root cause identified (see the RCA.md path above); next: 6-3 Bugfix (reply "continue" to run it).
 
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+Fixed closing line:
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

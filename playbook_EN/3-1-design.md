@@ -28,7 +28,7 @@ Format: `table | field | type | validation | sensitivity`. Mark sensitivity with
 | D1 | Public data; leakage causes no real harm | product name, public settings |
 | D2 | Internal data; leakage is uncomfortable but does no harm | note content, usage records |
 | D3 | Personal information; can identify a person | name, email, phone number |
-| D4 | Highly sensitive; leakage is an incident | password, token, payment, ID number |
+| D4 | Confidential; leakage causes major damage | password, token, payment, ID number |
 
 ❌ Counter-example: marking the email column of the user table as D1 (wrong — it is D3, logs and exports must be masked)
 ✅ Good example: `user | email | varchar(255) | format validation | D3`
@@ -47,7 +47,7 @@ Landing path `migrations/<YYYYMMDD>_<slug>_up.sql / _down.sql / _seed.sql` (fram
   ✅ Good example: the down for a column change backs up the old column data first and then restores it; the down for a dropped object deletes only the objects that up created
 - **seed**: fake data for development (things like `张三 test@example.com`), must be idempotent (repeated execution does not error); real personal information is forbidden.
 
-**down must be verified by a human-run local dry run (when table structures are involved; no table structure → write N/A in ④ + the basis in the STATE.md trimming record. The agent provides exactly three precise commands):**
+**down must be verified by a human-run local dry run (when table structures are involved; no table structure → write N/A as item 4 of the ③ evidence receipt, and write the basis in `裁剪记录` under `## ④ State write-back`. The agent provides exactly three precise commands):**
 ```powershell
 # The human executes them in order; the agent replaces $up/$down with the real commands for the actual stack before delivering:
 # 1) powershell -NoProfile -File check.ps1
@@ -82,7 +82,7 @@ When "rewrite" is chosen, the design section must deliver two things (missing on
 ① Every line of the DATA_DICT diff is marked with sensitivity D1~D4
 ② Every line of APIS contains an error-code column and an authentication column
 ③ The component impact list is enumerated (including "row to be created" markers)
-④ down passed a human-run local dry run and the output was pasted back (no table structure → write N/A in ④ + the trimming record basis)
+④ down passed a human-run local dry run and the output was pasted back (no table structure → write N/A as item 4 of the ③ evidence receipt, and write the basis in `裁剪记录` under `## ④ State write-back`)
 ```
 
 **Prohibitions:**

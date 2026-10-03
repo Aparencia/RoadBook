@@ -97,5 +97,7 @@ powershell -NoProfile -File check.ps1
 
 The exit code must be 0; if it is 2 (`$STEPS` not configured) or non-zero → stop and ask the user; declaring verification complete is forbidden.
 
+The acceptance checklist is ready; please click through it item by item. Next step: 5-1 archive (reply "continue" to execute it).
+
 Fixed closing line:
-`Verification complete, the acceptance checklist is ready. Please click through it item by item. Awaiting your verdict. Reply "pass" to proceed to 5-1 archive, or say which item is wrong.`
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

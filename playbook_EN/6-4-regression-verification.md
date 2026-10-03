@@ -27,7 +27,7 @@ Run it and paste the output: **the single authoritative source for the test comm
 ✅ Good example: `test_bugfix_export_empty_data` asserts that exporting empty data returns an empty file instead of crashing
 
 **Thing two: regression checklist (walk through the affected surface item by item)**
-1. Assign first, then search: `$sym = '被改函数或接口名'; Select-String -Path src -Pattern $sym -Recurse | Select-Object Path,LineNumber` lists all callers
+1. Assign first, then search: `$sym = '被改函数或接口名'; Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $sym | Select-Object Path,LineNumber` lists all callers (Note: on PowerShell 5.1 `Select-String` has no recursion parameter; only the pipeline form above runs)
 2. For each caller, write "how to verify it was not broken" (one observable behavior)
 3. Execute item by item and tick them off on the checklist
 ❌ Counter-example: "The change is only inside the export function, the other callers are certainly unaffected" (from impression = not verified)
@@ -40,8 +40,9 @@ First write back STATE.md according to the fields listed in ④, then run:
 
 ```powershell
 $scopeFiles = @('tests/test_bugfix_export_empty_data.py','docs/specs/2026-10-03_export-empty/VERIFY.md')   # replace with the real output paths of this run
+$slug = 'export-empty'                   # this bug's slug (same as 6-2/6-3)
 git add $scopeFiles STATE.md
-git commit -m "6-4 test(<slug>): 负面测试 + 回归验证收尾 (BUG-001)"
+git commit -m "6-4 test(${slug}): 负面测试 + 回归验证收尾 (BUG-001)"
 powershell -NoProfile -File check.ps1
 ```
 
@@ -72,7 +73,7 @@ Give, item by item:
 - `下一步` = 5-1 Archive
 - `未决问题` = none (if any, explain)
 
-Fixed closing line:
-`Regression verification complete, all evidence ready. Please review VERIFY.md. Awaiting your verdict. Reply "pass" to proceed to 5-1 Archive, or point out problems.`
+Regression verification complete, all evidence ready — please review VERIFY.md; next: 5-1 Archive (reply "continue" to run it).
 
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+Fixed closing line:
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

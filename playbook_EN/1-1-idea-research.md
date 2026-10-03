@@ -100,7 +100,7 @@ At wrap-up, give item by item:
 ## ④ State write-back
 
 The project is not initialized yet (no STATE.md) — state is governed by the status of the idea's row in `docs/pool/IDEAS.md`:
-- Go → set status to `go`, append "已立项，见 decisions/IDEA_*.md" ("project approved, see decisions/IDEA_*.md")
+- Go → set status to `approved` (the status vocabulary is exactly idea/researching/approved/done/killed; `done` is written when card 5-1 archives), append "已立项，见 decisions/IDEA_*.md" ("project approved, see decisions/IDEA_*.md")
 - Kill → set status to `killed` + revival condition (Action 7)
 - Pivot → keep status `idea`, update the idea one-liner to the new wording, note "Pivot 第 <n> 轮" ("Pivot round <n>")
 

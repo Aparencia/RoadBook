@@ -10,12 +10,12 @@
 | 组成 | 是什么 | 谁读 |
 | :--- | :--- | :--- |
 | `START-HERE.md` | 人唯一要读的入口（≤60 行） | 你，读一次 |
-| `playbook/` | 36 张流程卡（0-1 驱动卡 + 35 张动作卡，每张固定四段）——中文权威版 | agent 按状态自己取用 |
-| `playbook_EN/` | 36 张卡的英文执行版，与中文版逐张对应（agent 先读英文；判据冲突以中文版为准，措辞歧义以英文版为准） | agent 按状态自己取用 |
+| `playbook/` | 43 张流程卡（0-1 驱动卡 + 42 张动作卡，每张固定四段）——中文权威版 | agent 按状态自己取用 |
+| `playbook_EN/` | 43 张卡的英文执行版，与中文版逐张对应（agent 先读英文；判据冲突以中文版为准，措辞歧义以英文版为准） | agent 按状态自己取用 |
 | `template/` | 新项目的模板（1-2 卡初始化时整套复制，含 check/doctor/gate/orphans 四个守护脚本） | 1-2 卡 |
 | `design/` | 设计事实源 `v6-design.md` + 写作契约 + 30 种失败模式报告 | 改流程时才看 |
-| `_qc/check.ps1` | 母版唯一验收口径（162 项断言：36 张卡中英逐张对齐 + 结构校验） | 每次改完跑一次 |
-| `SKILL.md` | DSH skill 入口：路由表 36 行 + 四条铁律 + 双语规则（不含判据） | agent 自动加载，或你打 `/roadbook` |
+| `_qc/check.ps1` | 母版唯一验收口径（结构校验 + 43 张卡中英逐张对齐；断言项数以脚本输出为准） | 每次改完跑一次 |
+| `SKILL.md` | DSH skill 入口：路由表 43 行 + 四条铁律 + 双语规则（不含判据） | agent 自动加载，或你打 `/roadbook` |
 | `plugin/roadbook-autoload/` | DSH 自动加载插件（组合包，可选安装） | 你，装一次 |
 | `LICENSE` | MIT 许可（可自由复制、改造、再分发） | 复用前看一眼 |
 
@@ -39,10 +39,10 @@
 想让 agent 在任意会话自动带上这套流程，把本仓库装成用户级 skill：
 
 ```powershell
-git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE\.dsh\skills\roadbook"
+git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE/.dsh/skills/roadbook"
 ```
 
-之后新会话的 skill 目录里就有 `roadbook`（说「按流程来」会自动加载），也可以直接打 `/roadbook` 主动加载；更新用 `git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only`。
+之后新会话的 skill 目录里就有 `roadbook`（说「按流程来」会自动加载），也可以直接打 `/roadbook` 主动加载；更新用 `git -C "$env:USERPROFILE/.dsh/skills/roadbook" pull --ff-only`。
 
 ## 自动加载插件（可选，让流程不靠模型自觉）
 
@@ -56,4 +56,4 @@ skill 是否被加载仍取决于模型判断；想 100% 自动，装这个 Host
 - 改流程 = 改对应卡（`playbook/` 与 `playbook_EN/` 同批改，只改一份 = 判红）+ `design/v6-design.md` 同步 → 跑 `powershell -NoProfile -File _qc/check.ps1`（退出码 0 才算改完）。
 - `design/v6-design.md` 是**唯一事实源**：卡、模板、脚本与它冲突时，一律以它为准。
 - **改完必须 `git push`**：`~/.dsh/skills/roadbook` 是本仓库的 clone，不推 = 装成 skill 的机器永远停在旧版。
-- 命令一律用正斜杠路径（`_qc/check.ps1`）；最近一次自审见 `_qc/audit-2026-10-03.md`（P0/P1/P2 与假绿推演）。
+- 命令一律用正斜杠路径（`_qc/check.ps1`）；2026-10 的 71 条缺陷修复、个人档与 DSH 0.2.0-rc2 适配的决策记录见 `design/v6-design.md` §17。

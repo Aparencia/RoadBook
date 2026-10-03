@@ -70,4 +70,5 @@ git commit -m "6-5 docs(postmortem): $worst 复盘与预防措施"
 powershell -NoProfile -File check.ps1
 ```
 
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+Fixed closing line:
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

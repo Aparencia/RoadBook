@@ -44,7 +44,7 @@ Isomorphic = the same branch/build method, the same database engine and major ve
 | `LOG_LEVEL` | `info` | each environment's `.env` or the platform console | D1 |
 | Example: third-party `API_KEY` | none | platform console secret store only; rotation period 90 days | D4 |
 
-Sensitivity tiers are fixed at four levels: **D1 public** (may go into the repo) ｜ **D2 internal** (may go into the repo, but contains no personal information) ｜ **D3 sensitive** (goes only into `.env` / the platform console; forbidden in the repo and in logs) ｜ **D4 confidential** (D3 treatment + encrypted at rest + periodically rotated + invalidated immediately on leak). When unsure, treat it as one level higher.
+Sensitivity tiers are fixed at four levels: **D1 public** (may go into the repo) ｜ **D2 internal** (may go into the repo, but contains no personal information) ｜ **D3 sensitive personal information (PII)** (goes only into `.env` / the platform console; forbidden in the repo and in logs) ｜ **D4 confidential** (D3 treatment + encrypted at rest + periodically rotated + invalidated immediately on leak; word-for-word the same tier names as `docs/registry/DATA_DICT.md`). When unsure, treat it as one level higher.
 
 **Action 4: `.env.example` is the single key-name list (update it in the same batch; no backfilling afterwards)**
 Any config key added this time → add it to `.env.example` **in the same batch** (key name + one comment line + the shape of an example value only; never a real value), and sync it into the Action 3 matrix.
@@ -105,7 +105,7 @@ Give these one by one (only three kinds of evidence count: real command output /
 
 **The closing-order iron rule: write back the state first → then commit → then re-run check.ps1 for 0.**
 
-Update `STATE.md`: `未决问题` = environment matters needing the user's decision (who approves staging, whether a read-only production snapshot is allowed, who provides the secrets); roll `未来 3 步` as needed; the environments/keys added this time go into the receipt and remain findable in `docs/RUNBOOK.md`.
+Update `STATE.md`: `下一步` = 5-2 release; `未决问题` = environment matters needing the user's decision (who approves staging, whether a read-only production snapshot is allowed, who provides the secrets); roll `未来 3 步` as needed; the environments/keys added this time go into the receipt and remain findable in `docs/RUNBOOK.md`.
 
 ```powershell
 git add docs/RUNBOOK.md .env.example STATE.md

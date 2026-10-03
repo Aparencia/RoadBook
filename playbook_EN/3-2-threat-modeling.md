@@ -1,5 +1,5 @@
-# Card 3-2 · Threat modeling (mandatory when authentication / payment / deleting data / changing tables / external interfaces are touched, and the tier rises to L)
-> Trigger: this task touches authentication or authorization, billing or payment, deleting data or changing the table structure, or an external interface; or tier = L ｜ Output: docs/specs/<date>_<slug>/THREAT.md ｜ Next: 3-3 Test strategy (mandatory for tier L); if already walked → 4-1 Batch coding
+# Card 3-2 · Threat modeling (mandatory when any of the four red-line domains — auth / payment / deleting data / external interfaces — is touched, and the tier rises to L)
+> Trigger: this task touches any of the four red-line domains — auth / payment / deleting data / external interfaces ｜ Output: docs/specs/<date>_<slug>/THREAT.md ｜ Next: 3-3 Test strategy
 
 ---
 
@@ -17,7 +17,7 @@ After receiving the start instruction, first receipt the following five items be
    - [ ] ② The trust boundary is drawn (a diagram or a text diagram), and every data flow that crosses it is named
    - [ ] ③ Every threat takes one of two paths: a mitigation, or explicit acceptance + a reason (there is no third path)
    - [ ] ④ Every check item is a concrete action (input validation point / authentication point / privilege-escalation path / log redaction / secret source); nowhere in the text does "要注意安全" ("pay attention to security") appear
-   - [ ] ⑤ A red-line area was hit (auth / payment / deleting data / changing the table structure) and the tier has risen to L with SCOPE.md and STATE.md written back
+   - [ ] ⑤ A red-line area was hit (auth / payment / deleting data / external interfaces) and the tier has risen to L with SCOPE.md and STATE.md written back
 5. **Landing declaration**: output = `docs/specs/<date>_<slug>/THREAT.md`; next card = 3-3 Test strategy.
 
 ---
@@ -47,14 +47,16 @@ flowchart LR
 | D 拒绝服务 DoS | how do you wedge it? | the export endpoint is not rate limited, so one call pulls the whole table |
 | E 提权 Elevation | how do you go from little privilege to more? | changing the `orderId` in the URL is enough to see someone else's order |
 
+All six categories must land in THREAT.md one by one: every threat carries its category name (e.g. `STRIDE: E 提权`); a bare letter or a missing category = this card is not complete.
+
 **Action 2: give every threat a "mitigation" or an "explicit acceptance" (one paragraph per threat in THREAT.md, fixed format)**
 ```text
-Threat: <one sentence> ｜ STRIDE: <letter> ｜ Boundary crossed: <from where to where> ｜ Level: high/medium/low
+Threat: <one sentence> ｜ STRIDE: S 仿冒 Spoofing ｜ Boundary crossed: <from where to where> ｜ Level: high/medium/low
 Mitigation: <concrete check item> ｜ Owner: <role> ｜ Verification: <how the 4-2 review and 4-3 verification check it>
 ```
 Or:
 ```text
-Threat: <one sentence> ｜ STRIDE: <letter>
+Threat: <one sentence> ｜ STRIDE: T 篡改 Tampering ｜ Boundary crossed: <from where to where> ｜ Level: high/medium/low
 Explicit acceptance: <why it is not fixed> ｜ Accepted by: <the user> ｜ Basis: <their own words + date>
 ```
 "Level: high/medium/low" is the severity of the threat itself [disambiguated: it does not have to reuse the 2-5 risk-register level criteria].
@@ -70,7 +72,7 @@ Explicit acceptance: <why it is not fixed> ｜ Accepted by: <the user> ｜ Basis
 - **Deleting and changing tables**: a delete must be recoverable or have a second confirmation; a table change must have a down plan (3-1 drafts it; running it is a human action)
 
 **Action 4: red-line escalation write-back (the tier only rises, never falls)**
-Hitting auth / payment / deleting data / changing the table structure → rise to tier L: change the `档位` in the SCOPE.md header to L and add one line "<date> 因威胁建模触碰 <红线域>，升 L" ("<date>: threat modeling touched <red-line area>, rising to L"); update STATE.md `档位` and `红线摘要` in the same batch.
+Hitting any of the four red-line domains — auth / payment / deleting data / external interfaces → rise to tier L: change the `档位` in the SCOPE.md header to L and add one line "<date> 因威胁建模触碰 <红线域>，升 L" ("<date>: threat modeling touched <red-line area>, rising to L"); update STATE.md `档位` and `红线摘要` in the same batch.
 
 **Action 5: two commands (assign first, then call; a hit on the first = slogan-style security, and the second must output exactly 6)**
 ```powershell
@@ -78,6 +80,9 @@ $spec = 'docs/specs/20261003_export'
 Select-String -Path "$spec/THREAT.md" -Pattern '注意|加强|做好|小心|安全意识'
 Select-String -Path "$spec/THREAT.md" -Pattern 'S 仿冒|T 篡改|R 抵赖|I 信息泄露|D 拒绝服务|E 提权' | Measure-Object -Line
 ```
+
+❌ Counter-example: all six threats write only `STRIDE: I` (a bare letter) → the second command prints `Lines : 0`, so the gate is unreachable
+✅ Example: all six lines are present, each with its category name (`S 仿冒` / `T 篡改` / `R 抵赖` / `I 信息泄露` / `D 拒绝服务` / `E 提权`) → it prints `Lines : 6`
 
 **Prohibitions:**
 - Slogan-style security ("要注意安全" ("pay attention to security"), "加强防护" ("strengthen protection")) is forbidden; write concrete check items only
@@ -98,6 +103,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 5. Number of threats + number of mitigations / number of explicit acceptances; one line per mitigation naming the 4-2 review check point it maps to
 6. Whether a red-line area was hit + whether the tier has risen to L (paste the actual changed lines from SCOPE.md and STATE.md)
 7. The slogan self-check command output (the first `Select-String` must have no output)
+8. This commit's hash (verbatim `git rev-parse HEAD`)
 
 ---
 
@@ -107,7 +113,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 - `档位` = L (when a red-line area was hit; the tier only rises, never falls)
 - `红线摘要` = one line naming the red-line areas touched this time
 - `未决问题` = threats that are explicitly accepted but not yet confirmed by the user
-- `下一步` = 3-3 Test strategy (mandatory for tier L); if 3-3 was already walked earlier → 4-1 Batch coding
+- `下一步` = 3-3 Test strategy
 
 After the write-back, the closing triple (write back state → commit → re-run the gate for a 0):
 ```powershell

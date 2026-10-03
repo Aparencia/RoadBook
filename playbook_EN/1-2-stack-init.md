@@ -38,7 +38,7 @@ After summarizing the scoring table, give a **recommended stack + one-line basis
 
 **Action 3: generate the full project from the master's template set**
 ```powershell
-$母版 = 'D:\path\to\roadbook'   # absolute path to the master root (its template directory sits directly under it); assign before calling
+$母版 = 'D:/path/to/roadbook'   # absolute path to the master root (its template directory sits directly under it); assign before calling
 $dest = 'C:\code\myapp'         # the target directory must not exist or must be empty: if it exists and is non-empty it nests as $dest\template
 if (Test-Path $dest) { throw "目标目录已存在：$dest —— 确认它为空，或换一个不存在的路径" }
 Copy-Item -Recurse (Join-Path $母版 'template') $dest
@@ -89,8 +89,8 @@ powershell -NoProfile -File orphans.ps1
 ```
 All three exit codes must be 0 (at this moment gate can only be green or amber: `-Anchor HEAD` draws an empty list, amber but still exit 0). **It must run after `git init` and after the baseline is written**: check.ps1 goes red when there is no git or the baseline is 0, so running it before `git init` in older versions = guaranteed failure. "Skip it for now and run it later" is forbidden; three non-zero codes = the guard scripts are misinstalled, fix them before continuing.
 **Action 8: remote repository (choose one of three; private/public is the human's verdict)**
-1. Create a remote and push for the first time: `$owner='你的GitHub账号'; $name='仓库名'; gh repo create "$owner/$name" --private --source . --push` (for public change to `--public` — **the agent must not decide visibility itself**)
-2. A remote already exists: `$url='https://github.com/你/仓库.git'; git remote add origin $url; $branch = git rev-parse --abbrev-ref HEAD; git push -u origin $branch`
+1. Create a remote and push for the first time: assign first `$owner = 'aparencia'; $name = 'my-app'` (change these to your own account/repo name), then call `gh repo create "$owner/$name" --private --source . --push` (for public change to `--public` — **the agent must not decide visibility itself**)
+2. A remote already exists: assign first `$url = 'https://github.com/aparencia/my-app.git'` (change it to your own repository URL), then call `git remote add origin $url; $branch = git rev-parse --abbrev-ref HEAD; git push -u origin $branch`
 3. No remote for now: must write into the STATE.md trim record "本地-only，风险：磁盘故障 = 全部历史清零" ("local-only; risk: a disk failure = all history is wiped")
 
 Before the first push, run `git status --porcelain`: if `.env` / `*.key` / `*.pem` appear → stop (pushing is irreversible). **Pushing is not part of DoD** (network or credential failures would cause false red lights); it belongs to the 5-1 archive wrap-up and 6-6 signal 10.
@@ -118,7 +118,7 @@ At wrap-up, give item by item:
 1. The four-dimension scoring table + a source link for every cost figure (or "未查到公开数据" ("no public data found"))
 2. Full path of the STACK decision card
 3. The complete output of `powershell -NoProfile -File doctor.ps1` (exit code)
-4. The `file-count baseline`/`current file count` written in Action 6 (verbatim `$n`) + the complete output and exit codes of the three Action 7 commands (check.ps1 / gate.ps1 / orphans.ps1 summary lines; when the baseline is not written, check.ps1 prints `[--]` and skips the budget assertion, and gate.ps1 without `-ScopeFiles` goes straight to red)
+4. The `file-count baseline`/`current file count` written in Action 6 (verbatim `$n`) + the complete output and exit codes of the three Action 7 commands (check.ps1 / gate.ps1 / orphans.ps1 summary lines; a missing or 0 file-count baseline → check.ps1 prints FAIL, `[--]` appears only when the start anchor is empty and skips this batch's commit-count assertion; gate.ps1 without `-ScopeFiles` goes straight to red)
 5. The first commit hash (verbatim `$anchor`) + the remote determination (verbatim `git remote -v`, or "local-only + verbatim trim record")
 6. The complete output of `git status --porcelain` after committing (**must be empty**; non-empty = some managed file was never added to the repo)
 7. Placeholder checklist: every angle-bracket marker in the template set → replaced with (paste the replaced line) / reason for keeping it (must be confirmed by the user)

@@ -10,7 +10,7 @@
 3. **Clarifying questions (≤5, delete any that can be deleted)**: the default three questions — which languages and regions must be supported (including the date, currency and time zone definitions)? Is the accessibility target WCAG 2.1 AA (body text contrast ≥4.5:1, touch target ≥44px)? With limited time, externalize the strings first or fix accessibility first? If there are none, write "none".
 4. **Quote the checklist verbatim** (paste the "four i18n/a11y checks" from §② of this card word for word):
    - [ ] Strings externalized: the hard-coded UI string scan under src returns zero hits (whitelisted lines have their reason registered)
-   - [ ] The language and locale table has all five columns (language / date / number / currency / time zone), each with a default value and an example
+   - [ ] The language and locale table has all 5 rows and 4 columns (5 rows = language / date / number / currency / time zone; 4 columns = item / Chinese / second language / convention), every cell with a checkable example
    - [ ] Each of the seven accessibility items has a verification method and a measured result; items not yet met are registered with a due date
    - [ ] The "影响面" column of the affected screens has been written back with the accessibility annotation in the same batch
 5. **Boundary statement**: language priority and the accessibility target line are decided by the user; the agent only produces the checklist, the measured evidence and a draft of the changes.
@@ -21,19 +21,20 @@
 
 **Checklist of this card (the four i18n/a11y checks, tick item by item):**
 - [ ] Strings externalized: the hard-coded UI string scan under src returns zero hits (whitelisted lines have their reason registered)
-- [ ] The language and locale table has all five columns (language / date / number / currency / time zone), each with a default value and an example
+- [ ] The language and locale table has all 5 rows and 4 columns (5 rows = language / date / number / currency / time zone; 4 columns = item / Chinese / second language / convention), every cell with a checkable example
 - [ ] Each of the seven accessibility items has a verification method and a measured result; items not yet met are registered with a due date
 - [ ] The "影响面" column of the affected screens has been written back with the accessibility annotation in the same batch
 
 **Action 1: externalize strings (hard-coded UI strings are forbidden)**
 ```powershell
-Select-String -Path src -Recurse -Pattern '[\u4e00-\u9fa5]' | Where-Object { $_.Path -notmatch 'locales|i18n' } | Select-Object Path, LineNumber
+Get-ChildItem -Path src -Recurse -File | Select-String -Pattern '[\u4e00-\u9fa5]' | Where-Object { $_.Path -notmatch 'locales|i18n' } | Select-Object Path, LineNumber
 ```
+(Note: on PowerShell 5.1 `-Recurse` is not a valid parameter of `Select-String`; only the pipeline form above runs)
 - Handle every hit line by line: move it into the language pack (`locales/zh-CN.json` and so on) and change the component to look up the key; what truly must not be externalized (regular expressions, logs) goes on the whitelist with the reason noted.
 - ❌ Counter-example: `<button>保存</button>` ("Save" written hard-coded into the component)
 - ✅ Good example: `<button>{{ t('common.save') }}</button>` + `"common.save": "保存"` in `locales/zh-CN.json`
 
-**Action 2: language and locale table (five columns, written into docs/I18N.md)**
+**Action 2: language and locale table (4 columns, 5 rows, written into docs/I18N.md)**
 
 | Item | Chinese (zh-CN) | Second-language example (en-US) | Definition |
 | :-- | :-- | :-- | :-- |
@@ -61,8 +62,8 @@ Select-String -Path src -Recurse -Pattern '[\u4e00-\u9fa5]' | Where-Object { $_.
 | Keyboard reachable | Tab reaches every interactive element, focus is never lost | Walk the main path with the keyboard only (Tab / Shift+Tab / Enter / Esc) and record where it gets stuck |
 | Contrast | body text ≥4.5:1, large text ≥3:1 | Check the foreground and background color values with the browser F12 color picker, or scan with axe DevTools |
 | Semantic tags | use button/nav/main/h1~h3, never a div pretending to be one | Look at the tag names in F12; a `<div onclick` hit fails |
-| Image alternative text | meaningful images have alt, decorative images use `alt=""` | `Select-String -Path src -Recurse -Pattern '<img'` then check alt line by line |
-| Visible focus | the focused state has a visible style (outline or border) | `Select-String -Path src -Recurse -Pattern 'outline:\s*none'`; then eyeball the focus ring with Tab |
+| Image alternative text | meaningful images have alt, decorative images use `alt=""` | `Get-ChildItem -Path src -Recurse -File | Select-String -Pattern '<img'` then check alt line by line |
+| Visible focus | the focused state has a visible style (outline or border) | `Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'outline:\s*none'`; then eyeball the focus ring with Tab |
 | Form labels | every input has a label or aria-label | F12 or an axe scan; check `<input` line by line |
 | Touch target | the tappable area is ≥44×44 px | Measure the element box size in F12; if it is too small, add padding or min-height in the CSS |
 

@@ -1,12 +1,12 @@
 # Card 7-7 · User documentation and handover (mandatory before delivery / handover)
-> Trigger: delivery acceptance / someone else takes over ｜ Output: docs/USER_GUIDE.md + root HANDOVER.md ｜ Next: 5-1 Archive
+> Trigger: delivery acceptance / someone else takes over ｜ Output: docs/USER_GUIDE.md (six sections, including the six-column handover checklist) ｜ Next: 5-1 Archive
 
 ---
 
 ## ① Start confirmation
 
-1. **Plain-language restatement and landing point**: write the project up as two documents that let someone else open it, ask about it and take it over; output = `docs/USER_GUIDE.md` + root `HANDOVER.md`; next card = 5-1 Archive.
-2. **Assumptions list**: write "I assume X; if wrong, then Y is invalid" line by line (for example: "the person taking over also uses Windows"), and note the verification method for each; anything that can be looked up from README.md / START-HERE.md / the document map must not be written as an assumption.
+1. **Plain-language restatement and landing point**: write the project up as one document that lets someone else open it, ask about it and take it over; output = `docs/USER_GUIDE.md` (six sections, including the six-column handover checklist); next card = 5-1 Archive.
+2. **Assumptions list**: write "I assume X; if wrong, then Y is invalid" line by line (for example: "the person taking over also uses Windows"), and note the verification method for each; anything that can be looked up from the 3 startup steps in the project-root `README.md` / the document map must not be written as an assumption.
 3. **Clarifying questions (≤5, delete any that can be deleted)**: the default three questions — who is the delivery for (your own use / a colleague takes over / an external customer)? Who is the person taking over (this decides the contact column of the handover checklist)? By what date must the handover be finished (this decides the expiry dates)? If there are none, write "none".
 4. **Quote the checklist of this card verbatim** (paste the "five delivery checks" from §② word for word):
    - [ ] Quick start in ≤3 steps, each step an indivisible action, all written in the user's words
@@ -30,7 +30,7 @@
 **Action 1: quick start (≤3 steps, the user's point of view)**
 - One step = one indivisible action; words such as "environment variable", "dependency", "migration" and "deployment" are forbidden.
 - ❌ Counter-example: "先 clone 仓库，装 Node，跑 npm i，配好 .env，执行迁移，再 npm run dev" ("first clone the repo, install Node, run npm i, set up .env, execute the migration, then npm run dev")
-- ✅ Good example: "① double-click the first command inside START-HERE.md ② see "可以开始用了" ("you can start using it") ③ if it will not open, read FAQ item 1"
+- ✅ Good example: "① do step 1 of the 3 startup steps in the project-root README.md ② see "可以开始用了" ("you can start using it") ③ if it will not open, read FAQ item 1"
 
 **Action 2: FAQ (≥5 items, each with a real source)**
 ```powershell
@@ -39,7 +39,7 @@ Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-'
 ```
 - Each item is four lines: symptom (the user's own words) → cause (one plain sentence) → what to do (a copyable command or where to click) → source (file name + line number).
 - ❌ Counter-example: "可能网络问题，重试即可" ("probably a network problem, just retry", with no source and no executable action)
-- ✅ Good example: "打不开页面｜端口被占用｜换 START-HERE.md 里的备用端口命令｜来源：docs/TECH_DEBT.md:12" ("the page will not open | the port is taken | use the backup-port command in START-HERE.md | source: docs/TECH_DEBT.md:12")
+- ✅ Good example: "打不开页面｜端口被占用｜换项目根 README.md 的启动 3 步里的备用端口命令｜来源：docs/TECH_DEBT.md:12" ("the page will not open | the port is taken | use the backup-port command in the 3 startup steps of the project-root README.md | source: docs/TECH_DEBT.md:12")
 - When ≥2 tickets hit the same symptom → put that item first and mark the occurrence count in the source column.
 
 **Action 3: glossary (user's word ↔ program word)**
@@ -67,10 +67,10 @@ Select-String -Path docs/registry/COMPONENTS.md -Pattern '人话标识'
 - Hand "quick start + what to do when it fails" to the person taking over and have them walk it from zero on their own machine; the agent only prepares the commands and the record table.
 - If it does not run → stop and ask the user (stop when the same error happens twice); operating the machine on the taker's behalf is forbidden.
 
-**Action 7: write the two documents**
-- `docs/USER_GUIDE.md`, five sections: what this is / quick start in 3 steps / FAQ / glossary / who to ask when it still fails.
-- Root `HANDOVER.md`, six sections: handover checklist / environment and startup commands / how to run backup and restore / open questions and their due dates / contacts / last checked (date + commit hash).
-- ❌ Counter-example: the two documents copy each other ｜ ✅ Good example: the guide is for the person *using* it and the handover is for the person *taking it over*; a fact is written in one place only and the other place points to it.
+**Action 7: write `docs/USER_GUIDE.md` (six sections, one document is enough)**
+- Six sections: what this is / quick start in 3 steps / FAQ / glossary / handover checklist (six columns) / last checked (date + commit hash).
+- The first four sections are for the person *using* it and the handover checklist is for the person *taking it over*; a fact is written in one place only and the other place points to it.
+- ❌ Counter-example: copying the handover checklist into a second document (one fact maintained in two places will always drift) ｜ ✅ Good example: the handover checklist is the "handover checklist" section of `docs/USER_GUIDE.md`, with all six columns and secrets recorded as locations only
 
 **Prohibitions (violating any one of them = this round's output is void):**
 - Programmer words (dependency / environment variable / migration / deployment) in user documentation are forbidden
@@ -84,7 +84,7 @@ Select-String -Path docs/registry/COMPONENTS.md -Pattern '人话标识'
 ## ③ Evidence receipt
 
 Give, item by item:
-1. The paths of `docs/USER_GUIDE.md` and `HANDOVER.md` + their line counts + the number of quick-start steps + the number of FAQ items with their source lines
+1. The path of `docs/USER_GUIDE.md` + its line count + the number of quick-start steps + the number of FAQ items with their source lines
 2. The number of glossary entries + the comparison against the "人话标识" column of the registry (how many match, which differ)
 3. The record of the taker running it independently (whose machine, the commands verbatim, the real output; if not run: `not yet run, awaiting human confirmation`)
 4. The user's verdict on "handover confirmation" quoted word for word + the expiry dates of the six handover columns
@@ -102,7 +102,7 @@ Update STATE.md:
 - `工作树状态` = 干净
 
 ```powershell
-git add STATE.md docs/USER_GUIDE.md HANDOVER.md
+git add STATE.md docs/USER_GUIDE.md
 git commit -m "7-7 docs(handover): 用户文档与交接清单"
 powershell -NoProfile -File check.ps1
 ```
@@ -111,4 +111,4 @@ The exit code must be 0; non-zero → stop and ask the user; announcing that thi
 **Next card**: 5-1 Archive. Touching authentication / payment / data deletion → stop and ask the user, and raise the tier to 3-2 Threat modeling.
 
 Fixed closing line:
-Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`
