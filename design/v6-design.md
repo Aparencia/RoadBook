@@ -33,8 +33,7 @@
 ├── design/          本设计文档+契约      ├── src/ tests/ …（按栈生成）
 ├── _qc/check.ps1    一致性校验           └── docs/          机制配套文档（见 §5）
 ├── LICENSE          MIT 许可（可自由复用）
-├── plugin/           DSH 自动加载插件（可选装，见 §15）
-└── _archive/V5/     旧版封存，不维护
+└── plugin/           DSH 自动加载插件（可选装，见 §15）
 ```
 
 **双接口**：
@@ -180,7 +179,7 @@
 
 ## 10. 实施计划（构建顺序）
 
-1. ✅ V5 全量封存 `_archive/V5/`（2026-09-11 完成）
+1. ✅ V5 封存（2026-09-11 收拢为 `_archive/V5/` 残件）→ **2026-10-03 经用户裁决删除**该残件：它自承只找到一份指向已不存在路径的旧导航（死链，真身在仓库外 `../_archive/_staging-20260903/`），保留只会让人以为 V5 还在仓库里；`_qc/check.ps1` 的"封存目录存在"断言同批改为**反向断言**（`_archive/` 不存在，防死链复现）
 2. ✅ 本设计文档 + `playbook-contract.md`（写作契约）
 3. ✅ `START-HERE.md` + `playbook/00-驱动卡.md`（标杆样例）
 4. ✅ 21 张卡全部建成（2026-09-11，QC 102/102 通过）
@@ -195,10 +194,11 @@
 13. ✅ skill 分发（2026-10-03，见 §13）：仓库根新增 `SKILL.md`（路由表 21 行 + 四条铁律，**不复写判据**）→ 装成 DSH 用户级 skill（`~/.dsh/skills/roadbook` = 本仓库 clone，靠目录型布局让相对路径落回母版根）；`_qc/check.ps1` 增 8 项断言（存在 / 行数 ≤120 / 首行严格 `---` / `name=roadbook` / `description` ≤500 / 铁律关键词 / 路由覆盖 ≥20 张卡 / 引用的卡不指空）；版本口径 = 世代号 `V6`（第 6 代流程）+ 发布 tag `v0.6.0`；QC 118/118 通过
 14. ✅ 发布补强（2026-10-03）：仓库根新增 `LICENSE`（MIT，版权人 Aparencia，README 加许可行）；GitHub 侧建 Release `v0.6.0`（tag 仍指向 skill 分发那次提交，未移动）并补仓库 topics（`dsh-skill` / `ai-coding-workflow` / `ai-agent`）；`_qc/check.ps1` 增 1 项 LICENSE 存在性断言；QC 119/119 通过
 15. ✅ 自动加载插件（2026-10-03，见 §15）：仓库根新增 `plugin/roadbook-autoload/`（DSH 组合包：`dsh.bundle.patch` + Host 插件挂 `agent/pre-step` 注入 + `trigger.js` 纯逻辑可离线单测 11 例）；三层门控（git 项目 + 开发意图关键词 + 去重与让路内置手势）＋自进化三环（命中观测 / 版本对账 / 空转观测，默认保守、只观测不改卡）＋中英文展示元信息与图标；`_qc/check.ps1` 增 21 项断言、根 README 与本节同步；QC 128 → **149/149** 通过
+16. ✅ 全仓自审与首次清理（2026-10-03）：4 路并行审计（功能开发卡组 / 验证运维卡组 / 母版基建 / 守护脚本与插件）产出 `_qc/audit-2026-10-03.md`——P0 13 条、P1 29 条、P2 若干、假绿推演 25 行、已核对无问题项两节；按用户裁决删除 `_archive/V5/` 残件（同批反转 `_qc/check.ps1` 断言 + `README.md` / `START-HERE.md` / 本文件三处联动），根 `README.md` 全面重写（四条铁律唯一化、补 `git push` 提醒与自审入口、命令统一正斜杠）；QC 149/149 通过
 
 ## 11. 维护规则（写进 START-HERE）
 
-改流程 = 改对应卡 + 本设计文档同步；改宪法模板 = 检查所有卡引用；每季度跑 _qc/check.ps1；_archive/V5 只读不改。改母版本身 = `_qc/check.ps1` 退出码 0 + 一次提交 + `git push`（`~/.dsh/skills/roadbook` 是母版仓库的 clone，不推 = 分发的 skill 永远停在旧版）。
+改流程 = 改对应卡 + 本设计文档同步；改宪法模板 = 检查所有卡引用；每季度跑 `_qc/check.ps1`。改母版本身 = `_qc/check.ps1` 退出码 0 + 一次提交 + `git push`（`~/.dsh/skills/roadbook` 是母版仓库的 clone，不推 = 分发的 skill 永远停在旧版）。
 
 ## 12. 生成多删除少的治理（2026-10-03 增补）
 

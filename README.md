@@ -1,7 +1,6 @@
 # Roadbook（路书）· V6「磁盘即流程」开发流程母版
 
-**这是什么**：Roadbook（路书）是一套个人开发标准——流程知识全部放在磁盘上（`playbook/` 卡 + `template/` 模板），agent 按状态自己取用；
-你只做三件事：**表达意图、裁决门禁、行为验收**。
+**这是什么**：Roadbook（路书）是一套个人开发标准——流程知识全部放在磁盘上（`playbook/` 卡 + `template/` 模板），agent 按状态自己取用；你只做三件事：**表达意图、裁决门禁、行为验收**。
 
 **远端仓库**：<https://github.com/Aparencia/RoadBook> —— 本仓库就是母版本体；`main` 分支 = 现行版本，版本历史看 git 记录（母版不写文档版本号）。
 **许可**：[MIT](LICENSE) —— 可自由复制、改造、再分发，保留版权声明即可。
@@ -10,19 +9,20 @@
 
 | 组成 | 是什么 | 谁读 |
 | :--- | :--- | :--- |
-| `START-HERE.md` | 人唯一要读的入口 | 你，读一次 |
-| `playbook/` | 21 张流程卡（00 驱动卡 + 20 张动作卡） | agent 按状态自己取用 |
-| `template/` | 新项目的模板（11 卡初始化时整套复制） | 11 卡 |
-| `design/` | 设计事实源与写作契约 | 改流程时才看 |
-| `_qc/check.ps1` | 母版一致性校验 | 每次改完跑一次 |
-| `SKILL.md` | DSH skill 入口：路由表 + 四条铁律（不含判据） | agent 自动加载，或你打 `/roadbook` |
-| `plugin/` | DSH 自动加载插件（组合包，可选安装） | 你，装一次 |
+| `START-HERE.md` | 人唯一要读的入口（≤60 行） | 你，读一次 |
+| `playbook/` | 21 张流程卡（00 驱动卡 + 20 张动作卡，每张固定四段） | agent 按状态自己取用 |
+| `template/` | 新项目的模板（11 卡初始化时整套复制，含 check/doctor/gate/orphans 四个守护脚本） | 11 卡 |
+| `design/` | 设计事实源 `v6-design.md` + 写作契约 + 30 种失败模式报告 | 改流程时才看 |
+| `_qc/check.ps1` | 母版一致性校验（149 项文本与结构断言） | 每次改完跑一次 |
+| `SKILL.md` | DSH skill 入口：路由表 21 行 + 四条铁律（不含判据） | agent 自动加载，或你打 `/roadbook` |
+| `plugin/roadbook-autoload/` | DSH 自动加载插件（组合包，可选安装） | 你，装一次 |
 
-## 三条铁律
+## 四条铁律（前三条给人，第 4 条约束 agent；原文在 `SKILL.md`）
 
 1. **红灯不是失败**，是"这一步先停"——修好条件再走。
 2. **"完成"只有一个定义**：`powershell -File check.ps1` 退出码 0 + agent 粘贴真实输出。别的"完成了"都不算。
 3. **agent 引不出卡名与检查清单原文 = 该轮作废**，重发一次 `playbook/00-驱动卡.md`。
+4. **回执只认三种证据**：真实命令输出、文件路径、提交哈希——声明"完成"必须逐条对应证据。
 
 ## 起步三步
 
@@ -51,6 +51,7 @@ skill 是否被加载仍取决于模型判断；想 100% 自动，装这个 Host
 
 ## 维护这套母版
 
-- 改流程 = 改 `playbook/` 对应卡 + `design/v6-design.md` 同步 → 跑 `powershell -File _qc\check.ps1`（退出码 0 才算改完）。
+- 改流程 = 改 `playbook/` 对应卡 + `design/v6-design.md` 同步 → 跑 `powershell -NoProfile -File _qc/check.ps1`（退出码 0 才算改完）。
 - `design/v6-design.md` 是**唯一事实源**：卡、模板、脚本与它冲突时，一律以它为准。
-- `_archive/V5/` 是旧版封存，只读不改；上面的东西不参与现行判据。
+- **改完必须 `git push`**：`~/.dsh/skills/roadbook` 是本仓库的 clone，不推 = 装成 skill 的机器永远停在旧版。
+- 命令一律用正斜杠路径（`_qc/check.ps1`）；最近一次自审见 `_qc/audit-2026-10-03.md`（P0/P1/P2 与假绿推演）。

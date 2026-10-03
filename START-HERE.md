@@ -38,7 +38,6 @@
 | `template/` | 新项目的模板（11 号卡初始化时用） |
 | `design/` | 设计文档与写作契约（改流程时才看） |
 | `_qc/check.ps1` | 跑 `powershell -File _qc\check.ps1` 校验母版完整性 |
-| `_archive/V5/` | 旧版封存，只读 |
 | `SKILL.md` | DSH skill 入口（装法见 `README.md`）；装了之后可直接打 `/roadbook` 主动加载这套流程 |
 
 ## 三条铁律（记住这三句就够了）

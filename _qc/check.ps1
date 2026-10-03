@@ -1,5 +1,5 @@
 ﻿# _qc/check.ps1 · Roadbook（路书）V6 母版一致性校验
-# 用法：powershell -File _qc\check.ps1
+# 用法：powershell -NoProfile -File _qc/check.ps1
 # 退出码：0=全部通过；1=存在失败项（清单见输出）
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -29,7 +29,7 @@ if (Test-Path $rm) {
 }
 Check (Test-Path (Join-Path $root 'design\v6-design.md')) 'design/v6-design.md 存在'
 Check (Test-Path (Join-Path $root 'design\playbook-contract.md')) 'design/playbook-contract.md 存在'
-Check (Test-Path (Join-Path $root '_archive\V5')) '_archive/V5/ 封存目录存在'
+Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件 2026-10-03 已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\00-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
