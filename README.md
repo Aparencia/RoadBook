@@ -13,7 +13,7 @@
 | `playbook/` | 21 张流程卡（00 驱动卡 + 20 张动作卡，每张固定四段） | agent 按状态自己取用 |
 | `template/` | 新项目的模板（11 卡初始化时整套复制，含 check/doctor/gate/orphans 四个守护脚本） | 11 卡 |
 | `design/` | 设计事实源 `v6-design.md` + 写作契约 + 30 种失败模式报告 | 改流程时才看 |
-| `_qc/check.ps1` | 母版一致性校验（194 项文本与结构断言） | 每次改完跑一次 |
+| `_qc/check.ps1` | 母版一致性校验（198 项文本与结构断言） | 每次改完跑一次 |
 | `SKILL.md` | DSH skill 入口：路由表 21 行 + 四条铁律（不含判据） | agent 自动加载，或你打 `/roadbook` |
 | `plugin/roadbook-autoload/` | DSH 自动加载插件（组合包，可选安装） | 你，装一次 |
 | `LICENSE` | MIT 许可（可自由复制、改造、再分发） | 复用前看一眼 |

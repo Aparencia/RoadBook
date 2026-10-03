@@ -141,10 +141,16 @@ $gtTxt = ''
 $gtp = Join-Path $tpl 'gate.ps1'
 if (Test-Path $gtp) { $gtTxt = [IO.File]::ReadAllText($gtp, [Text.Encoding]::UTF8) }
 Check ($gtTxt -match 'diff --name-only' -and $gtTxt -match 'status --porcelain' -and $gtTxt -match 'Select-Object -Unique') 'template/gate.ps1 变更清单 = 已提交 ∪ 未提交（不再假绿）'
+Check ($gtTxt -match 'Split\(' -and $gtTxt -match '-ScopeFiles "src/a\.ts,src/b\.ts"') 'template/gate.ps1 的 -ScopeFiles 归一化（逗号串：powershell -File 不支持数组传参）'
+$orpTxt = if (Test-Path (Join-Path $tpl 'orphans.ps1')) { [IO.File]::ReadAllText((Join-Path $tpl 'orphans.ps1'), [Text.Encoding]::UTF8) } else { '' }
+Check ($orpTxt -match '\$untracked\.Count -gt 0') 'template/orphans.ps1 未跟踪文件计入退出码（清单不完整 = 红）'
+$badScope = @(@('23-分批编码','31-修复') | Where-Object { ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -match '-ScopeFiles \$scopeFiles\b' })
+Check (-not $badScope) "卡面 gate 调用不再直传数组（跑不通的形态：$($badScope -join ', ')）"
 Check ($smTxt -match '(?m)^\s*[-*]?\s*工作树状态\s*[:：]') 'STATE.md 有「工作树状态」（收尾必须干净）'
 Check ($smTxt -match '(?m)^\s*[-*]?\s*远端仓库\s*[:：]') 'STATE.md 有「远端仓库」（防历史只在本机）'
 $t11 = if (Test-Path (Join-Path $pb '11-选型初始化.md')) { [IO.File]::ReadAllText((Join-Path $pb '11-选型初始化.md'), [Text.Encoding]::UTF8) } else { '' }
 Check ($t11 -match 'gh repo create' -and $t11 -match 'git remote add') '11 卡有远端接入动作（三选一，可见性由人裁决）'
+Check ($t11 -match 'git init' -and $t11 -match 'gate\.ps1 -Anchor HEAD -ScopeFiles "README\.md,' -and $t11 -notmatch '(?m)^powershell -NoProfile -File gate\.ps1\s*$') '11 卡动作顺序：先 git init 提交，再 check/gate/orphans 首跑（非 git 或基线 0 时必假红）'
 $t12 = [IO.File]::ReadAllText((Join-Path $pb '12-接入已有项目.md'), [Text.Encoding]::UTF8)
 Check ($t12 -match 'git remote -v') '12 卡接入时查远端（防老项目无远端）'
 Check (([IO.File]::ReadAllText((Join-Path $pb '40-归档.md'), [Text.Encoding]::UTF8)) -match 'git push') '40 卡归档收尾有远端同步（push）'

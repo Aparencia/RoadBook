@@ -2,9 +2,9 @@
 # 判词：红 = exit 1（非 git 工作树 / 锚点无效 / 缺 -Anchor / 缺 -ScopeFiles / 越界 / 行数超限 / lockfile 变更）；
 #   黄 = 通过但有需注意项（重命名条目、变更清单为空），仍 exit 0；绿 = exit 0。
 # 用法（复制即用；缺参数或指错仓库时脚本会把这两行原样打回来）：
-#   powershell -NoProfile -File gate.ps1 -Anchor HEAD~1 -ScopeFiles "src/a.ts","src/b.ts" -RepoRoot .
+#   powershell -NoProfile -File gate.ps1 -Anchor HEAD~1 -ScopeFiles "src/a.ts,src/b.ts" -RepoRoot .
 #   powershell -NoProfile -File gate.ps1 -Anchor <起点提交哈希> -ScopeFiles "src/" -RepoRoot .
-# 参数：-Anchor 本批起点锚点（git 提交）｜-ScopeFiles 本批允许改动的文件或目录（目录项写 "src/" 或写到已存在的目录名）
+# 参数：-Anchor 本批起点锚点（git 提交）｜-ScopeFiles 本批允许改动的文件或目录（多个用**逗号**写在同一个引号里；目录项写 "src/" 或写到已存在的目录名）
 #   ｜-LineLimit/-TestLineLimit 行数硬阈值（测试文件豁免到后者）｜-RepoRoot git 工作树根，默认当前目录。
 # 为什么 -Anchor 与 -ScopeFiles 必填：没有锚点划不出"本批"范围，没有 scope 判不了越界——旧版本遇到这两种情况会整段跳过检查（假绿）。
 param(
@@ -14,11 +14,10 @@ param(
     [int]$TestLineLimit = 1000,
     [string]$RepoRoot = '.'
 )
-chcp 65001 > $null
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$fail = @(); $warn = @()
-$usage = 'powershell -NoProfile -File gate.ps1 -Anchor HEAD -ScopeFiles "src/a.ts","src/b.ts" -RepoRoot .'
-
+# -ScopeFiles 归一化：`powershell -NoProfile -File` 不支持数组传参——`-ScopeFiles "a","b"` 只落进一个元素（另一个被判越界），传数组变量直接绑定失败（Cannot process argument transformation）；规范形态 = 一个引号内的逗号串 `-ScopeFiles "src/a.ts,src/b.ts"`。进程内直接调用（`& .\gate.ps1 -ScopeFiles @('a','b')`）同样可用，这里对每个元素再切一次逗号；路径本身含逗号的项目请改把该文件所在目录写进 scope。
+$ScopeFiles = @(foreach ($__s in $ScopeFiles) { foreach ($__p in ([string]$__s).Split(',')) { if ($__p.Trim() -ne '') { $__p.Trim() } } })
+chcp 65001 > $null; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$fail = @(); $warn = @(); $usage = 'powershell -NoProfile -File gate.ps1 -Anchor HEAD -ScopeFiles "src/a.ts,src/b.ts" -RepoRoot .'
 # 测试文件判定：一律带词边界——旧正则 (test|spec) 会把 contest/latest/spectrum/inspector 判成测试文件而豁免到 1000 行。
 function IsTest($p) {
     return ($p -match '(?i)(^|[\\/])(tests?|specs?|__tests__)([\\/]|$)') -or ($p -match '(?i)\.(test|spec)\.[^.\\/]+$') -or ($p -match '(?i)(^|[\\/])test_[^\\/]+$') -or ($p -match '(?i)_test\.[^.\\/]+$')
@@ -50,10 +49,11 @@ if ($ScopeFiles.Count -eq 0) {
     exit 1
 }
 
-# ④ 变更清单 = 已提交(锚点..HEAD) ∪ 未提交/未跟踪(status -z)。只取一侧就是假绿：
+# ④ 变更清单 = 已提交(锚点..HEAD) ∪ 未提交/未跟踪(status -z --untracked-files=all)。只取一侧就是假绿：
+#   -uall 必须有：默认口径把整个未跟踪目录塌成一条 "?? src/"，其下的新文件既不进行数检查也不进范围判定。
 #   -z 输出以 NUL 分隔；重命名条目格式为 "XY 新路径\0旧路径\0"，必须吃掉第二个字段，否则 "旧 -> 新" 会变成一个假路径（P0-5 假红）。
 $changed = @(git -C $RepoRoot -c core.quotepath=false diff --name-only "$Anchor..HEAD" 2>$null | Where-Object { $_ })
-$z = @(((git -C $RepoRoot -c core.quotepath=false status --porcelain -z 2>$null) -join '') -split "`0")
+$z = @(((git -C $RepoRoot -c core.quotepath=false status --porcelain -z --untracked-files=all 2>$null) -join '') -split "`0")
 $i = 0
 while ($i -lt $z.Count) {
     $e = [string]$z[$i]; $i++

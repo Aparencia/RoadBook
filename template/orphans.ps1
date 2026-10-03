@@ -1,9 +1,10 @@
-﻿# orphans.ps1 · 孤儿与幽灵五查（只报不拦；仅"读取不干净"时退出码非 0）
+﻿# orphans.ps1 · 孤儿与幽灵五查（只报不拦；清单不完整时退出码非 0）
 # 用途：删除腐化治理的对照清单——源码没人引用 / 导出没人调用 / 文档写的路径不存在 / 源码没进文档 / 组件没登记。
 # 用法：在项目根执行 powershell -NoProfile -File orphans.ps1
 # 为什么只报不拦：判据是正则启发式（必然有误报），而"删哪个"属于人的裁决（AGENTS.md §4 不可委托清单）；
 #   门禁是 check.ps1 的职责，本脚本只出五张清单。
-# 退出码：0=五张清单已产出（未跟踪文件只打 [WARN]，清单完整性由 40 卡"工作树干净"把关，不改退出码）；1=有文件读取/解析失败（计数不可信 = 仪器故障，先修仪器）。
+# 退出码：0=五张清单已产出且文件清单完整；1=有未跟踪文件（清单隐形，先 git add）或有文件读取/解析失败（计数不可信 = 仪器故障）。
+#   五张清单本身只报不拦（判据是正则启发式，删哪个属于人的裁决），但"清单不完整"必须是红的——否则新文件能一直隐形。
 # 口径（全脚本统一，不因清单不同而变）：
 #   文件清单 = git -c core.quotepath=false ls-files -z（中文/特殊字符名不再被转义成八进制串）
 #     ∪ 同一命令 --others --exclude-standard（未跟踪文件，否则新文件在五张清单里全部隐形）
@@ -79,7 +80,7 @@ foreach ($x in $ghost.Keys) { Write-Host "[文档幽灵] $x" }
 foreach ($x in $rev) { Write-Host "[反向幽灵] $x" }
 foreach ($x in $unreg) { Write-Host "[未登记] $x" }
 foreach ($x in $bad) { Write-Host "[读取失败] $x" -ForegroundColor Red }
-if ($untracked.Count -gt 0) { Write-Host ("[WARN] 未跟踪 {0} 个文件：五张清单不完整（先 git add 再复跑；本行不改退出码）" -f $untracked.Count) -ForegroundColor Yellow }
+if ($untracked.Count -gt 0) { Write-Host ("[FAIL] 未跟踪 {0} 个文件：五张清单不完整（先 git add 再复跑）" -f $untracked.Count) -ForegroundColor Red }
 Write-Host ("孤儿 {0} 项｜零引用导出 {1} 项｜文档幽灵 {2} 项｜反向幽灵 {3} 项｜未登记 {4} 项｜未跟踪 {5} 项｜读取失败 {6} 项｜文件数 {7}" -f $orphan.Count, $zero.Count, $ghost.Count, $rev.Count, $unreg.Count, $untracked.Count, $bad.Count, $rel.Count)
-if ($bad.Count -gt 0) { Write-Host "[FAIL] 仪器故障：有文件读取/解析失败，计数不可信——先修仪器再解读清单" -ForegroundColor Red; exit 1 }
+if ($bad.Count -gt 0 -or $untracked.Count -gt 0) { Write-Host "[FAIL] 清单不完整（未跟踪文件或读取/解析失败）：计数不可信，先修仪器/先 git add 再解读" -ForegroundColor Red; exit 1 }
 exit 0
