@@ -18,13 +18,12 @@ if ($Anchor -ne '') {
     if ($LASTEXITCODE -ne 0) { $fail += "锚点无效：$Anchor 不存在（核对 STATE.md 起点 锚点）" }
 }
 
-# 变更文件清单（锚点..HEAD 或未提交变更）
+# 变更文件清单 = 已提交(锚点..HEAD) ∪ 未提交(含未跟踪)——两者都要算：
+# 只取锚点区间时，"提交前跑门禁"对未提交改动完全失明 = 打印 GREEN 却什么都没查（假绿）。
 $changed = @()
-if ($Anchor -ne '') {
-    $changed = @(git -C $RepoRoot diff --name-only "$Anchor..HEAD")
-} else {
-    $changed = @(git -C $RepoRoot status --porcelain | ForEach-Object { $_.Substring(3).Trim() })
-}
+if ($Anchor -ne '') { $changed += @(git -C $RepoRoot diff --name-only "$Anchor..HEAD" 2>$null) }
+$changed += @(git -C $RepoRoot status --porcelain 2>$null | ForEach-Object { $_.Substring(3).Trim() })
+$changed = @($changed | Where-Object { $_ } | Select-Object -Unique)
 
 # ② 范围合规（提供 ScopeFiles 才检查；支持精确路径与前缀）
 if ($ScopeFiles.Count -gt 0 -and $changed.Count -gt 0) {

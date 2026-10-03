@@ -69,7 +69,7 @@ Check ($null -eq $extra) "playbook/ 无未注册卡（多出：$($extra.BaseName
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 200; 'docs\ARCHITECTURE.md' = 100; 'docs\RUNBOOK.md' = 80; 'check.ps1' = 60; 'doctor.ps1' = 60; 'gate.ps1' = 70; 'orphans.ps1' = 60 }
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 200; 'docs\ARCHITECTURE.md' = 100; 'docs\RUNBOOK.md' = 80; 'check.ps1' = 80; 'doctor.ps1' = 60; 'gate.ps1' = 70; 'orphans.ps1' = 60 }
 foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','.env.example','.gitignore','docs\README.md','docs\ARCHITECTURE.md','docs\RUNBOOK.md','docs\registry\COMPONENTS.md','docs\registry\DATA_DICT.md','docs\registry\APIS.md','docs\pool\IDEAS.md','docs\TECH_DEBT.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
@@ -116,7 +116,26 @@ if (Test-Path $sk) {
     Check (-not $skDead) "SKILL.md 引用的卡全部存在（幽灵引用：$($skDead -join ', ')）"
 }
 
-Write-Host "== 5. 结论 =="
+Write-Host "== 5. 版本管理主动性（git）=="
+Check ($ckTxt -match 'status --porcelain' -and $ckTxt -match 'rev-list --count') 'template/check.ps1 有 git 断言（工作树干净 + 本批提交计数）'
+$gtTxt = ''
+$gtp = Join-Path $tpl 'gate.ps1'
+if (Test-Path $gtp) { $gtTxt = [IO.File]::ReadAllText($gtp, [Text.Encoding]::UTF8) }
+Check ($gtTxt -match 'diff --name-only' -and $gtTxt -match 'status --porcelain' -and $gtTxt -match 'Select-Object -Unique') 'template/gate.ps1 变更清单 = 已提交 ∪ 未提交（不再假绿）'
+Check ($smTxt -match '(?m)^\s*[-*]?\s*工作树状态\s*[:：]') 'STATE.md 有「工作树状态」（收尾必须干净）'
+Check ($smTxt -match '(?m)^\s*[-*]?\s*远端仓库\s*[:：]') 'STATE.md 有「远端仓库」（防历史只在本机）'
+$t11 = if (Test-Path (Join-Path $pb '11-选型初始化.md')) { [IO.File]::ReadAllText((Join-Path $pb '11-选型初始化.md'), [Text.Encoding]::UTF8) } else { '' }
+Check ($t11 -match 'gh repo create' -and $t11 -match 'git remote add') '11 卡有远端接入动作（三选一，可见性由人裁决）'
+$t12 = [IO.File]::ReadAllText((Join-Path $pb '12-接入已有项目.md'), [Text.Encoding]::UTF8)
+Check ($t12 -match 'git remote -v') '12 卡接入时查远端（防老项目无远端）'
+Check (([IO.File]::ReadAllText((Join-Path $pb '40-归档.md'), [Text.Encoding]::UTF8)) -match 'git push') '40 卡归档收尾有远端同步（push）'
+$t43 = [IO.File]::ReadAllText((Join-Path $pb '43-流程体检.md'), [Text.Encoding]::UTF8)
+Check ($t43 -match '提交节奏' -and $t43 -match '推送滞后') '43 卡有提交节奏与推送滞后信号（十类信号）'
+$commitCards = [ordered]@{ '11-选型初始化' = '11'; '12-接入已有项目' = '12'; '23-分批编码' = '23'; '31-修复' = '31'; '40-归档' = '40'; '42-复盘' = '42'; '50-UI改动' = '50'; '51-依赖升级' = '51'; '53-功能下线' = '53' }
+$noNum = @($commitCards.Keys | Where-Object { ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -notmatch ('git commit -m "' + $commitCards[$_] + ' ') })
+Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）"
+
+Write-Host "== 6. 结论 =="
 Write-Host "通过 $pass 项；失败 $($fail.Count) 项"
 if ($fail.Count -gt 0) { $fail | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }; exit 1 }
 Write-Host "Roadbook（路书）V6 母版完整性校验：全部通过" -ForegroundColor Green

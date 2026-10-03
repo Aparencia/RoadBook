@@ -29,6 +29,27 @@ if ($null -eq $base -or $base -eq 0) { Write-Host "[--] 未设置文件数基线
 elseif ($cnt -le $base + $fileBudgetGrowth) { Write-Host "[OK] 文件数 $cnt <= 基线 $base + 允许新增 $fileBudgetGrowth" -ForegroundColor Green }
 else { Write-Host "[FAIL] 文件数预算超支：基线 $base / 当前 $cnt / 允许新增 $fileBudgetGrowth" -ForegroundColor Red; $fail++ }
 
+# --- git 断言：完成 = 已提交（未提交 = 没有历史；锚点/账本/归档全部空转）---
+if (-not (Test-Path (Join-Path $PSScriptRoot '.git'))) { Write-Host "[--] 非 git 仓库：跳过提交断言（项目尚未纳入版本管理——见 11/12 卡 git 起点动作）" -ForegroundColor Yellow }
+else {
+    $dirty = @(git -C $PSScriptRoot status --porcelain 2>$null | Where-Object { $_ })
+    if ($dirty.Count -gt 0) {
+        Write-Host "[FAIL] 工作树不干净：$($dirty.Count) 个未提交改动（完成 = 已提交）" -ForegroundColor Red
+        $dirty | Select-Object -First 10 | ForEach-Object { Write-Host "        $_" }
+        $fail++
+    } else { Write-Host "[OK] 工作树干净（本批改动都已提交）" -ForegroundColor Green }
+    $am = if (Test-Path $sm) { [regex]::Match([IO.File]::ReadAllText($sm, [Text.Encoding]::UTF8), '(?m)^\s*[-*]?\s*起点锚点\s*[:：]\s*([0-9a-fA-F]{7,40})') } else { $null }
+    if ($null -eq $am -or -not $am.Success) { Write-Host "[--] STATE.md 起点锚点未填：跳过本批提交计数断言" -ForegroundColor Yellow }
+    else {
+        $a = $am.Groups[1].Value
+        git -C $PSScriptRoot cat-file -e "$a^{commit}" 2>$null
+        $bc = if ($LASTEXITCODE -eq 0) { [int](git -C $PSScriptRoot rev-list --count ('{0}..HEAD' -f $a) 2>$null) } else { -1 }
+        if ($bc -ge 1) { Write-Host "[OK] 本批已有 $bc 个提交（起点锚点 $a 之后）" -ForegroundColor Green }
+        elseif ($bc -eq 0) { Write-Host "[FAIL] 本批 0 提交：起点锚点 $a 之后的提交数为 0（锚点未前移 = 做完没落历史）" -ForegroundColor Red; $fail++ }
+        else { Write-Host "[FAIL] 起点锚点无效：$a 不是本仓库的提交（核对 STATE.md）" -ForegroundColor Red; $fail++ }
+    }
+}
+
 if ($STEPS.Count -eq 0) {
     Write-Host "[未配置] check 步骤为空。" -ForegroundColor Yellow
     Write-Host "请在脚本顶部 STEPS 数组填入本项目的检查命令（参考上方注释里的常见栈示例）。"
