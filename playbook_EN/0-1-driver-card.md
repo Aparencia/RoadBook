@@ -55,6 +55,22 @@ Execute in order; if any item is missing, stop immediately and ask the user — 
 8. Individual tier (default): when one person plus an agent does the work, clauses about "multiple parties / stakeholders / notification targets / review boards" take the individual branch —
    skip them and write a one-line reason in the STATE.md `裁剪记录` section. Gates default to "light confirmation" (say one word and continue);
    only tier L and red-line domains escalate to a "verdict" (wait for the human first). The five non-delegable items never soften: running SQL / releasing / deleting data / tagging / gate verdicts.
+9. Whenever you think "this card does not fit my task / I remember the rules / skip this step for now", scan the red-flag table below first;
+   hitting any row = stop and follow that row's Reality column.
+
+[ Red flags: what you will tell yourself ] (hitting any row = follow the Reality column, never the Thought column)
+| You may think | Reality |
+| :--- | :--- |
+| "This card does not fit my task" | Fit or not, cite the card name and the checklist verbatim first; failing to cite = this round is void (hard rule 1) |
+| "I remember this card's rules" | Cards change. Re-read the current file before executing; executing from memory = you did not read the card |
+| "Let me look at the code first and cite the checklist later" | Cite first. The card tells you how to look at the code |
+| "The task is simple, skip the four sections" | Simple tasks still walk all four sections; skipping one = this round is void (hard rule 2) |
+| "The user is in a hurry, skip the start confirmation" | The more urgent it is, the more you confirm: rework takes longer than confirmation |
+| "The checklist is long, I will quote only the key parts" | Hard rule 1 requires pasting everything the ① Start confirmation requires, verbatim; selective quoting = you did not read the card |
+| "Skip the evidence this round and add it next round" | No evidence = not done; evidence added next round does not count as this round's evidence |
+| "The red light looks like a code defect, I will fix it in passing" | Three questions first on a red light (instrument failures disguise themselves as code defects): fix the instrument first |
+| "The change is tiny, no need to run the gate" | The gate is a zero-token mechanical check; "the change is tiny" is the most common source of a false green |
+| "A small local change, no need to write back STATE.md" | No write-back = the next round starts from the wrong place; write-back is a hard rule |
 
 [ End of each round (after section ④ of the executed card) ]
 Confirm to the user in one line that state has been written back:

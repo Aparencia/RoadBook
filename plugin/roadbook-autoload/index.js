@@ -4,6 +4,10 @@
  * 作用：用户在一个 git 项目里开口谈开发任务时，把 roadbook 技能正文按内置
  * 「用户显式调用」的同一形状注入当前回合，使流程卡不依赖模型自觉。
  *
+ * 压缩感知：注入消息被上下文压缩 shadow 出可见面后，本插件会在下一次
+ * agent/pre-step 重新注入（判据 = session.surface 上还在不在，不是「历史上注入过没有」）——
+ * 否则长会话被压缩一次，后半程就再也拿不到流程卡。
+ *
  * 分工：门控与文案等纯逻辑在 ./trigger.js（不 import dsh 包，可离线单测）；
  * 本文件只做 Host 侧接线：读会话、查技能、注入消息、落观测。
  *
@@ -31,6 +35,7 @@ import {
   matchIntent,
   pickUserText,
   shortDigest,
+  surfaceInjectionState,
 } from './trigger.js'
 
 export const name = 'roadbook-autoload'
@@ -162,8 +167,11 @@ export function apply(ctx, config = {}, runtime = {}) {
       reportSkip('subagent', { cwd: header.cwd }, sessionId)
       return decision
     }
-    if (config.oncePerSession && sessionId.length > 0 && injectedSessions.has(sessionId)) {
-      reportSkip('once-per-session', {}, sessionId)
+    // 压缩把之前注入的消息 shadow 出可见面之后，oncePerSession 不许再拦：拦了会话后半程就没有流程卡。
+    // 判据问「模型还能不能看到」，不问「历史上有没有注入过」；只有读不到可见面时才退回旧的保守行为。
+    const surface = surfaceInjectionState(session, config.skills)
+    if (config.oncePerSession && surface === 'unavailable' && sessionId.length > 0 && injectedSessions.has(sessionId)) {
+      reportSkip('once-per-session', { cwd: header.cwd, surface }, sessionId)
       return decision
     }
 
@@ -207,23 +215,16 @@ export function apply(ctx, config = {}, runtime = {}) {
       if (skill === undefined || skill === null || !isUserInvocable(skill)) continue
       resolved = true
 
+      const skillSurface = surfaceInjectionState(session, skillName)
       const via = []
       if (hasInjectedMessage(decision.messages, skillName)) via.push('decision-messages')
       if (hasInjectedMessage(messages, skillName)) via.push('turn-messages')
-      if (alreadyInjected(session, skillName)) via.push('session-log')
+      if (skillSurface === 'present') via.push('session-surface')
+      // 日志兜底只在读不到可见面时生效：可见面已经说「被 shadow 掉了」时，日志里那条不算数。
+      if (skillSurface === 'unavailable' && alreadyInjected(session, skillName)) via.push('session-log')
       if (via.length > 0) {
         if (sessionId.length > 0) injectedSessions.add(sessionId)
-        reportSkip(
-          'already-injected',
-          {
-            cwd: header.cwd,
-            skill: skillName,
-            via,
-            // alreadyInjected 只认 { events[].data.message.source } 形状：形状变了就明说「未知」，不静默。
-            sessionLog: Array.isArray(session?.events) ? 'present' : 'unknown',
-          },
-          sessionId,
-        )
+        reportSkip('already-injected', { cwd: header.cwd, skill: skillName, via, surface: skillSurface }, sessionId)
         return decision
       }
 
@@ -256,9 +257,13 @@ export function apply(ctx, config = {}, runtime = {}) {
         continue
       }
 
+      // 第二次及以后还能走到注入，只该有一种理由：上一次注入已不在可见面上（被压缩 shadow 掉）。
+      const reinjected = skillSurface === 'absent' && sessionId.length > 0 && injectedSessions.has(sessionId)
       if (sessionId.length > 0) injectedSessions.add(sessionId)
       writeReport({
         event: 'inject',
+        reason: reinjected ? 'reinject-shadowed' : 'first',
+        surface: skillSurface,
         session: sessionId,
         cwd: header.cwd,
         skill: skillName,
@@ -270,7 +275,9 @@ export function apply(ctx, config = {}, runtime = {}) {
         text: text.slice(0, 80),
       })
       try {
-        ctx.logger?.info?.(`[roadbook-autoload] 命中「${hit}」→ 已加载 ${skillName}（会话 ${sessionId || '未知'}）`)
+        ctx.logger?.info?.(
+          `[roadbook-autoload] 命中「${hit}」→ 已${reinjected ? '（压缩后）重新' : ''}加载 ${skillName}（会话 ${sessionId || '未知'}）`,
+        )
       } catch {
         /* 日志是旁路 */
       }

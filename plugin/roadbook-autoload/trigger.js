@@ -107,15 +107,44 @@ export function hasInjectedMessage(messages, name) {
 
 /**
  * 会话日志里已有同名注入（会话恢复、插件重载时兜底去重）。
- * 事件形状按 `{ type, data: { message: { source } } }` 防御式读取。
+ * 事件形状两种都认：`{ data: { source } }`（user/message 事件里 data 就是消息本身）
+ * 与 `{ data: { message: { source } } }`（旧形状）；读不到就返回 false，不猜。
  */
 export function alreadyInjected(session, name) {
   const events = session?.events
   if (!Array.isArray(events)) return false
   return events.some((event) => {
-    const source = event?.data?.message?.source
+    const source = event?.data?.source ?? event?.data?.message?.source
     return source?.kind === 'skill-invocation' && source?.name === name
   })
+}
+
+/**
+ * 注入消息在「模型可见面」（session.surface）上是否还在。
+ *
+ * 压缩会把旧节点 shadow 出可见面：日志里还留着注入消息，模型却已经看不到 ——
+ * 只按日志去重，长会话被压缩一次之后就再也拿不到流程卡。所以判据问可见面，不问历史。
+ *
+ * @returns 'present' 仍在可见面（不必重注入）| 'absent' 已被 shadow（应重注入）| 'unavailable' 读不到面（不判断）
+ */
+export function surfaceInjectionState(session, names) {
+  const list = (typeof names === 'string' ? [names] : asList(names, [])).filter(
+    (item) => typeof item === 'string' && item.length > 0,
+  )
+  const nodes = session?.surface?.nodes
+  if (list.length === 0 || !Array.isArray(nodes) || typeof session?.eventAt !== 'function') return 'unavailable'
+  for (const seq of nodes) {
+    let event
+    try {
+      event = session.eventAt(seq)
+    } catch {
+      return 'unavailable'
+    }
+    if (event?.type !== 'user/message') continue
+    const source = event?.data?.source
+    if (source?.kind === 'skill-invocation' && list.includes(source?.name)) return 'present'
+  }
+  return 'absent'
 }
 
 /** SKILL.md 内容指纹（前 8 位），用于自进化的版本对账。 */

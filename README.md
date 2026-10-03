@@ -15,6 +15,7 @@
 | `template/` | 新项目的模板（1-2 卡初始化时整套复制，含 check/doctor/gate/orphans 四个守护脚本） | 1-2 卡 |
 | `design/` | 设计事实源 `v6-design.md` + 写作契约 + 30 种失败模式报告 | 改流程时才看 |
 | `_qc/check.ps1` | 母版唯一验收口径（结构校验 + 40 张卡中英逐张对齐；断言项数以脚本输出为准） | 每次改完跑一次 |
+| `_qc/baseline/` | 卡行为自测脚手架（压力提示词 → 真实 harness → 原样落盘证据；判定由人填 `judge.md`，脚本不改卡） | 改卡前跑一次；同一失败类型 ≥2 次复现才动卡 |
 | `SKILL.md` | DSH skill 入口：路由表 40 行 + 四条铁律 + 双语规则（不含判据） | agent 自动加载，或你打 `/roadbook` |
 | `plugin/roadbook-autoload/` | DSH 自动加载插件（组合包，可选安装） | 你，装一次 |
 | `LICENSE` | MIT 许可（可自由复制、改造、再分发） | 复用前看一眼 |

@@ -4,6 +4,7 @@
 
 - 注入形状与 DSH 内置「用户显式调用技能」完全一致：`source.kind = "skill-invocation"`、正文用官方 `renderSkillContent()` 渲染。
 - 只注入一次、只注入给真用户会话（子代理默认不注入）、用户手打 `/roadbook` 时自动让路，不重复加载。
+- **压缩感知**：注入消息被上下文压缩 shadow 出可见面后，下一次 `agent/pre-step` 会重新注入——判据是 `session.surface`（模型还能不能看到），不是"历史上注入过没有"；否则长会话被压缩一次，后半程就再也拿不到流程卡。
 - 一切可判定的门控都是确定性的：不命中就不注入；注入后仍由模型按流程卡行事，插件**不替用户做裁决**。
 
 ## 触发规则（三层门控）
@@ -12,7 +13,7 @@
 | --- | --- | --- |
 | ① 项目 | 会话 cwd 向上能找到 `.git`（家目录自身不算项目根，也不越过家目录向上找） | 开（`requireGitRoot`） |
 | ② 意图 | 用户消息命中开发意图关键词，且未命中抑制词 | 开（`mode: keyword`） |
-| ③ 去重 | 本会话未注入过、本回合无同名注入、用户没手打 `/roadbook` | 开（`oncePerSession`） |
+| ③ 去重 | 本回合无同名注入、本会话可见面上没有同名注入（被压缩 shadow 掉则重注入）、用户没手打 `/roadbook` | 开（`oncePerSession`） |
 
 关键词与抑制词都可在配置里整体替换；`mode: always` 表示只要是 git 项目里的用户消息就注入，`mode: off` 表示完全关闭。
 
@@ -28,7 +29,7 @@
 | `suppressKeywords` | 内置抑制词表 | 命中即不注入（优先于关键词） |
 | `includeSubagents` | `false` | 子代理会话是否也注入 |
 | `requireGitRoot` | `true` | 只在 git 项目内注入 |
-| `oncePerSession` | `true` | 一次会话只注入一次 |
+| `oncePerSession` | `true` | 一次会话只注入一次；**注入消息被压缩 shadow 掉后仍会重注入**（判据是可见面，读不到可见面时才退回"一次会话一次"） |
 | `note` | `true` | 正文后附一行说明（为什么加载、怎么关） |
 | `report` | `true` | 自进化 A 环：注入 / 跳过 / 报错各记一行 JSONL，`false` 完全关掉 |
 | `reportPath` | `""` | 观测文件路径，空 = `<os.tmpdir()>/roadbook-autoload.jsonl`（Windows 即 `%TEMP%\roadbook-autoload.jsonl`） |
@@ -73,7 +74,7 @@
    ```powershell
    Get-Content "$env:TEMP\roadbook-autoload.jsonl" -Tail 5
    ```
-   注入成功会出现 `{"event":"inject","skill":"roadbook","hit":"…"}`；只有 `{"event":"skip",…}` 说明被门控拦住，`reason` 直接写明是哪一层（`no-hit` / `not-git` / `once-per-session` / `subagent` / `mode-off` …）。
+   注入成功会出现 `{"event":"inject","skill":"roadbook","hit":"…","reason":"first"}`；压缩后重注入的那次是 `"reason":"reinject-shadowed"`（`surface` 字段写明可见面判据读到的是 `present` / `absent` / `unavailable`）；只有 `{"event":"skip",…}` 说明被门控拦住，`reason` 直接写明是哪一层（`no-hit` / `not-git` / `once-per-session` / `already-injected` / `subagent` / `mode-off` …）。
 3. **试一轮**：在 git 项目里说「帮我重构一下这个模块」，当回合应出现技能正文 + 一行 `[roadbook-autoload]` 说明，观测文件同时多一行 `inject`。
 4. **对不上时**：若启动日志报 `ERR_MODULE_NOT_FOUND: Cannot find package '@deepseek-ai/dsh-llm'`，就是 peer 范围与宿主版本脱节 → 按上表重新取证并改 `package.json` 后重装；若只是不注入，先在母版跑下节两个离线测试，再按「验证」四条核对门控。
 
@@ -94,4 +95,4 @@ node plugin/roadbook-autoload/test/trigger.test.mjs
 node plugin/roadbook-autoload/test/index.test.mjs
 ```
 
-`trigger.test.mjs`：纯逻辑在 `trigger.js`（不 import 任何 dsh 包），可脱离 Harness 离线跑。`index.test.mjs`：用假 ctx / 假 skill 驱动 `agent/pre-step`，覆盖「命中关键词注入」「未命中跳过」「skills 未配置」「渲染失败不抛异常」「观测默认落盘 / `report: false` 不落盘」「oncePerSession / 子代理 / mode: off / 宿主 reject 让路」「git 门控」等分支；宿主包由 `test/dsh-stubs/` 的 loader 钩子顶替（真实运行时由宿主注入）。`index.js` 只做 Host 侧接线。DSH 升级后若 `agent/pre-step` 决策形状、`ctx.skills` 或 `renderSkillContent` 有变，先重跑本测试，再对照 DSH 自带的组合包开发指南（`@deepseek-ai/dsh-agent-preset/skills/cordis-plugin-development/`）核对契约。
+`trigger.test.mjs`：纯逻辑在 `trigger.js`（不 import 任何 dsh 包），可脱离 Harness 离线跑。`index.test.mjs`：用假 ctx / 假 skill 驱动 `agent/pre-step`，覆盖「命中关键词注入」「未命中跳过」「skills 未配置」「渲染失败不抛异常」「观测默认落盘 / `report: false` 不落盘」「oncePerSession / 子代理 / mode: off / 宿主 reject 让路」「git 门控」「压缩后重注入（可见面 present / absent / unavailable 三态）」等分支；宿主包由 `test/dsh-stubs/` 的 loader 钩子顶替（真实运行时由宿主注入）。`index.js` 只做 Host 侧接线。DSH 升级后若 `agent/pre-step` 决策形状、`session.surface` / `session.eventAt`、`ctx.skills` 或 `renderSkillContent` 有变，先重跑本测试，再对照 DSH 自带的组合包开发指南（`@deepseek-ai/dsh-agent-preset/skills/cordis-plugin-development/`）核对契约。

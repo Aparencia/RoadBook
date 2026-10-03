@@ -59,15 +59,23 @@ const setup = ({ skills = {}, skillsGet, config = {}, home, logger } = {}) => {
   return handler
 }
 
-const step = (handler, { text = '帮我重构登录模块', id = 'session-test', cwd = TMP, header = {}, decide = next } = {}) =>
+const step = (handler, { text = '帮我重构登录模块', id = 'session-test', cwd = TMP, header = {}, decide = next, session } = {}) =>
   handler(
     {
-      agent: { session: { header: { id, cwd, ...header } } },
+      agent: { session: session ?? { header: { id, cwd, ...header } } },
       messages: [user(text)],
       signal: { throwIfAborted: () => {} },
     },
     decide,
   )
+
+/** 造一个带「模型可见面」的假会话：messages = 当前还看得见的消息来源（压缩后变短）。 */
+const visibleSession = ({ id = 'session-surface', cwd = TMP, messages = [] } = {}) => {
+  const events = messages.map((source) => ({ type: 'user/message', data: { source } }))
+  return { header: { id, cwd }, surface: { nodes: events.map((_, index) => index) }, eventAt: (seq) => events[seq] }
+}
+
+const invocation = { kind: 'skill-invocation', name: 'roadbook' }
 
 test('模块形状：name / inject / Config', () => {
   assert.equal(name, 'roadbook-autoload')
@@ -258,7 +266,7 @@ test('requireGitRoot：项目内注入、项目外让路，家目录自身与家
   assert.equal(readReport(homeFile).at(-1).reason, 'not-git')
 })
 
-test('已注入过：记 skip/already-injected，会话日志形状未知时标注出来', async () => {
+test('已注入过：记 skip/already-injected，并标注可见面读不到', async () => {
   const file = join(TMP, 'dedupe.jsonl')
   const handler = setup({ skills: { roadbook: skill() }, config: { reportPath: file } })
   const decision = {
@@ -271,7 +279,64 @@ test('已注入过：记 skip/already-injected，会话日志形状未知时标�
   const line = readReport(file).at(-1)
   assert.equal(line.reason, 'already-injected')
   assert.deepEqual(line.via, ['decision-messages'])
-  assert.equal(line.sessionLog, 'unknown')
+  assert.equal(line.surface, 'unavailable')
+})
+
+test('压缩后重新注入：注入消息不在可见面就再注入，仍在可见面就跳过', async () => {
+  const file = join(TMP, 'reinject.jsonl')
+  const handler = setup({ skills: { roadbook: skill() }, config: { reportPath: file } })
+  const decision = { kind: 'continue', messages: [] }
+
+  // 第一次：可见面里没有本技能的注入 → 正常注入。
+  const first = await step(handler, { session: visibleSession({ id: 'session-compact' }), decide: async () => decision })
+  assert.notEqual(first, decision, '第一次必须注入')
+  assert.equal(readReport(file).at(-1).reason, 'first')
+
+  // 压缩把注入消息 shadow 掉了：可见面仍为空 → 必须重注入（oncePerSession 不许拦）。
+  const second = await step(handler, { session: visibleSession({ id: 'session-compact' }), decide: async () => decision })
+  assert.notEqual(second, decision, '注入消息已出可见面时必须重注入')
+  const line = readReport(file).at(-1)
+  assert.equal(line.event, 'inject')
+  assert.equal(line.reason, 'reinject-shadowed')
+  assert.equal(line.surface, 'absent')
+
+  // 注入消息还在可见面：跳过，且理由指向可见面。
+  const kept = visibleSession({ id: 'session-compact', messages: [invocation] })
+  const third = await step(handler, { session: kept, decide: async () => decision })
+  assert.equal(third, decision)
+  const skip = readReport(file).at(-1)
+  assert.equal(skip.reason, 'already-injected')
+  assert.deepEqual(skip.via, ['session-surface'])
+  assert.equal(skip.surface, 'present')
+})
+
+test('会话日志里有注入记录、可见面已空：仍然重注入（判据是可见面不是历史）', async () => {
+  const file = join(TMP, 'log-vs-surface.jsonl')
+  const handler = setup({ skills: { roadbook: skill() }, config: { reportPath: file } })
+  const decision = { kind: 'continue', messages: [] }
+  const session = visibleSession({ id: 'session-shadow' })
+  session.events = [{ type: 'user/message', data: { source: invocation } }]
+
+  const result = await step(handler, { session, decide: async () => decision })
+  assert.notEqual(result, decision, '日志里那条已被压缩 shadow，不许当成「还在」')
+  assert.equal(readReport(file).at(-1).reason, 'first')
+})
+
+test('读不到可见面时回退到会话日志去重', async () => {
+  const file = join(TMP, 'log-fallback.jsonl')
+  const handler = setup({ skills: { roadbook: skill() }, config: { reportPath: file } })
+  const decision = { kind: 'continue', messages: [] }
+  const session = {
+    header: { id: 'session-log', cwd: TMP },
+    events: [{ type: 'user/message', data: { source: invocation } }],
+  }
+
+  const result = await step(handler, { session, decide: async () => decision })
+  assert.equal(result, decision)
+  const line = readReport(file).at(-1)
+  assert.equal(line.reason, 'already-injected')
+  assert.deepEqual(line.via, ['session-log'])
+  assert.equal(line.surface, 'unavailable')
 })
 
 test('边界：空文本不注入、超长文本只截 80 字进观测、未知 mode 仍按 keyword 走', async () => {

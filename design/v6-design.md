@@ -283,6 +283,8 @@
 6. 全部脚本一律 .ps1（Windows 优先）；必须用 .sh 时卡内附一行 Git Bash 跑法
 7. 卡内对母版内部文件的引用 = 0（判据内联）；对项目文件的引用 = 具体路径
 8. 卡头部元信息 ≤3 行（卡号/名/触发），不写"来源/定位/生成日期"长前缀
+9. 卡里的**合理化红旗表**（2026-10-03 补，源自 superpowers 的 Red Flags 实证）：已知会被绕过的判断给两列表 `| 你会想 | 事实 |`，逐字写真实出现过的说法；存量卡不追溯，按 6-6 卡"信号 ≥2 次复现才改规则"补写。配套**判据分界**：机器能判的一律下沉为脚本断言（零 token），散文只留给需要判断力的事
+10. **自行裁决留痕**（2026-10-03 补，源自 superpowers `executing-plans` 的 `Ruling:` 格式）：4-1 只规定了"什么时候必须停下问人"，没规定"不停下的时候写什么"。每批没停下问人的判断各留一行 `裁决：【决定了什么】—【依据】—【错了的代价】`，写进本批知会与 `STATE.md` 未决问题；代价 ≥ 半天返工的，回执里点名请用户复核
 
 ## 9. 明知的取舍（已与用户确认）
 
@@ -339,6 +341,8 @@
 3. **卡清单三处一致**：新增/删除卡必须同时改 §4 表、`README.md`、`SKILL.md` 路由；任缺一处判红。
 4. **翻译不许改判据**：英文版可以显式化含糊表述（并标 `[disambiguated]`），但不许增删数字、阈值、命令、清单条目——英文版比中文版"更宽容"或"更严格"都是 bug。
 5. **docs ↔ 卡对应表**：新增 `docs/` 文档必须同时登记进 §5 目录树与 `template/docs/README.md` 的对应表（产出卡 + 消费卡），否则是分裂文档。
+
+**母版自测（2026-10-03 增，源自 superpowers 的技能行为测试）**：`_qc/baseline/` 只做一件事——把压力提示词喂给真实 harness、原样落盘证据、算机械指纹；**判定由人填 `judge.md`，本目录不改任何卡**（与 6-6 卡「信号 ≥2 次复现才改规则」同门槛）。未接线（没给 `-HarnessCmd`）= exit 2，不猜默认命令；跑之前先写下要验证哪一类失败（跳过规则 / 形态不对 / 元素缺失 / 条件规则），因为形态类问题上禁令实测比不给指导更差。
 
 ## 12. 生成多删除少的治理（2026-10-03 增补）
 
@@ -401,16 +405,18 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 
 - `package.json`（`dsh.bundle.patch` → `cordis.patch.yml`，声明 `dsh.compatibility.dshReleases`）＋ `cordis.patch.yml`（`- insert:` 一行把包挂进宿主）
 - `index.js` = Host 半区插件（`export function apply` / `export const inject = ['agents','skills']` / `export const Config`），只做接线
-- `trigger.js` = 纯逻辑（**不 import 任何 dsh 包**，可 `node plugin/roadbook-autoload/test/trigger.test.mjs` 离线单测，11 例）
+- `trigger.js` = 纯逻辑（**不 import 任何 dsh 包**，可 `node plugin/roadbook-autoload/test/trigger.test.mjs` 离线单测，13 例）
 - `locale/zh.json`、`locale/en.json`、`icon.svg`（插件页展示）、`README.md`（配置表 / 安装 / 验证）
 
 **机制**：挂 `agent/pre-step`（waterfall，镜像内置手势 `dsh-tool-skill` 的实现）——命中就 `return { ...decision, messages: [...decision.messages, createUserMessage({ content, source: { kind: 'skill-invocation', name, form: 'instructions' } })] }`（spread 决策以保留 `startsRequestSeries`），正文由官方 `renderSkillContent()` 渲染。**这与用户手打 `/roadbook` 走同一条路**，模型看到同一份 `<skill_content>`，也让"自动注入"与"显式调用"在会话日志里可区分（`source.kind`）。
 
-**三层门控（全部可判定，不靠模型）**：① 会话 cwd 向上能找到 `.git`（`requireGitRoot`）；② 用户消息命中开发意图关键词且**未**命中抑制词（"只讨论 / 不要动代码 / 不用流程"一类，抑制词优先）；③ 去重：本会话未注入过、本回合无同名注入、用户没手打 `/<skill>`（让路给内置手势）。另：子代理会话默认不注入（`includeSubagents`）、`note` 在正文后附一行透明说明（为什么加载 / 怎么关）、`mode: off` 整体关闭、`mode: always` 改成"只要在 git 项目里就注入"。
+**三层门控（全部可判定，不靠模型）**：① 会话 cwd 向上能找到 `.git`（`requireGitRoot`）；② 用户消息命中开发意图关键词且**未**命中抑制词（"只讨论 / 不要动代码 / 不用流程"一类，抑制词优先）；③ 去重：本会话可见面（`session.surface`）上没有同名注入、本回合无同名注入、用户没手打 `/<skill>`（让路给内置手势）。另：子代理会话默认不注入（`includeSubagents`）、`note` 在正文后附一行透明说明（为什么加载 / 怎么关）、`mode: off` 整体关闭、`mode: always` 改成"只要在 git 项目里就注入"。
 
-**自进化三环（只观测、只提示，绝不改卡）**：A **命中观测**——`reportPath` 落 JSONL（时间/会话/cwd/技能/命中词/指纹/消息摘要），默认关，开了供 6-6 卡体检抽样；B **版本对账**——`skillDigest` 与 SKILL.md 当前指纹比对，不一致就在注入说明里提示"技能已更新"，默认开（基线为空则不提示）；C **空转观测**——"注入了但整轮没读 `playbook/*.md`"记为疑似空转，**暂不做**（避免为观测再挂钩子）。**边界**：插件不自动改卡、不自动改配置、不替用户裁决门禁；流程卡变更仍走 6-6 卡体检 + 用户裁决。
+**压缩感知（2026-10-03 增补）**：上下文压缩会把已注入的消息 shadow 出可见面——日志里还留着，模型却看不到了。所以 ③ 的判据问**可见面**而不是问历史：`surfaceInjectionState()` 读 `session.surface.nodes` + `session.eventAt(seq)`，返回 `present`（还在 → 跳过）/ `absent`（已被 shadow → 重注入，观测里 `reason: reinject-shadowed`）/ `unavailable`（读不到面 → 退回旧的"一次会话一次"保守行为，绝不猜）。会话日志只作 `unavailable` 时的兜底。**不这么做的代价**：长会话被压缩一次后，后半程完全失去流程卡，而 `oncePerSession` 会让它静默失效。
 
-**代价与脆弱面（明说）**：① 误命中成本 ≈ 1.2K tokens/会话，三层门控把它压到"开发意图明确"才发生；② 依赖 DSH 的 `agent/pre-step` 决策形状、`ctx.skills.get`、`renderSkillContent` 三处——DSH 升级后若改动它们，插件可能静默失效，先跑离线单测再按四条验证核对；③ 组合包**不自动更新**，升级 = 插件页卸载 + 重装（配置在 `cordis.patch.yml` 里，重装后按需重填）；④ 运行时依赖（`@deepseek-ai/dsh-*` 一类宿主包）以 `peerDependencies` 声明、由**宿主提供**，插件内不装、不打包——宿主大版本升级后先看 peer 范围是否仍满足，不满足要同步改 `package.json` 再重装。
+**自进化三环（只观测、只提示，绝不改卡）**：A **命中观测**——`reportPath` 落 JSONL（时间/会话/cwd/技能/命中词/指纹/消息摘要/可见面判据），默认**开**（`report: false` 关），开了供 6-6 卡体检抽样；B **版本对账**——`skillDigest` 与 SKILL.md 当前指纹比对，不一致就在注入说明里提示"技能已更新"，默认开（基线为空则不提示）；C **空转观测**——"注入了但整轮没读 `playbook/*.md`"记为疑似空转，**暂不做**（避免为观测再挂钩子）。**边界**：插件不自动改卡、不自动改配置、不替用户裁决门禁；流程卡变更仍走 6-6 卡体检 + 用户裁决。
+
+**代价与脆弱面（明说）**：① 误命中成本 ≈ 1.2K tokens/会话，三层门控把它压到"开发意图明确"才发生；② 依赖 DSH 的 `agent/pre-step` 决策形状、`session.surface` 与 `session.eventAt`（压缩感知的可见面判据；读不到就退回保守行为）、`ctx.skills.get`、`renderSkillContent` 四处——DSH 升级后若改动它们，插件可能静默失效，先跑离线单测再按四条验证核对；③ 组合包**不自动更新**，升级 = 插件页卸载 + 重装（配置在 `cordis.patch.yml` 里，重装后按需重填）；④ 运行时依赖（`@deepseek-ai/dsh-*` 一类宿主包）以 `peerDependencies` 声明、由**宿主提供**，插件内不装、不打包——宿主大版本升级后先看 peer 范围是否仍满足，不满足要同步改 `package.json` 再重装。
 
 **为什么不用另两条路**：写 `~/.dsh/AGENTS.md` 或改 `template/AGENTS.md` 都是"请遵守"的**软指令**，仍由模型服从（用户要的正是 100% 自动）；且后者只影响装了模板的新项目，还会让项目宪法带上母版依赖。插件是唯一在"每回合注入"这一层生效、又不污染任何项目文件的形态。
 

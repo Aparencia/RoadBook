@@ -80,8 +80,8 @@ Check ($enDiff.Count -eq 0) "英文卡文件名与 §4.1 表逐张对齐（不�
 
 $sections = @('## ① 开工确认','## ② 执行','## ③ 证据回执','## ④ 状态回写')
 $enSections = @('## ① Start confirmation','## ② Execution','## ③ Evidence receipt','## ④ State write-back')
-$metaMarkers = @('【第一次运行','【把意图路由到卡','【执行任何卡时的硬规则','【每轮收尾')
-$enMetaMarkers = @('[ First run','[ Route the intent to a card','[ Hard rules when executing any card','[ End of each round')
+$metaMarkers = @('【第一次运行','【把意图路由到卡','【执行任何卡时的硬规则','【红旗表','【每轮收尾')
+$enMetaMarkers = @('[ First run','[ Route the intent to a card','[ Hard rules when executing any card','[ Red flags','[ End of each round')
 # 禁引用 design/ _archive/ playbook/ template/；下列卡例外，理由随行写明（禁止静默放宽）
 $tplRefAllowed = @{
     '1-2-选型初始化'   = '施工卡：整套复制母版 template/ 生成项目'
@@ -148,6 +148,10 @@ Check (-not $badRef) "中文卡无母版内部引用（问题：$($badRef -join 
 Check (-not $badTail) "每张动作卡有固定收尾语（缺：$($badTail -join ', ')）"
 Check (-not $badEn) "英文卡 H1/四段/收尾语与中文版逐段对应（问题：$($badEn -join '；')）"
 Check (-not $badRefEn) "英文卡无母版内部引用（问题：$($badRefEn -join '；')）"
+# 合理化红旗表：驱动卡是唯一常驻上下文，借口绕过必须在这里有对照表（段标记只保证标题在，表头断言保证表本身在；中英同批）
+$rfZh = [IO.File]::ReadAllText((Join-Path $pb '0-1-驱动卡.md'), [Text.Encoding]::UTF8)
+$rfEn = [IO.File]::ReadAllText((Join-Path $pen $enMap['0-1']), [Text.Encoding]::UTF8)
+Check (($rfZh -match [regex]::Escape('| 你会想 | 事实 |')) -and ($rfEn -match [regex]::Escape('| You may think | Reality |'))) '0-1 卡有合理化红旗表（中英同批：防借口绕过）'
 Observe ($longCards.Count -eq 0) "本轮观测项（不拦红）：卡 ≤150 行，超限 $($longCards.Count) 张 $($longCards -join ', ')"
 $extra = @(Get-ChildItem $pb -Filter *.md | Where-Object { $cards -notcontains $_.BaseName })
 Check ($extra.Count -eq 0) "playbook/ 无未注册卡（多出：$($extra.BaseName -join ', ')）"
@@ -170,6 +174,7 @@ $smp = Join-Path $tpl 'STATE.md'
 if (Test-Path $smp) { $smTxt = [IO.File]::ReadAllText($smp, [Text.Encoding]::UTF8) }
 Check ($smTxt -match '(?m)^\s*[-*]?\s*文件数基线\s*[:：]\s*\d+') 'STATE.md 有「文件数基线」（check.ps1 预算断言的数据源）'
 Check ($smTxt -match '## 并行态登记簿') 'STATE.md 有「并行态登记簿」（4-1 卡取代即删除的登记处）'
+Check (([IO.File]::ReadAllText((Join-Path $tpl 'AGENTS.md'), [Text.Encoding]::UTF8)).Contains('| 你会主张 | 需要什么（才算数） | 不算数 |')) 'template/AGENTS.md 回执契约含「主张｜需要什么｜不算数」三列表（挡住「我完成了」这类空口主张）'
 foreach ($f in @('当前文件数','工作树状态','远端仓库','起点锚点','档位','体检计数','风险摘要','最近完成','未决问题','下一步','最近归档','裁剪记录')) {
     Check ($smTxt -match ("(?m)^[\s#\-*|]*" + [regex]::Escape($f))) "STATE.md 含 design §7 字段「$f」（须是行首字段；正文里提一句不算——防字段被静默删掉）"
 }
@@ -192,6 +197,7 @@ $wired = @('4-1-分批编码','5-1-归档','6-6-流程体检','7-3-债与腐化�
 Check (-not $wired) "死代码治理四卡均引用 orphans.ps1（缺：$wired）"
 $p23 = Join-Path $pb '4-1-分批编码.md'
 Check ((Test-Path $p23) -and ([IO.File]::ReadAllText($p23, [Text.Encoding]::UTF8) -match '文件数基线')) '4-1 卡有「文件数基线」回写义务（防预算机制空转）'
+Check ((([IO.File]::ReadAllText((Join-Path $pb '4-1-分批编码.md'), [Text.Encoding]::UTF8)).Contains('自行裁决留痕')) -and (([IO.File]::ReadAllText((Join-Path $pen '4-1-batch-coding.md'), [Text.Encoding]::UTF8)).Contains('Verdict trail'))) '4-1 卡：自行裁决留痕格式在位（中英同批；不停下问人时也必须留一行）'
 foreach ($d in @('decisions','specs','reviews','versions','lessons','archive')) {
     Check (Test-Path (Join-Path $tpl "docs\$d")) "模板目录存在：docs/$d"
 }
@@ -282,10 +288,16 @@ $plgBad = @('locale\zh.json','locale\en.json') | Where-Object { $t = [IO.File]::
 Check (-not $plgBad) "插件中英文展示元信息齐（缺：$($plgBad -join ', ')）"
 $plgRdm = [IO.File]::ReadAllText((Join-Path $plg 'README.md'), [Text.Encoding]::UTF8)
 Check ($plgRdm -match 'trigger\.test\.mjs') '插件 README 写了离线单测命令'
+Check ($plgIdx -match 'surfaceInjectionState') '插件：压缩后重注入的可见面判据在位（禁止静默退回「只认日志去重」）'
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match 'plugin/roadbook-autoload') '根 README 指向自动加载插件（可发现）'
+$blDir = Join-Path $root '_qc/baseline'
+$blPrompts = @(Get-ChildItem (Join-Path $blDir 'prompts') -Filter '*.txt' -File -ErrorAction SilentlyContinue)
+$blFiles = @('run.ps1', 'README.md') | Where-Object { Test-Path (Join-Path $blDir $_) }
+$blTxt = ($blFiles | ForEach-Object { [IO.File]::ReadAllText((Join-Path $blDir $_), [Text.Encoding]::UTF8) }) -join "`n"
+Check (($blPrompts.Count -ge 4) -and ($blFiles.Count -eq 2) -and ($blTxt -match 'exit 2') -and ($blTxt -match '不改卡') -and ($blTxt -match '-HarnessCmd') -and ($blTxt -match '证据不足')) '卡行为 baseline 脚手架在位（≥4 条压力提示词 + run.ps1 未接线即 exit 2 + README 写明 -HarnessCmd 契约、判定口径与「只记证据不改卡」）'
 
 Write-Host "== 7. 脚本可执行性与口径统一 =="
-$ps1s = @('_qc\check.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')
+$ps1s = @('_qc\check.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')
 foreach ($rel in $ps1s) {
     $p = Join-Path $root $rel
     if (-not (Test-Path $p)) { Check $false "脚本存在：$rel"; continue }

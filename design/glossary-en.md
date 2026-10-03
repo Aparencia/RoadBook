@@ -60,10 +60,14 @@
 | 门禁 | gate |
 | 红灯 / 黄灯 / 绿灯 | red light / amber light / green light |
 | 停问规则 | stop-and-ask rule |
+| 红旗表（合理化对照表） | red-flag table |
+| 合理化 / 借口 | rationalization |
+| 判据分界 | criterion split |
 | 档位 S/M/L | tier S / M / L |
 | 红线 | red line |
 | 不可委托 | non-delegable |
 | 裁决 | verdict |
+| 自行裁决留痕 | verdict trail |
 | 轻确认 | light confirmation |
 | 信号（成本最低的知会） | signal |
 | 起点锚点 | start anchor |

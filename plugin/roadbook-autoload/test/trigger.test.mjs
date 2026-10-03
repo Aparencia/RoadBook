@@ -11,6 +11,7 @@ import {
   matchIntent,
   pickUserText,
   shortDigest,
+  surfaceInjectionState,
 } from '../trigger.js'
 
 const user = (text) => ({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
@@ -91,17 +92,39 @@ test('子代理会话识别', () => {
   assert.equal(isSubagentHeader(undefined), false)
 })
 
-test('会话日志去重按 skill-invocation 形状', () => {
+test('会话日志去重按 skill-invocation 形状（data.source 与 data.message.source 都认）', () => {
   const events = [
     { type: 'user/message', data: { message: { source: { kind: 'agent-instructions' } } } },
     { type: 'user/message', data: { message: { source: { kind: 'skill-invocation', name: 'roadbook' } } } },
   ]
   assert.equal(alreadyInjected({ events }, 'roadbook'), true)
   assert.equal(alreadyInjected({ events }, 'other'), false)
+  // 真实形状：user/message 事件的 data 就是消息本身。
+  assert.equal(alreadyInjected({ events: [{ type: 'user/message', data: { source: { kind: 'skill-invocation', name: 'roadbook' } } }] }, 'roadbook'), true)
   assert.equal(alreadyInjected({}, 'roadbook'), false)
   assert.equal(alreadyInjected(undefined, 'roadbook'), false)
   assert.equal(hasInjectedMessage([{ source: { kind: 'skill-invocation', name: 'roadbook' } }], 'roadbook'), true)
   assert.equal(hasInjectedMessage([], 'roadbook'), false)
+})
+
+test('可见面判据：present / absent / unavailable 三态', () => {
+  const session = (nodes, events) => ({ surface: { nodes }, eventAt: (seq) => events[seq] })
+  const injected = { type: 'user/message', data: { source: { kind: 'skill-invocation', name: 'roadbook' } } }
+  const plain = { type: 'user/message', data: { source: { kind: 'user' } } }
+
+  assert.equal(surfaceInjectionState(session([0, 1], [plain, injected]), 'roadbook'), 'present')
+  assert.equal(surfaceInjectionState(session([0], [plain]), 'roadbook'), 'absent')
+  assert.equal(surfaceInjectionState(session([0, 1], [plain, injected]), ['other', 'roadbook']), 'present')
+  // 读不到面（没有 surface / 没有 eventAt / 事件取不到）：不判断，交给调用方走保守分支。
+  assert.equal(surfaceInjectionState({}, 'roadbook'), 'unavailable')
+  assert.equal(surfaceInjectionState({ surface: { nodes: [0] } }, 'roadbook'), 'unavailable')
+  assert.equal(surfaceInjectionState(session([0], [undefined]), 'roadbook'), 'absent')
+  assert.equal(
+    surfaceInjectionState({ surface: { nodes: [0] }, eventAt: () => { throw new Error('boom') } }, 'roadbook'),
+    'unavailable',
+  )
+  assert.equal(surfaceInjectionState(session([0], [plain]), []), 'unavailable')
+  assert.equal(surfaceInjectionState(session([0], [plain]), 'roadbook'), 'absent')
 })
 
 test('指纹与说明文案', () => {
