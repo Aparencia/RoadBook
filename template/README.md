@@ -2,13 +2,13 @@
 
 > 一句话：<这个项目做什么、给谁用>（立项结论见 docs/decisions/）
 
-> 开发流程：**Roadbook V6 母版**——动作照母版 `playbook/` 卡走；`check/doctor/gate/orphans` 四个守护脚本随本项目走。
+> 开发流程：**Roadbook V6 母版**——动作照母版流程卡走（英文执行版 `playbook_EN/` 优先，中文判据版 `playbook/` 兜底）；`check/doctor/gate/orphans` 四个守护脚本随本项目走。
 
 ## 快速启动
 
 ```powershell
 powershell -NoProfile -File doctor.ps1   # 环境自检：每项输出版本号=通过
-# 启动开发服务（11 卡按选型填，如 pnpm dev / python -m app）
+# 启动开发服务（1-2 卡按选型填，如 pnpm dev / python -m app）
 powershell -NoProfile -File check.ps1    # 收工仪式：退出码 0 = 可以说"完成"
 ```
 
@@ -21,4 +21,4 @@ powershell -NoProfile -File check.ps1    # 收工仪式：退出码 0 = 可以�
 
 ## 给未来（三个月后）的自己
 
-放了两周回来不知从哪开始？发一次母版的 00-驱动卡，说"看看状态"或直接说你要做什么。
+放了两周回来不知从哪开始？发一次母版的 0-1-驱动卡，说"看看状态"或直接说你要做什么。

@@ -1,52 +1,76 @@
 ---
 name: roadbook
-description: Roadbook（路书）V6 开发流程母版，把开发动作落到固定流程卡上。用于开工确认、想法调研、选型初始化、老项目接入、功能调研与范围、设计、分批编码、代码审查、验证、根因分析与修复、回归验证、归档、发布、复盘、流程体检、UI 改动、依赖升级、技术债与腐化清理、功能下线。含门禁、完成定义、红灯与红线规则。用户提到「按流程 / 继续开发 / 开工 / 收工 / 验收 / 体检 / 清理旧代码」时加载。
+description: Roadbook（路书）V6 开发流程母版：36 张流程卡（0-1 驱动卡 + 35 张动作卡），中英双语（playbook/ 中文权威版 + playbook_EN/ 英文执行版），把开发动作落到固定卡上。覆盖开工确认、想法调研、选型初始化、老项目接入、需求获取与范围、非功能需求、风险与干系人、设计、威胁建模、测试策略、分批编码、代码审查、验证、持续集成、环境配置、归档、发布、灰度、观测、备份演练、事件响应、根因分析、修复、回归验证、复盘、流程体检、度量报告、UI 改动、依赖升级、技术债清偿、功能下线、合规隐私、国际化与可访问性、用户文档与交接。含门禁、完成定义、红灯与红线规则。用户提到「按流程 / 继续开发 / 开工 / 收工 / 验收 / 体检 / 清理旧代码」时加载。
 whenToUse: 用户要求按这套流程推进开发，或问「下一步走哪张卡 / 流程上我该做什么」时。
 user-invocable: true
 ---
 
-# Roadbook（路书）· skill 路由
+# Roadbook（路书）· skill 路由（36 张卡，中英双语）
 
-**基目录 = 本母版根**（`playbook/`、`template/`、`design/`、`_qc/`）。下面所有相对路径都相对基目录解析。上游仓库：<https://github.com/Aparencia/RoadBook>。
+**基目录 = 本母版根**（`playbook/` 中文权威版、`playbook_EN/` 英文执行版、`template/`、`design/`、`_qc/`）。下面所有相对路径都相对基目录解析。上游仓库：<https://github.com/Aparencia/RoadBook>。
 
 ## 先读什么
 
-- **任何一轮开始**：`playbook/00-驱动卡.md`——它负责把意图路由到卡，并给出硬规则。
+- **任何一轮开始**：`playbook_EN/0-1-driver-card.md`（同卡号中文权威版 `playbook/0-1-驱动卡.md`）——它负责把意图路由到卡，并给出硬规则。
 - **项目现状**：项目根的 `STATE.md`（唯一事实源：阶段 / 下一步 / 起点锚点 / 文件数基线 / 未决问题）。
-- **改流程本身**：同时改 `design/v6-design.md`，并跑 `powershell -NoProfile -File _qc/check.ps1`（退出码 0 才算改完；路径一律正斜杠）。
+- **改流程本身**：同时改 `design/v6-design.md` + 该卡中英两份，并跑 `powershell -NoProfile -File _qc/check.ps1`（退出码 0 才算改完；路径一律正斜杠）。
 
 ## 四条铁律（不可绕过）
 
-1. **开工确认**：复述任务 + 列出假设 + ≤5 个澄清问题 + **逐字粘贴本卡「检查清单」原文**。引不出原文 = 本轮作废，重发 `playbook/00-驱动卡.md`。（同一会话内已声明读过的规则不重复粘贴全文；新会话或规则变更后必须重读。）
+1. **开工确认**：复述任务 + 列出假设 + ≤5 个澄清问题 + **逐字粘贴本卡「检查清单」原文**。引不出原文 = 本轮作废，重发 `playbook_EN/0-1-driver-card.md`。（同一会话内已声明读过的规则不重复粘贴全文；新会话或规则变更后必须重读。）
 2. **完成的唯一定义（DoD）**：`powershell -NoProfile -File check.ps1` 退出码 0，且粘贴真实输出。其他「完成了 / 应该可以」一律视为未完成。
 3. **红灯 = 停**：发现违规就输出「红灯 + 依据」，修好条件再走；不许「如果你坚持我可以继续」。
 4. **回执只认三种证据**：真实命令输出、文件路径、提交哈希；声明「完成」必须逐条对应证据。
 
-## 路由：什么场景走哪张卡
+## 双语规则（36 张卡两份，agent 先读英文）
 
-| 场景 | 卡 |
+- **agent 执行任何卡时先读英文执行版**（`playbook_EN/` 目录下与本卡同卡号的那份）；中文版在 `playbook/`，是权威源与人类阅读版。
+- **冲突裁决**：判据冲突以中文版为准；措辞歧义以英文版为准（英文版存在的理由就是把含糊的中文表述显式化）。
+- **同批义务**：改判据必须两份同批修改；只改一份 = 红灯（`_qc/check.ps1` 按卡号逐张对齐两份，缺一张判红）。
+- **唯一验收口径**：`powershell -NoProfile -File _qc/check.ps1` 是母版唯一验收口径；改母版 = 退出码 0 + 一次提交 + `git push`（不推 = 装成 skill 的机器永远停在旧版）。
+
+## 路由：什么场景走哪张卡（36 张全覆盖）
+
+| 场景 | 卡（AI 执行版） |
 | :-- | :-- |
-| 有个想法，要不要做 | `playbook/10-想法调研.md` |
-| 新项目从零开始 | `playbook/11-选型初始化.md` |
-| 已有项目接入这套流程 | `playbook/12-接入已有项目.md` |
-| 新功能开工（先摸现状 + 方案对比 + 定档位） | `playbook/20-功能调研.md` |
-| 需求要定边界与验收 | `playbook/21-需求范围.md` |
-| 动手前定方案（含改造 vs 重写判据） | `playbook/22-设计.md` |
-| 写代码（分批 / 净增量账本 / 取代即删） | `playbook/23-分批编码.md` |
-| 合入前审查（越界 / 废弃标记） | `playbook/24-代码审查.md` |
-| 功能做完要验证（DoD） | `playbook/25-验证.md` |
-| 出 bug 找原因 | `playbook/30-根因分析.md` |
-| 修 bug | `playbook/31-修复.md` |
-| 修完确认没弄坏别的 | `playbook/32-回归验证.md` |
-| 一段工作收尾入库 | `playbook/40-归档.md` |
-| 发版 | `playbook/41-发布.md` |
-| 任务或事故后复盘 | `playbook/42-复盘.md` |
-| 定期体检流程本身 | `playbook/43-流程体检.md` |
-| 改界面 | `playbook/50-UI改动.md` |
-| 升依赖 | `playbook/51-依赖升级.md` |
-| 欠账 / 腐化要清（T 批 / P 批） | `playbook/52-技术债清偿.md` |
-| 功能下线、删功能 | `playbook/53-功能下线.md` |
-| 拿不准、跨多张卡 | 回到 `playbook/00-驱动卡.md` 让它判 |
+| 每轮开口先过驱动卡（意图路由 + 硬规则） | `playbook_EN/0-1-driver-card.md`（0-1 驱动卡） |
+| 有个想法，要不要做（Go / Kill / Pivot） | `playbook_EN/1-1-idea-research.md`（1-1 想法调研） |
+| 新项目从零开始（选型 + 生成骨架 + git 与远端） | `playbook_EN/1-2-stack-init.md`（1-2 选型初始化） |
+| 已有项目接入这套流程（反推结构 + 定裁剪） | `playbook_EN/1-3-onboard-existing-project.md`（1-3 接入已有项目） |
+| 新功能开工（方案对比 / 依赖 / 影响面 / 定档位） | `playbook_EN/2-1-feature-research.md`（2-1 功能调研） |
+| 需求定边界与验收标准（MoSCoW + non-goals） | `playbook_EN/2-2-scope-definition.md`（2-2 需求范围） |
+| 需求模糊 / 有真实用户（访谈 / 观察 / 问卷） | `playbook_EN/2-3-requirement-elicitation.md`（2-3 需求获取与用户研究） |
+| 给非功能需求定可测阈值（六维清单） | `playbook_EN/2-4-non-functional-requirements.md`（2-4 非功能需求） |
+| L 档 / 多方：风险登记册与干系人 | `playbook_EN/2-5-risk-and-stakeholders.md`（2-5 风险与干系人） |
+| 动手前定方案（L 档；含改造 vs 重写判据） | `playbook_EN/3-1-design.md`（3-1 设计） |
+| 触碰 auth / 支付 / 删数据 / 外部接口 | `playbook_EN/3-2-threat-modeling.md`（3-2 威胁建模） |
+| 设计批准后定测试策略（金字塔与门槛） | `playbook_EN/3-3-test-strategy.md`（3-3 测试策略） |
+| 写代码（分批 / 净增量账本 / 取代即删） | `playbook_EN/4-1-batch-coding.md`（4-1 分批编码） |
+| 合入前审查（七维度 / 越界 / 废弃标记） | `playbook_EN/4-2-code-review.md`（4-2 代码审查） |
+| 功能做完要验证（guardrail + 行为验收） | `playbook_EN/4-3-verification.md`（4-3 验证） |
+| 首次搭 CI / 改门禁（口径与 check.ps1 唯一） | `playbook_EN/4-4-continuous-integration.md`（4-4 持续集成） |
+| 需要新环境 / 配置项与密钥来源 | `playbook_EN/4-5-environments-and-config.md`（4-5 环境与配置） |
+| 一段工作收尾入库（归档十查 + 孤儿五张清单） | `playbook_EN/5-1-archive.md`（5-1 归档） |
+| 里程碑发版（分级部署 + 回滚预案） | `playbook_EN/5-2-release.md`（5-2 发布） |
+| L 档 / 高风险发布：策略与灰度阶梯 | `playbook_EN/5-3-progressive-delivery.md`（5-3 发布策略与灰度） |
+| 发布后观测窗（健康检查 + 核心指标） | `playbook_EN/5-4-observability.md`（5-4 运行期观测） |
+| 定期 / 改数据结构后做恢复演练 | `playbook_EN/5-5-backup-and-dr.md`（5-5 备份与恢复演练） |
+| 线上故障 / P0（先定级，止血优先于根因） | `playbook_EN/6-1-incident-response.md`（6-1 事件响应） |
+| 出 bug 找原因（诊断四问 + 五问法） | `playbook_EN/6-2-root-cause-analysis.md`（6-2 根因分析） |
+| 修 bug（最小改动 + 范围双维锁） | `playbook_EN/6-3-bugfix.md`（6-3 修复） |
+| 修完确认没弄坏别的（负面测试 + 回归清单） | `playbook_EN/6-4-regression-verification.md`（6-4 回归验证） |
+| 任务或事故后复盘（预防措施落到文件） | `playbook_EN/6-5-retrospective.md`（6-5 复盘） |
+| 定期体检流程本身（每 15 次归档触发） | `playbook_EN/6-6-process-audit.md`（6-6 流程体检） |
+| 每季度 / 里程碑出度量与质量报告 | `playbook_EN/6-7-metrics-and-quality-report.md`（6-7 度量与质量报告） |
+| 改界面（查注册表 + 回写注册表） | `playbook_EN/7-1-ui-change.md`（7-1 UI 改动） |
+| 升依赖（理由 + 兼容调研 + lockfile 单独审） | `playbook_EN/7-2-dependency-upgrade.md`（7-2 依赖升级） |
+| 欠账 / 腐化要清（T 批 / P 清理批） | `playbook_EN/7-3-tech-debt-repayment.md`（7-3 债与腐化清偿） |
+| 功能下线、删功能（影响面 + 数据处置） | `playbook_EN/7-4-feature-decommission.md`（7-4 功能下线） |
+| 收个人数据 / 对外发布（合规口径） | `playbook_EN/7-5-compliance-and-privacy.md`（7-5 合规与隐私） |
+| 多语言 / 无障碍要求 | `playbook_EN/7-6-i18n-and-accessibility.md`（7-6 国际化与可访问性） |
+| 交付 / 换人（用户文档与交接清单） | `playbook_EN/7-7-user-docs-and-handover.md`（7-7 用户文档与交接） |
+
+拿不准、跨多张卡时：回到 `playbook_EN/0-1-driver-card.md` 让它判。
 
 ## 红线与门禁
 
@@ -56,14 +80,14 @@ user-invocable: true
 
 ## 项目接入
 
-- **新项目**：走 `playbook/11-选型初始化.md`，整套复制 `template/`（`AGENTS.md` 宪法、`STATE.md`、`check.ps1` / `doctor.ps1` / `gate.ps1` / `orphans.ps1` 四个守护脚本）。
-- **老项目**：走 `playbook/12-接入已有项目.md`；动作 5.5 有装四脚本的原文命令，不覆盖已有同名脚本。
-- **接入后**：在 `STATE.md` 落「起点锚点」（`git rev-parse HEAD`）与「文件数基线」，`git init` 后立刻首次提交——23 卡的账本与 40 卡的核对都以 git 为基准。
+- **新项目**：走 `playbook_EN/1-2-stack-init.md`，整套复制 `template/`（`AGENTS.md` 宪法、`STATE.md`、`check.ps1` / `doctor.ps1` / `gate.ps1` / `orphans.ps1` 四个守护脚本）。
+- **老项目**：走 `playbook_EN/1-3-onboard-existing-project.md`；动作 5.5 有装四脚本的原文命令，不覆盖已有同名脚本。
+- **接入后**：在 `STATE.md` 落「起点锚点」（`git rev-parse HEAD`）与「文件数基线」，`git init` 后立刻首次提交——4-1 卡的账本与 5-1 卡的核对都以 git 为基准。
 
 ## 生成多删除少（一句话版）
 
-改存量批次必须报净增量账本（新增/删除的行数与文件数）；被取代的实现同批删，删不掉就登记 `STATE.md` 并行态登记簿；孤儿文件必须落「删除 / 登记技术债 / 补登记」之一。判据在 22 / 23 / 24 / 40 / 43 / 52 卡内。
+改存量批次必须报净增量账本（新增/删除的行数与文件数）；被取代的实现同批删，删不掉就登记 `STATE.md` 并行态登记簿；孤儿文件必须落「删除 / 登记技术债 / 补登记」之一。判据在 3-1 / 4-1 / 4-2 / 5-1 / 6-6 / 7-3 卡内。
 
 ## 边界（防两处真相）
 
-本文件只做**路由与铁律**，不含任何判据。判据一律以 `playbook/` 卡内原文为准；两边冲突时以卡为准，并回来修本文件。
+本文件只做**路由与铁律**，不含任何判据。判据一律以 `playbook/`（中文权威版）/ `playbook_EN/`（英文执行版）卡内原文为准；判据冲突时以中文版卡为准，并回来修本文件。

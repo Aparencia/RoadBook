@@ -1,6 +1,6 @@
 ﻿# doctor.ps1 · 环境自检（每个必需工具输出版本号，并与 .tool-versions 的期望版本比对）
 # 判词：绿 = 工具在位且与期望版本同 major；红 = 缺工具/版本不符/占位符待填/版本解析不到（exit 1）；灰 = 未被要求的探测项。
-# 唯一事实源是根目录 `.tool-versions`（两种写法都认：「工具 = 版本」与「工具 版本」）——11/12 卡把占位符 <...> 换成真实版本，
+# 唯一事实源是根目录 `.tool-versions`（两种写法都认：「工具 = 版本」与「工具 版本」）——1-2 / 1-3 卡把占位符 <...> 换成真实版本，
 # 所以"必需工具清单为空"不再等于"没有要求"：清单空 = 无人接线 = 红灯。
 # 用法：powershell -NoProfile -File doctor.ps1
 chcp 65001 > $null
@@ -12,7 +12,7 @@ function Bin($n) { if ($ALIAS.ContainsKey($n)) { return [string]$ALIAS[$n] } ret
 $tv = Join-Path $PSScriptRoot '.tool-versions'
 $want = @{}; $miss = 0
 if (-not (Test-Path -LiteralPath $tv)) {
-    Write-Host "[WARN] 缺 .tool-versions：必需工具与期望版本无从判定（11/12 卡接入必须建立该文件）" -ForegroundColor Yellow
+    Write-Host "[WARN] 缺 .tool-versions：必需工具与期望版本无从判定（1-2 / 1-3 卡接入必须建立该文件）" -ForegroundColor Yellow
     $miss++
 } else {
     # 非 UTF-8 不许静默：WARN + 按本地编码兜底，否则一个中文注释就能把整份清单读成空表。
@@ -46,7 +46,7 @@ foreach ($t in $names) {
     }
     $v = [string](cmd /c "$bin --version 2>&1" | Select-Object -First 1)
     if ($null -eq $need) { Write-Host "[OK] $t : $v（未被 .tool-versions 锁版本）" -ForegroundColor Green; continue }
-    if ($need -match '[<>]') { Write-Host "[WARN] $t 期望版本仍是占位符「$need」：11 卡要换成真实版本（本机 $v）" -ForegroundColor Yellow; $miss++; continue }
+    if ($need -match '[<>]') { Write-Host "[WARN] $t 期望版本仍是占位符「$need」：1-2 卡要换成真实版本（本机 $v）" -ForegroundColor Yellow; $miss++; continue }
     $mw = [regex]::Match($need, '\d+(\.\d+)*'); $ma = [regex]::Match($v, '\d+(\.\d+)*')
     if (-not $mw.Success -or -not $ma.Success) { Write-Host "[WARN] 版本解析不到：$t 期望「$need」实际「$v」——人工核对后写进 .tool-versions" -ForegroundColor Yellow; $miss++; continue }
     $mjw = ($mw.Value -split '\.')[0]; $mja = ($ma.Value -split '\.')[0]

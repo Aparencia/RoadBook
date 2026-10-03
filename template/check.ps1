@@ -1,9 +1,9 @@
 ﻿# check.ps1 · 收工仪式（guardrail）
 # "完成"的唯一合法定义 = 本脚本退出码 0 + 真实输出。
-# 11-选型初始化卡会把下方 STEPS 替换为本项目真实的 typecheck/lint/test/build 命令。
+# 1-2-选型初始化卡会把下方 STEPS 替换为本项目真实的 typecheck/lint/test/build 命令。
 # ⚠️ 口径唯一：本脚本（含 STEPS）是本项目唯一验收口径。将来加 CI/钩子必须跑与 STEPS 完全相同的命令——
 #    基线口径漂移（如 CI 少带一个 --strict、clippy 不带 -D warnings）= 门禁永远假绿而无人发现。
-# 退出码：0 = 全部通过；1 = 有断言/步骤失败；2 = STEPS 未配置（本项目命令没接进来，32 卡据此与"修复失败"区分）。
+# 退出码：0 = 全部通过；1 = 有断言/步骤失败；2 = STEPS 未配置（本项目命令没接进来，6-4 卡据此与"修复失败"区分）。
 # 常见栈示例（逐条一行，全部跑完再汇总）：
 #   Node:   $STEPS = @('pnpm typecheck', 'pnpm lint', 'pnpm test')
 #   Python: $STEPS = @('python -m mypy .', 'python -m pytest -q')
@@ -30,7 +30,7 @@ if ($cnt -eq 0) {
 # 文件数基线：缺失或 0 都是 FAIL——预算断言空转等于没有预算（模板默认 STATE.md 就是 0，旧版在此静默跳过）。
 $sm = Join-Path $PSScriptRoot 'STATE.md'; $base = $null
 if (Test-Path $sm) { $bm = [regex]::Match([IO.File]::ReadAllText($sm, [Text.Encoding]::UTF8), '(?m)^\s*[-*]?\s*文件数基线\s*[:：]\s*(\d+)'); if ($bm.Success) { $base = [int]$bm.Groups[1].Value } }
-if ($null -eq $base -or $base -eq 0) { Write-Host "[FAIL] 文件数基线未初始化：STATE.md 没有「文件数基线: N」行或值为 0——预算断言无从判定（11/12 卡接入收尾必须写入当时的文件数）" -ForegroundColor Red; $fail++ }
+if ($null -eq $base -or $base -eq 0) { Write-Host "[FAIL] 文件数基线未初始化：STATE.md 没有「文件数基线: N」行或值为 0——预算断言无从判定（1-2 / 1-3 卡接入收尾必须写入当时的文件数）" -ForegroundColor Red; $fail++ }
 elseif ($cnt -le $base + $fileBudgetGrowth) { Write-Host "[OK] 文件数 $cnt <= 基线 $base + 允许新增 $fileBudgetGrowth" -ForegroundColor Green }
 else { Write-Host "[FAIL] 文件数预算超支：基线 $base / 当前 $cnt / 允许新增 $fileBudgetGrowth" -ForegroundColor Red; $fail++ }
 
@@ -41,7 +41,7 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
     $wt = @(git -C $PSScriptRoot rev-parse --is-inside-work-tree 2>$null)
     if ($LASTEXITCODE -eq 0 -and $wt.Count -gt 0 -and ([string]$wt[0]).Trim() -eq 'true') { $gitOk = $true }
 }
-if (-not $gitOk) { Write-Host "[FAIL] 非 git 仓库：提交、起点锚点、账本断言全部无从判定（11/12 卡的 git 起点动作未完成）" -ForegroundColor Red; $fail++ }
+if (-not $gitOk) { Write-Host "[FAIL] 非 git 仓库：提交、起点锚点、账本断言全部无从判定（1-2 / 1-3 卡的 git 起点动作未完成）" -ForegroundColor Red; $fail++ }
 else {
     $dirty = @(git -C $PSScriptRoot status --porcelain 2>$null | Where-Object { $_ })
     if ($dirty.Count -gt 0) {
@@ -49,7 +49,7 @@ else {
         $dirty | Select-Object -First 10 | ForEach-Object { Write-Host "        $_" }
         $fail++
     } else { Write-Host "[OK] 工作树干净（本批改动都已提交）" -ForegroundColor Green }
-    # 起点锚点为空是合法状态（40 卡归档会清空它，见 playbook/40-归档.md:97），故此处仍只提示不判失败。
+    # 起点锚点为空是合法状态（5-1 卡归档会清空它，见 playbook/5-1-归档.md:97），故此处仍只提示不判失败。
     $am = if (Test-Path $sm) { [regex]::Match([IO.File]::ReadAllText($sm, [Text.Encoding]::UTF8), '(?m)^\s*[-*]?\s*起点锚点\s*[:：]\s*([0-9a-fA-F]{7,40})') } else { $null }
     if ($null -eq $am -or -not $am.Success) { Write-Host "[--] STATE.md 起点锚点未填（归档后为空属正常）：跳过本批提交计数断言" -ForegroundColor Yellow }
     else {
@@ -62,7 +62,7 @@ else {
     }
 }
 
-# --- 步骤断言：STEPS 为空 = 门禁空心（11 卡"接入完成"的机械证据就是这些命令真跑过）---
+# --- 步骤断言：STEPS 为空 = 门禁空心（1-2 卡"接入完成"的机械证据就是这些命令真跑过）---
 $stepsEmpty = ($STEPS.Count -eq 0)
 if ($stepsEmpty) { Write-Host "[FAIL] 未配置 STEPS：本项目命令还没接进来，本脚本对代码零断言（填下方示例里的真实命令后再跑）" -ForegroundColor Red; $fail++ }
 else {

@@ -1,0 +1,118 @@
+# Card 4-4 · Continuous integration (run additionally when CI is first set up or the gate is changed)
+> Trigger: first CI setup, or a change to check.ps1 / the workflow ｜ Output: `.github/workflows/ci.yml` (or an equivalent) + one line in `docs/RUNBOOK.md` ｜ Next: awaiting a new intent (incident → 6-1 incident response; periodic restore drill → 5-5 backup and restore drill)
+
+---
+
+## ① Start confirmation
+
+After receiving the start instruction, first return the following five items before doing anything:
+
+1. **Restate the task and its landing point**: is this the first CI setup or a gate change? (read `当前任务` in `STATE.md`, one sentence); output = the CI workflow file + the CI line in `docs/RUNBOOK.md`; next card = awaiting a new intent.
+2. **Assumptions**: write down, one per line, "I assume X; if wrong, Y becomes invalid" — anything findable in `check.ps1` and `docs/RUNBOOK.md` must not be written as an assumption.
+3. **Clarifying questions (≤5, drop whatever can be dropped)**: three defaults — where is it hosted (GitHub Actions / something else / no hosted CI)? which OS and which shell does it run on? who is the first owner of a CI failure (write it into RUNBOOK)? Anything findable in `check.ps1` and `docs/RUNBOOK.md` must not be asked.
+4. **Quote the checklist verbatim** (paste, word for word, the "single-mirror iron rule + minimal pipeline + five prohibitions" of §② of this card).
+5. And declare: the actual command list of `check.ps1` (one per line, serving as the comparison baseline); whether hosted CI is introduced this time.
+
+---
+
+## ② Execution
+
+**Single-mirror iron rule (this card's first criterion): what runs in CI must be exactly the same commands as `check.ps1` — one step fewer = something is never checked; one step more = CI green while local is red; a changed parameter = the two sides are not judging the same thing. All three are called mirror drift, and drift = the gate is forever false green (worse than no CI: you think it is guarding).**
+
+**Action 1: Copy out the local mirror (the comparison baseline; do this step before anything else)**
+```powershell
+Get-Content check.ps1 | Select-String -Pattern '^\s*(npm|pnpm|yarn|npx|node|python|pytest|dotnet|powershell|\./)' 
+```
+Copy every matching line above verbatim into this card's receipt to form the "local mirror list".
+- ❌ Counter-example: local `check.ps1` runs typecheck/lint/test/build, while CI runs only `npm test` (three steps fewer → type errors and lint errors never reach the main branch)
+- ✅ Positive example: the list copied out is the four lines `npm run typecheck` / `npm run lint` / `npm test` / `npm run build`, and every later step matches those four lines
+
+**Action 2: Get it passing locally first (skipping this is prohibited)**
+```powershell
+powershell -NoProfile -File check.ps1
+```
+The exit code must be 0. **Going to CI while local does not pass = going to CI to watch red, burning time for nothing**; if the exit code is not 0, fix local first.
+
+**Action 3: Minimal pipeline (only these four steps; every extra step needs a written reason)**
+
+| # | Step | Criterion |
+| :-: | :--- | :--- |
+| 1 | Install dependencies | install from the lockfile (`npm ci` / `pnpm install --frozen-lockfile`); upgrading dependencies inside CI is prohibited |
+| 2 | typecheck / lint / test / build | **matches the list copied out in §Action 1 line by line** (one line fewer = drift) |
+| 3 | Artifact archiving | upload the output directory + the test report as build artifacts (so red runs can be downloaded and inspected) |
+| 4 | Trigger and notification | trigger = push to the main branch + PR; a failure notifies the owner (written into one line of `docs/RUNBOOK.md`) |
+
+**Action 4: Write the workflow**
+Output path `.github/workflows/ci.yml` (another hosting platform = an equivalent file; write its path into `docs/RUNBOOK.md`).
+Fixed workflow skeleton (fill the values with the project's reality; every step's command comes from the Action 1 list):
+
+```yaml
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+```
+(Hook the output directory of the last `build` step into `actions/upload-artifact` for archiving; if `check.ps1` runs other commands as well, add them from the Action 1 list.)
+
+**Action 5: Mirror comparison (machine check, not an eyeball impression)**
+```powershell
+Select-String -Path .github/workflows/ci.yml -Pattern 'run:' | ForEach-Object { $_.Line.Trim() }
+```
+Align the "local mirror list" you copied out against this output **line by line**: one line more / one line fewer / a different parameter → fix it on the spot until they agree. Paste the comparison result into the §③ receipt.
+
+**Action 6: RUNBOOK registration (write it for both outcomes; silence is not allowed)**
+- Hosted CI introduced → write three lines in `docs/RUNBOOK.md`: CI file path / trigger conditions / who gets failure notifications.
+- Not introduced (local-only) → write one explicit line in `docs/RUNBOOK.md`, with the reason replaced by the real reason: `CI：本地-only（已裁剪）＋理由：单人项目、尚无远端仓库，改由每次提交前手跑 check.ps1 兜底` ("CI: local-only (trimmed) + reason: solo project, no remote repository yet, covered by manually running check.ps1 before every commit"). **Not writing it = silent omission, and this card fails.**
+
+**Prohibitions (violating any one = this round's output is void):**
+- `continue-on-error: true` is prohibited, `|| true` is prohibited, and marking any check step as "allowed to fail" is prohibited (= red does not block, which equals not running at all)
+- "Run one extra step in CI just to be safe" and "this step can just run locally" are prohibited — the commands on both sides must match line by line
+- Caching and parallelism changing the criteria is prohibited: caching may only save time (its key must include the lockfile hash), parallelism may only save time (sharding must guarantee every command still runs); **a skipped check = drift**
+- Writing secrets into the workflow file is prohibited; secrets go only into CI secrets (key names aligned with `.env.example`), and the workflow references variable names only
+- Skipping "get it passing locally first" and opening a PR directly is prohibited (local red = CI will be red)
+
+**Boundary (no overlap with the 5-2 release pipeline)**: this card governs **post-commit verification** (one thing: can the code pass the gate); 5-2 release governs **producing artifacts and going live** (version, tag, deploy, rollback). CI passing ≠ ready to release.
+
+---
+
+## ③ Evidence receipt
+
+Give these one by one (only three kinds of evidence count: real command output / file paths / commit hashes):
+
+1. **Local mirror list** (the verbatim real output of Action 1)
+2. **Local rehearsal**: the complete `check.ps1` output + exit code 0
+3. **Mirror comparison table**: the line-by-line alignment of the local mirror list vs the CI `run:` list (write "none" for all three of: more / fewer / different parameter)
+4. CI file path + the conclusion of its first run (run it once if a remote exists; if there is no remote, write "not hosted, registered as local-only")
+5. Artifact archiving list (which paths/files were uploaded)
+6. The verbatim CI line of `docs/RUNBOOK.md` (the three hosted lines, or "local-only (trimmed) + reason")
+
+---
+
+## ④ State write-back
+
+**The closing-order iron rule: write back the state first → then commit → then re-run check.ps1 for 0.**
+
+Update `STATE.md`: `下一步` = awaiting a new intent (**do not write "CI setup complete" as the task's closing line**); `未决问题` = items in the mirror comparison that are not yet aligned, or things on the hosting-platform side (secrets / permissions / notifications) that need the user's decision; roll `未来 3 步` as needed.
+
+```powershell
+git add .github/workflows/ci.yml docs/RUNBOOK.md STATE.md
+git commit -m "4-4 ci(build): CI 口径与 check.ps1 对齐"
+powershell -NoProfile -File check.ps1
+```
+
+---
+
+Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.
