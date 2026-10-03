@@ -1,0 +1,9 @@
+# QC 运行产物（不是母版内容，别入库）
+_qc/_last.txt
+_qc/_orphan_test/
+
+# 编辑器与系统杂物
+*.tmp
+~$*
+Thumbs.db
+desktop.ini

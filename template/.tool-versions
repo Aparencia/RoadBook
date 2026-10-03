@@ -1,0 +1,6 @@
+# .tool-versions · 环境版本锁定（与产品版本无关；按 11 卡选型填）
+# agent 与人安装依赖、排查环境时以此为准；改这里的任何一行都算环境变更，需要在归档回执里说明。
+language = <python 3.12 / node 20>
+package-manager = <pnpm 9 / pip>
+runtime = <如 uvicorn / node>
+database = <postgresql 16 / 无>
