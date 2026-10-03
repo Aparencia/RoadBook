@@ -100,6 +100,7 @@ git remote -v
 git check-ignore -v .env
 ```
    - With a remote → push at close-out `git push origin HEAD` (to pin the upstream, `git push -u origin $branch`); without a remote → record one line "local-only"
+   - A rejected `git push` = the remote has moved ahead (someone else pushed): **stop and report to the user** and check `git log --oneline origin/$branch..HEAD`; **`--force` is forbidden** ("rejected, so force it" is wrong); a force push requires an explicit request from the user
    - **Reverse secret check**: `.env` / `*.key` / `*.pem` must be **ignored** (`git check-ignore -v` producing output = correct; an ignored file can never appear in porcelain); if `git status --porcelain` does list one of them = it is not ignored, **stop and report a red light**; committing and pushing are forbidden
    - Two consecutive archive cycles without a push = 6-6 card signal 10 (push lag)
 

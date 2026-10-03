@@ -37,6 +37,8 @@ If any layer is 0, the reason must be written under "what is not tested".
 ❌ Counter-example: "以单元测试为主，端到端适当覆盖" ("mostly unit tests, with appropriate end-to-end coverage") — no numbers, so it cannot be accepted
 ✅ Good example: "单元 ~70%（约 40 条，<10 s 跑完）；集成 ~20%（12 条）；端到端 3 条（登录 → 下单 → 退款）" ("unit ~70% (about 40 cases, finishing in <10 s); integration ~20% (12 cases); end-to-end 3 cases (login → order → refund)")
 
+Every unit test must be able to name one production change that would make it red; if it cannot, or only an intentional change to a "常量值/提示文案/私有结构" ("constant value / prompt copy / private structure") would make it red → rewrite it as an assertion about **the behavior that depends on that decision** (example: do not test `MAX_RETRIES === 5`; test "a failed call is retried 5 times and does not happen again on the 6th").
+
 **Action 2: the critical-path list (each item = entry point → action → the result that must hold)**
 Draw the items from the acceptance criteria in SCOPE.md and the thresholds in NFR.md, missing none.
 ❌ Counter-example: "下单流程要测" ("the ordering flow must be tested") — no entry point, no expectation, so running it tells you nothing about right or wrong
@@ -82,6 +84,7 @@ A hit = a suspected real phone number / email address; replace each one with gen
 - Writing "not tested" without a reason is forbidden; "the environment is not available" is not a reason — go find a substitute
 - Reporting coverage numbers without pasting the report output is forbidden (numbers must be backed by command output)
 - Loosening the strategy after the fact is forbidden: a strategy change must edit TESTPLAN.md in the same round and state the reason in the receipt; verbal loosening is not allowed
+- Waiting for an async result with a fixed `sleep` / a fixed delay is forbidden: the wait must be written as "polling condition + explicit timeout" (the timeout message carries the condition description and the millisecond count), and the polling interval and the timeout value must have their basis written in a comment; when a test case fails intermittently, locate the source of nondeterminism first — increasing the delay to make it green is forbidden.
 
 ---
 

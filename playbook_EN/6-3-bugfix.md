@@ -33,6 +33,7 @@ After receiving the start instruction, first send back a receipt for the followi
 
   ❌ Counter-example: rearranging imports while you are at it, blowing the diff up from 30 lines to 200 lines, and still continuing to fix as "normal"
   ✅ Good example: change only the 2 files the root cause points to (12 added lines + 6 deleted lines = 18 lines) → ✅ normal
+- **Fix-attempt count**: this is attempt N at fixing this bug (N counts from 1). At N = 3, changing code directly is forbidden; first answer the three questions and write the conclusion as one line for the user's verdict: ① does the symptom keep surfacing in a different place each time? ② would fixing it require large-scale refactoring? ③ does fixing it break something else every time? — any single "yes" = an architecture problem, not a failed hypothesis; stop and discuss; the 4th fix requires the user's approval.
 - When there are multiple fix options, list the candidates first (A/B + trade-offs) and then recommend one; the human picks.
 
 **Action 2: while-you-are-at-it issue registration rule**

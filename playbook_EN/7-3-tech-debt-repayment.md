@@ -27,7 +27,7 @@ Wait for the user to pick which entries to clear (for a P batch: wait for the us
 **Three repayment rules:**
 
 **Rule 1: route by nature; do not force a fix**
-- Code debt → follow the discipline of 4-1 batch coding (three criteria inlined: ① record the start anchor at kickoff with `git rev-parse --short HEAD`; ② one commit per batch and `git status --short` prints nothing between batches; ③ run 4-1's "每批必念五查" item by item each batch and put the result in the receipt), one task per debt entry
+- Code debt → follow the discipline of 4-1 batch coding (three criteria inlined: ① record the start anchor at kickoff with `git rev-parse --short HEAD`; ② one commit per batch and `git status --short` prints nothing between batches; ③ run 4-1's "six checks to recite every batch" item by item each batch and put the result in the receipt), one task per debt entry
 - Documentation debt (missing registry rows / stale RUNBOOK) → fix directly, clearing it all in one go
 - "Cannot reproduce" known-issues → must not be cleared; they can only be renewed or downgraded to "under observation"
 

@@ -12,7 +12,7 @@ After receiving the start instruction, first issue a receipt for the following f
 3. **Clarifying questions (≤5, keep them to the minimum)**: ask only what cannot be answered from the project files. Anything you can check yourself in docs/ARCHITECTURE.md, docs/pool/IDEAS.md, or against SCOPE convention must not be brought to a human.
    ❌ Counter-example: "这个功能重要吗？" ("is this feature important?") (pointless — the user starting the work already means it matters)
    ✅ Example: "月度统计需要包含已删除的账单吗？" ("should the monthly statistics include deleted bills?")
-4. **Quote the checklist verbatim** (paste verbatim this card's §② "five scope-compliance checks").
+4. **Quote the checklist verbatim** (paste verbatim this card's §② "seven scope-compliance checks").
 
 Also state: the output lands at `docs/specs/<日期>_<slug>/SCOPE.md`, and the next card = 2-4 non-functional requirements (tiers M/L); tier S → 4-1 batch coding; tier L → 3-1 design after 2-4. [disambiguated]
 
@@ -43,13 +43,15 @@ Each item = an observable behavior, written as "open which page → do what → 
 ❌ Counter-example: "统计功能性能良好、体验流畅" ("the statistics feature performs well and feels smooth")
 ✅ Example: "打开 /export 页 → 勾选 3 条记录 → 点导出，下载 export.md 内含这 3 条" ("open the /export page → tick 3 records → click export; the downloaded export.md contains those 3 records")
 
+**Action 3.5: the five uncovered-input classes**: list the 5 input classes / failure situations that SCOPE does not state explicitly but that are most likely to bite a real user (one line each: the input or situation + the behavior a reasonable person would expect, most likely first). **SCOPE's silence is not permission for the program to break on these inputs.** Each one must have a corresponding tickable criterion in the acceptance criteria.
+
 **Action 4: UI description (write this only when there is an interface)**
 Page level (which page) + element level (the name, position, and state of buttons/lists/input boxes), written to a granularity that can create a row in the component registry.
 
 **Action 5: tier-S simplified version**
 For tier S (≤3 files, ≤100 lines; **single-page static app exception**: 1 entry page + no backend + no dependency → ≤5 files and ≤400 lines, including the three design documents), SCOPE.md needs only three sections: the Must list / the Won't list / the acceptance criteria (2 items are enough).
 
-**The five scope-compliance checks (self-check before this card's wrap-up; write the verbatim answers into the receipt):**
+**The seven scope-compliance checks (self-check before this card's wrap-up; write the verbatim answers into the receipt):**
 
 ```text
 ① Does every Must in SCOPE have a corresponding implementation plan?
@@ -57,6 +59,8 @@ For tier S (≤3 files, ≤100 lines; **single-page static app exception**: 1 en
 ③ For everything on the Won't list, is the code absolutely not written this iteration?
 ④ Is every acceptance criterion an "observable behavior"?
 ⑤ Has the user said "确认" ("confirmed")? (send the user this line — replying "确认" is enough, no need to restate every item: `请回复：确认 SCOPE，开始写代码`; without confirmation, entering 4-1 is forbidden) [disambiguated]
+⑥ Self-consistency check: are there TBD / TODO / placeholder sections in SCOPE? Do two sections contradict each other? Can any requirement be read in two different ways? — fix each one in place into a single interpretation, then give the receipt.
+⑦ Step-qualification check: can the next step of every Must be written as "exactly one reasonable thing"? Sentences that decide nothing at all — such as "处理边界情况" ("handle edge cases"), "加适当校验" ("add appropriate validation"), "补测试" ("write tests for the above") — → fix them in place into concrete criteria.
 ```
 
 **Prohibitions:**

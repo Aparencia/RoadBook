@@ -5,7 +5,7 @@
 
 ## ① Start confirmation
 
-After receiving the start instruction, first issue a receipt for the following four items, then act (a missing item means do not start):
+After receiving the start instruction, first issue a receipt for the following five items, then act (a missing item means do not start):
 
 1. **Restate the task**: in one plain sentence, say what feature is to be built.
 2. **Upstream references + assumptions list**: whether this idea is already in docs/pool/IDEAS.md (yes → paste the line number); the landing constraints for this change in docs/ARCHITECTURE.md; list the default assumptions one by one (e.g. "导出格式 CSV 与 Markdown 都要支持" ("both CSV and Markdown export formats must be supported")).
@@ -13,6 +13,7 @@ After receiving the start instruction, first issue a receipt for the following f
    ❌ Counter-example: "用什么技术实现比较好？" ("which technology would be better to implement this with?") (that is what this card has to answer)
    ✅ Example: "导出功能需要支持 Excel 吗，还是 Markdown 就够？" ("does the export feature need to support Excel, or is Markdown enough?")
 4. **Quote the checklist verbatim** (paste verbatim this card's §② "the four research-compliance checks" + "the three checks for a new dependency").
+5. **Path pre-judgment (judge first, ask after)**: before asking the first clarifying question, first announce that this task is handled as tier <S/M/L>, with a one-sentence criterion; and add one line "本次要改的流程在仓库里已经可读吗：是/否" ("is the flow this change touches already readable in the repo: yes/no"). If the judgment is wrong or you disagree → re-judge now, then ask.
 
 Also state: the output lands at `docs/specs/<日期>_<slug>/RESEARCH.md`; the approach and the tier are both decided by the user's verdict.
 

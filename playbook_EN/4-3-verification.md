@@ -30,6 +30,8 @@ Everything else — "it is done / it should be fine" — does not count as done.
 ✅ Good example: paste check.ps1's complete output with "all passed" on the last line, exit code 0
 When the exit code is not 0, tell two cases apart: `2` = `$STEPS` not configured (**the environment is not initialized; it is not a code defect** — go back to the 1-2 / 1-3 cards to wire up STEPS); `1` = a real failure, fix item by item.
 
+**Prerequisite action (before any command): first answer "which command can prove this claim", then run it; a claim you cannot write a command for must not be stated** (paired with the claim table in `AGENTS.md` §6). Examples: the claim "the UI matches the design" → command = screenshot + value extraction; the claim "the numbers improved" → command = the same command run twice, before and after.
+
 **Action 2: land the tests according to the tier**
 - Tiers M/L: write tests and make them pass; paste the test output. Weakening an assertion just to make it pass is forbidden.
   ❌ Counter-example: the test asserts `expect(result).toBeDefined()` (a fake test that always passes)
@@ -37,6 +39,7 @@ When the exit code is not 0, tell two cases apart: `2` = `$STEPS` not configured
 - **Mutant falsification ("green" needs one question: can the criterion really be driven red?)** — tier L: every test criterion; tier M: at least once per task: temporarily break the code under test → the test must turn red → restore → re-run and go back to green.
   ❌ Counter-example: change `amount * 0.9` to `amount * 0.8` and the test is still green = this is a "toothless criterion" (an ornament); rewrite the assertion and falsify it again
   ✅ Good example: inject the mutant → the named criterion turns red → restore → re-run back to green → that criterion has teeth, the evidence holds
+  **Mutant points must cover at least three classes**: ① a constant or parameter changed wrong ② a branch taken wrong ③ a missing state change or side effect (two more classes: returning empty/default values, missing validation on boundary input) — changing a number from 0.9 to 0.8 alone does not count as coverage.
   ⚠️ **Mutant hygiene**: when the readings look odd, suspect the runner cache first (vitest writes its cache into node_modules, and `--no-cache` is not enough) — clear the cache between the mutation and the re-run, or run in a temporary copy directory (see the lesson card `docs/lessons/<date>_测量载体脱钩.md`)
 - If you find yourself "changing the test to accommodate the code" → stop immediately and declare it (that is cheating).
 
@@ -65,6 +68,8 @@ The checklist is written into VERIFY.md (together with the check output, test re
 - Claiming "a scenario was walked" without evidence is forbidden (no output/JSON/assertion pasted = it was not walked)
 - Declaring "acceptance passed" on the user's behalf is forbidden — you can only submit the checklist; acceptance is the human's job
 - Writing operations the user cannot perform into the acceptance checklist is forbidden (anything needing SSH or needing to read logs does not count as behavior acceptance)
+- Expressing satisfaction before the evidence appears is forbidden ("great / perfect / done / no problem" — such words appearing before the output = this round is judged unverified)
+- Using "should / probably / looks like" as a modifier of a success statement is forbidden (its appearance is treated as unverified)
 
 ---
 

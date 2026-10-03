@@ -10,7 +10,7 @@ After receiving the start instruction, first send back a receipt:
 1. **Trigger confirmation**: read STATE.md `体检计数` (continue only if ≥15; if the number does not match, check with the user first).
 2. **Assumptions list**: the 3~5 default assumptions you made on the user's behalf (e.g. "all proposals from the previous round have landed or been rejected", "the summary lines of the most recent 2 archives are readable"), each noting how it will be verified.
 3. **Clarifying questions (≤5, save any that can be saved)**: the default three questions — should the constitution be touched this round? What to do with the previous round's undecided proposals? Who decides on landing the proposals? Anything findable in STATE.md and the reports must not be asked of the human.
-4. **Scan scope declaration**: eleven classes of signals will be scanned (gate green rate / stop-and-ask hot spots / lesson recurrence / silent constitutional items / doc orphan line rate / expired parallel state / orphan list convergence / file count inflation / commit cadence / remote and push lag / expired drill record), data sources = docs/reviews/, docs/TECH_DEBT.md, docs/lessons/, docs/archive/, docs/registry/ + STATE.md (parallel-state register / file-count baseline / recent archives / start anchor) + the summary line of `orphans.ps1` + `git log --oneline`, `git status -sb`, `git remote -v`.
+4. **Scan scope declaration**: twelve classes of signals will be scanned (gate green rate / stop-and-ask hot spots / lesson recurrence / silent constitutional items / doc orphan line rate / expired parallel state / orphan list convergence / file count inflation / commit cadence / remote and push lag / expired drill record / card-behavior baseline artifacts unconsumed), data sources = docs/reviews/, docs/TECH_DEBT.md, docs/lessons/, docs/archive/, docs/registry/ + STATE.md (parallel-state register / file-count baseline / recent archives / start anchor) + the summary line of `orphans.ps1` + `git log --oneline`, `git status -sb`, `git remote -v`.
 5. **Observation window declaration**: the window for signals 9 and 10 = **the most recent 2 archives / the most recent 2 tasks**, **decoupled** from this card's trigger period (every 15 archives) — only a short window can catch "whether the last two closings both failed to land in history".
 6. **Proposal discipline declaration** (paste the "three proposal disciplines" from §② of this card word for word).
 7. **Boundary declaration**: this card can only **draft proposals**; every revision of the constitution and the process is decided by the human; the agent is forbidden to modify the constitution on its own. The output landing point is `docs/decisions/PROCESS_<date>_体检.md` + proposals landed; the next card is 5-1 (Archive).
@@ -99,6 +99,8 @@ Select-String -Path docs/RUNBOOK.md -Pattern '下次到期'
 ```
 If `下次到期` has already passed, is empty, or still holds the template placeholder → proposal: "the drill record is expired and was not re-drilled" (landing point: run card 5-5 once to re-drill and write the new due date back into RUNBOOK §5); ❌ Counter-example: `下次到期` says 2026-01-01 and is long overdue, yet the report still says "backup drill normal"; ✅ Good example: state the number of overdue days + propose the re-drill + write back the new due date.
 
+**Signal 12: card-behavior baseline artifacts unconsumed**: if run directories exist under `_qc/baseline/runs/` while this audit report cites none of their line numbers → record "baseline spinning idle"; proposal: "merge that run's failure types and conclusions into this audit".
+
 **Three proposal disciplines (every proposal must pass them):**
 1. **A signal must occur ≥2 times to qualify for a proposal** — changing a rule on a single red light = overfitting to a single incident, and the rules will explode
 2. **At least 1 repeal-type proposal** — additions and deletions must be symmetric; if not one can be raised → explicitly write "no repeal candidates this round" and explain what was scanned
@@ -108,6 +110,8 @@ Produce `docs/decisions/PROCESS_<date>_体检.md`: raw signal statistics + propo
 **Landing falls into two classes**:
 - Constitutional revisions (this project's AGENTS.md) → changed on the spot after the human decides item by item (constitutional changes require the human to be present to confirm)
 - **Master card-set revisions** → written only into the proposal file, marked "carry back to the master repo for execution" — the cards live in the master repo workspace, unreachable from this project's session; changing this project's documents to pass it off as landed is forbidden
+
+**Three questions before changing a card (mandatory before touching a card; from the baseline meta-test)**: before changing a card, first ask the agent that was bypassed — "How could that skill have been written differently to make it crystal clear that Option A was the only acceptable answer?" Three kinds of answer → three kinds of fix: ① the card was clear but I ignored it → add a root principle; ② it should have said X → write its suggestion into the card verbatim; ③ I did not see section Y → raise that section's prominence. The judge fills these three kinds of answer into the 「结论」 column of `judge.md`.
 
 **Prohibitions:**
 - The agent modifying the constitution on its own or declaring a proposal passed is forbidden (the verdict belongs to the human)
@@ -120,7 +124,7 @@ Produce `docs/decisions/PROCESS_<date>_体检.md`: raw signal statistics + propo
 
 Give, item by item:
 1. Audit report path
-2. Raw signal statistics (excerpts of command output): **signals 1–11 item by item** (signal 7 with the comparison of this round's and the previous round's `orphans.ps1` summary lines; signal 8 with the baseline and the current file count; signal 9 with the raw `git status --short` and `git rev-list --count`; signal 10 with `git remote -v` and the ahead count; signal 11 with the raw `下次到期` text and the number of overdue days)
+2. Raw signal statistics (excerpts of command output): **signals 1–12 item by item** (signal 7 with the comparison of this round's and the previous round's `orphans.ps1` summary lines; signal 8 with the baseline and the current file count; signal 9 with the raw `git status --short` and `git rev-list --count`; signal 10 with `git remote -v` and the ahead count; signal 11 with the raw `下次到期` text and the number of overdue days)
 3. Proposal list: each with type (add / modify / repeal) / landing point / signal evidence
 4. The raw text of the user's verdict (item by item: adopted / rejected / deferred)
 

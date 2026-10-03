@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 360) "行数 $selfN <= 360 ：_qc/check.ps1 自身（2026-10-03 由 340 上调：40 张卡 + 新文档骨架 + 收尾语逐字断言；上调须同时改本行与 design §8）"
+Check ($selfN -le 400) "行数 $selfN <= 400 ：_qc/check.ps1 自身（2026-10-03 由 360 上调：superpowers 内化断言 26 条 + 内化记录；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -158,6 +158,45 @@ Check ($extra.Count -eq 0) "playbook/ 无未注册卡（多出：$($extra.BaseNa
 $extraEn = @(Get-ChildItem $pen -Filter *.md | Where-Object { $enFiles -notcontains $_.Name })
 Check ($extraEn.Count -eq 0) "playbook_EN/ 无未注册卡（多出：$($extraEn.BaseName -join ', ')）"
 
+Write-Host "== 2b. 内化机制在位（2026-10-03：superpowers 15 个 skill → 10 张卡 + 母版层；删句即红）=="
+$intl = [ordered]@{
+    'playbook/2-1-功能调研.md'              = @('路径预判')
+    'playbook_EN/2-1-feature-research.md'   = @('Path pre-judgment')
+    'playbook/2-2-需求范围.md'              = @('范围合规七查', '自洽查', '动作 3.5')
+    'playbook_EN/2-2-scope-definition.md'   = @('seven scope-compliance checks', 'Self-consistency check', 'Action 3.5')
+    'playbook/3-3-测试策略.md'              = @('轮询条件')
+    'playbook_EN/3-3-test-strategy.md'      = @('polling condition')
+    'playbook/4-1-分批编码.md'              = @('批次接口契约', '每批必念六查', '批次完成行', 'TDD 红先行')
+    'playbook_EN/4-1-batch-coding.md'       = @('Batch interface contract', 'six checks to recite every batch', 'Batch completion line', 'TDD red first')
+    'playbook/4-2-代码审查.md'              = @('派单输入单', '命名风险定点检查', 'SCOPE 沉默')
+    'playbook_EN/4-2-code-review.md'        = @('Dispatch input sheet', 'named-risk targeted check', 'SCOPE silence is not permission')
+    'playbook/4-3-验证.md'                  = @('变异点至少覆盖三类', '禁止在证据出现前表达满意')
+    'playbook_EN/4-3-verification.md'       = @('Mutant points must cover at least three classes', 'before the evidence appears')
+    'playbook/5-1-归档.md'                  = @('--force')
+    'playbook_EN/5-1-archive.md'            = @('`--force` is forbidden')
+    'playbook/6-2-根因分析.md'              = @('反向追链')
+    'playbook_EN/6-2-root-cause-analysis.md' = @('Reverse chain tracing')
+    'playbook/6-3-修复.md'                  = @('修复尝试计数')
+    'playbook_EN/6-3-bugfix.md'             = @('Fix-attempt count')
+    'playbook/6-6-流程体检.md'              = @('十二类信号', '信号 12', '改卡前三问')
+    'playbook_EN/6-6-process-audit.md'      = @('twelve classes of signals', 'Signal 12', 'Three questions before changing a card')
+    'playbook/7-3-债与腐化清偿.md'          = @('每批必念六查')
+    'playbook_EN/7-3-tech-debt-repayment.md' = @('six checks to recite every batch')
+    'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent')
+    'design/playbook-contract.md'           = @('违反规则的字面', '形态选择')
+    'SKILL.md'                              = @('子 agent 边界')
+    '_qc/baseline/README.md'                = @('对照组', '行号')
+}
+$missIntl = @()
+foreach ($k in $intl.Keys) {
+    $ip = Join-Path $root $k
+    if (-not (Test-Path $ip)) { $missIntl += "$k 不存在"; continue }
+    $itxt = [IO.File]::ReadAllText($ip, [Text.Encoding]::UTF8)
+    foreach ($nd in $intl[$k]) { if (-not $itxt.Contains($nd)) { $missIntl += "$k 缺「$nd」" } }
+}
+Check (-not $missIntl) "内化判据在位（缺：$($missIntl -join '；')）"
+Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-03.md')) '内化记录 _qc/internalize-2026-10-03.md 在位（15→40 映射矩阵 + 明确不拿的 7 条 + 下一轮候选）'
+
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
 $budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 90; 'docs/DESIGN_TOKENS.md' = 80; 'docs/MOTION.md' = 70; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90 }
@@ -255,7 +294,7 @@ $t12 = [IO.File]::ReadAllText((Join-Path $pb '1-3-接入已有项目.md'), [Text
 Check ($t12 -match 'git remote -v') '1-3 卡接入时查远端（防老项目无远端）'
 Check (([IO.File]::ReadAllText((Join-Path $pb '5-1-归档.md'), [Text.Encoding]::UTF8)) -match 'git push') '5-1 卡归档收尾有远端同步（push）'
 $t43 = [IO.File]::ReadAllText((Join-Path $pb '6-6-流程体检.md'), [Text.Encoding]::UTF8)
-Check ($t43 -match '提交节奏' -and $t43 -match '推送滞后') '6-6 卡有提交节奏与推送滞后信号（十类信号）'
+Check ($t43 -match '提交节奏' -and $t43 -match '推送滞后' -and $t43 -match '十二类' -and $t43 -match '信号 12') '6-6 卡有提交节奏与推送滞后信号 + 十二类信号（含 baseline 空转信号 12）'
 $commitCards = [ordered]@{ '1-2-选型初始化' = '1-2'; '1-3-接入已有项目' = '1-3'; '4-1-分批编码' = '4-1'; '6-3-修复' = '6-3'; '5-1-归档' = '5-1'; '6-5-复盘' = '6-5'; '7-1-UI改动' = '7-1'; '7-2-依赖升级' = '7-2'; '7-4-功能下线' = '7-4' }
 $noNum = @($commitCards.Keys | Where-Object { ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -notmatch ('git commit -m "' + $commitCards[$_] + ' ') })
 Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）"
