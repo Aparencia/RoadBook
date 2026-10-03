@@ -1,0 +1,70 @@
+# roadbook-autoload · Roadbook 自动加载插件
+
+一个 Host 侧组合包（bundle）：**在 git 项目里一开口谈开发任务，就把 roadbook 技能正文注入当前回合**，不需要用户手打 `/roadbook`，也不依赖模型自己想起来。
+
+- 注入形状与 DSH 内置「用户显式调用技能」完全一致：`source.kind = "skill-invocation"`、正文用官方 `renderSkillContent()` 渲染。
+- 只注入一次、只注入给真用户会话（子代理默认不注入）、用户手打 `/roadbook` 时自动让路，不重复加载。
+- 一切可判定的门控都是确定性的：不命中就不注入；注入后仍由模型按流程卡行事，插件**不替用户做裁决**。
+
+## 触发规则（三层门控）
+
+| 层 | 判据 | 默认 |
+| --- | --- | --- |
+| ① 项目 | 会话 cwd 向上能找到 `.git` | 开（`requireGitRoot`） |
+| ② 意图 | 用户消息命中开发意图关键词，且未命中抑制词 | 开（`mode: keyword`） |
+| ③ 去重 | 本会话未注入过、本回合无同名注入、用户没手打 `/roadbook` | 开（`oncePerSession`） |
+
+关键词与抑制词都可在配置里整体替换；`mode: always` 表示只要是 git 项目里的用户消息就注入，`mode: off` 表示完全关闭。
+
+## 配置（写进本包 `cordis.patch.yml` 的 `config`）
+
+| 键 | 默认 | 说明 |
+| --- | --- | --- |
+| `skills` | `["roadbook"]` | 要加载的技能名，按序取第一个能解析的 |
+| `mode` | `keyword` | `keyword` / `always` / `off` |
+| `keywords` | 内置开发意图词表 | 命中即注入 |
+| `suppressKeywords` | 内置抑制词表 | 命中即不注入（优先于关键词） |
+| `includeSubagents` | `false` | 子代理会话是否也注入 |
+| `requireGitRoot` | `true` | 只在 git 项目内注入 |
+| `oncePerSession` | `true` | 一次会话只注入一次 |
+| `note` | `true` | 正文后附一行说明（为什么加载、怎么关） |
+| `reportPath` | `""` | 自进化 A 环：命中记录 JSONL 落盘路径，空 = 不落盘 |
+| `skillDigest` | `""` | 自进化 B 环：SKILL.md 指纹基线，变了对不上就在说明里提示 |
+
+## 安装（GUI）
+
+1. 侧栏打开「**插件**」页 → 「**添加插件**」。
+2. 选「本地绝对路径」，填本目录（仓库里的 `plugin/roadbook-autoload`，或已 clone 的技能目录下 `roadbook/plugin/roadbook-autoload`）→ 先 `inspect` 再安装。
+3. 装完点「**立即启用**」（本 profile 已开 HMR，无需重启）。
+4. 新开一个会话，说一句「帮我重构一下这个模块」，当回合就应出现 roadbook 的技能正文与一行 `[roadbook-autoload]` 说明。
+
+## 验证（四条，缺一不可）
+
+| # | 场景 | 预期 |
+| --- | --- | --- |
+| 1 | git 项目里说「帮我重构一下登录模块」 | 注入 roadbook（有 `[roadbook-autoload]` 说明行） |
+| 2 | 说「今天天气怎么样」 | 不注入 |
+| 3 | 手打 `/roadbook 我有个想法：…` | 只注入一次（内置手势负责，插件让路） |
+| 4 | 把配置改成 `mode: off` 并重新启用 | 任何消息都不再注入 |
+
+## 升级与卸载
+
+组合包**不会自动更新**：`git pull` 更新本仓库后，在插件页卸载再装一次即可（配置写在 `cordis.patch.yml`，重装后按需重填）。卸载即在插件页移除本组合包。
+
+## 自进化（只观测、只提示，不改卡）
+
+| 环 | 做什么 | 默认 |
+| --- | --- | --- |
+| A 命中观测 | `reportPath` 落 JSONL（时间/会话/cwd/技能/命中词/指纹/摘要），供 43 卡体检抽样 | 关（留空即关） |
+| B 版本对账 | `skillDigest` 与 SKILL.md 当前指纹比对，不一致就在注入说明里提示"技能已更新" | 开（基线为空则不提示） |
+| C 空转观测 | "注入了但整轮没读 playbook/*.md"记为疑似空转 | 暂不做（避免为观测加钩子） |
+
+边界：本插件**只做注入与观测**，不自动修改流程卡、不自动改配置、不替用户裁决门禁；升级流程卡仍然走母版的 43 卡（流程体检）与用户确认。
+
+## 开发与测试
+
+```powershell
+node plugin/roadbook-autoload/test/trigger.test.mjs
+```
+
+纯逻辑在 `trigger.js`（不 import 任何 dsh 包），可脱离 Harness 离线跑；`index.js` 只做 Host 侧接线。DSH 升级后若 `agent/pre-step` 决策形状、`ctx.skills` 或 `renderSkillContent` 有变，先重跑本测试，再对照 DSH 自带的组合包开发指南（`@deepseek-ai/dsh-agent-preset/skills/cordis-plugin-development/`）核对契约。

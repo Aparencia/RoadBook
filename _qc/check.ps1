@@ -135,7 +135,37 @@ $commitCards = [ordered]@{ '11-选型初始化' = '11'; '12-接入已有项目' 
 $noNum = @($commitCards.Keys | Where-Object { ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -notmatch ('git commit -m "' + $commitCards[$_] + ' ') })
 Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）"
 
-Write-Host "== 6. 结论 =="
+Write-Host "== 6. 自动加载插件 plugin/roadbook-autoload =="
+$plg = Join-Path $root 'plugin\roadbook-autoload'
+foreach ($k in @('package.json','cordis.patch.yml','index.js','trigger.js','icon.svg','README.md','locale\zh.json','locale\en.json','test\trigger.test.mjs')) {
+    Check (Test-Path (Join-Path $plg $k)) "插件文件存在：plugin/roadbook-autoload/$k"
+}
+$plgPkg = $null
+try { $plgPkg = [IO.File]::ReadAllText((Join-Path $plg 'package.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $plgPkg = $null }
+Check ($null -ne $plgPkg) '插件 package.json 可解析（JSON 合法）'
+$plgYml = ''
+if ($null -ne $plgPkg) {
+    Check ($plgPkg.name -eq 'roadbook-autoload') "插件包名 roadbook-autoload（实际：$($plgPkg.name)）"
+    Check ($plgPkg.type -eq 'module') '插件为纯 ESM（type: module）'
+    $plgPatch = [string]$plgPkg.dsh.bundle.patch
+    Check ($plgPatch.Length -gt 0 -and (Test-Path (Join-Path $plg ($plgPatch -replace '^\./','')))) "插件声明 dsh.bundle.patch 且文件存在（$plgPatch）"
+    $plgExp = @($plgPkg.exports.PSObject.Properties.Name)
+    Check (($plgExp -contains './package.json') -and ($plgExp -contains './locale/*.json')) '插件 exports 暴露 ./package.json 与 ./locale/*.json（展示元信息）'
+    $plgIcon = Join-Path $plg ([string]$plgPkg.icon)
+    if (Test-Path $plgIcon) { Check ((Get-Item $plgIcon).Length -le 262144) "插件图标 ≤256KiB（$((Get-Item $plgIcon).Length) 字节）" }
+    $plgYml = [IO.File]::ReadAllText((Join-Path $plg 'cordis.patch.yml'), [Text.Encoding]::UTF8)
+    Check (($plgYml -match '(?m)^- insert:') -and ($plgYml -match ("(?m)^\s*-\s*id:\s*" + [regex]::Escape($plgPkg.name) + '\s*$')) -and ($plgYml -match ("(?m)^\s+name:\s*'?" + [regex]::Escape($plgPkg.name) + "'?\s*$"))) '插件 patch 形如 - insert: 且 id/name 与包名一致'
+}
+$plgIdx = [IO.File]::ReadAllText((Join-Path $plg 'index.js'), [Text.Encoding]::UTF8)
+Check (($plgIdx -match 'agent/pre-step') -and ($plgIdx -match 'export const inject') -and ($plgIdx -match 'skill-invocation')) '插件挂 agent/pre-step、声明 inject、注入形状同内置（skill-invocation）'
+Check (($plgIdx -match 'renderSkillContent') -and ($plgIdx -match 'dsh-skill')) '插件复用官方 renderSkillContent（不自造正文格式）'
+$plgBad = @('locale\zh.json','locale\en.json') | Where-Object { $t = [IO.File]::ReadAllText((Join-Path $plg $_), [Text.Encoding]::UTF8); ($t -notmatch '"title"\s*:') -or ($t -notmatch '"description"\s*:') }
+Check (-not $plgBad) "插件中英文展示元信息齐（缺：$($plgBad -join ', ')）"
+$plgRdm = [IO.File]::ReadAllText((Join-Path $plg 'README.md'), [Text.Encoding]::UTF8)
+Check ($plgRdm -match 'trigger\.test\.mjs') '插件 README 写了离线单测命令'
+Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match 'plugin/roadbook-autoload') '根 README 指向自动加载插件（可发现）'
+
+Write-Host "== 7. 结论 =="
 Write-Host "通过 $pass 项；失败 $($fail.Count) 项"
 if ($fail.Count -gt 0) { $fail | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }; exit 1 }
 Write-Host "Roadbook（路书）V6 母版完整性校验：全部通过" -ForegroundColor Green

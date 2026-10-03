@@ -33,6 +33,7 @@
 ├── design/          本设计文档+契约      ├── src/ tests/ …（按栈生成）
 ├── _qc/check.ps1    一致性校验           └── docs/          机制配套文档（见 §5）
 ├── LICENSE          MIT 许可（可自由复用）
+├── plugin/           DSH 自动加载插件（可选装，见 §15）
 └── _archive/V5/     旧版封存，不维护
 ```
 
@@ -193,6 +194,7 @@
 12. ✅ 版本管理主动性（2026-10-03）：用户问"项目不会主动进行 git"，诊断出三处机械失明（check.ps1 零 git 断言 → 完成定义可在零提交时成立；gate.ps1 传 -Anchor 时只看已提交区间 → 提交前跑必假绿；未跟踪文件在 check.ps1 / orphans.ps1 / 40 卡基线三处隐形）＋一个没边界（会话边界无人管 git）＋远端覆盖为零（全库仅 41 卡一处 `git push … # 有远端时`）。落地 A+B+C+D+F+G+I：check.ps1 加"工作树干净 + 本批提交计数"断言；gate.ps1 变更清单改为"已提交 ∪ 未提交"；00 卡开机报告与会话收尾读 git；STATE.md 加 `工作树状态` / `远端仓库`；提交信息统一 `<卡号> <type>(<scope>): <摘要>`；11/12 卡加远端三选一（可见性由人裁决，11 卡绿灯三证 → 四证）；40 卡归档收尾必推；43 卡加信号 9/10；**push 明确不进 DoD**；QC 119 → 128 项。理由与阈值见 §14
 13. ✅ skill 分发（2026-10-03，见 §13）：仓库根新增 `SKILL.md`（路由表 21 行 + 四条铁律，**不复写判据**）→ 装成 DSH 用户级 skill（`~/.dsh/skills/roadbook` = 本仓库 clone，靠目录型布局让相对路径落回母版根）；`_qc/check.ps1` 增 8 项断言（存在 / 行数 ≤120 / 首行严格 `---` / `name=roadbook` / `description` ≤500 / 铁律关键词 / 路由覆盖 ≥20 张卡 / 引用的卡不指空）；版本口径 = 世代号 `V6`（第 6 代流程）+ 发布 tag `v0.6.0`；QC 118/118 通过
 14. ✅ 发布补强（2026-10-03）：仓库根新增 `LICENSE`（MIT，版权人 Aparencia，README 加许可行）；GitHub 侧建 Release `v0.6.0`（tag 仍指向 skill 分发那次提交，未移动）并补仓库 topics（`dsh-skill` / `ai-coding-workflow` / `ai-agent`）；`_qc/check.ps1` 增 1 项 LICENSE 存在性断言；QC 119/119 通过
+15. ✅ 自动加载插件（2026-10-03，见 §15）：仓库根新增 `plugin/roadbook-autoload/`（DSH 组合包：`dsh.bundle.patch` + Host 插件挂 `agent/pre-step` 注入 + `trigger.js` 纯逻辑可离线单测 11 例）；三层门控（git 项目 + 开发意图关键词 + 去重与让路内置手势）＋自进化三环（命中观测 / 版本对账 / 空转观测，默认保守、只观测不改卡）＋中英文展示元信息与图标；`_qc/check.ps1` 增 21 项断言、根 README 与本节同步；QC 128 → **149/149** 通过
 
 ## 11. 维护规则（写进 START-HERE）
 
@@ -250,3 +252,24 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 **边界：push 不进 DoD。** DoD 必须本机可判定、不受网络与凭据影响（`check.ps1` 退出码 0）；把 push 塞进 DoD 会让断网变成"没完成"，那是假红。所以推送挂在**归档收尾**（任务闭环的自然同步点）与**体检信号**上，不挂完成定义。
 
 **为什么这三处"失明"危险**：门禁与完成定义是这套流程仅有的两个机械真相来源。它们一旦对上层的 git 状态失明，"绿灯"就只证明"命令跑过了"，不证明"东西存在过"——这正是失败模式报告 A 类（伪验证）的机制版本。
+
+## 15. 自动加载插件（2026-10-03 增补）
+
+**问题**：skill 的自动加载是**模型侧判断**——会话目录里只有 `name` + `description`，是否调用 `skill` 工具由模型自己决定（§13 机制要点①）。于是"流程卡有没有进入上下文"没有机械保证；用户实测遇到的现象正属此类（技能装好后旧会话仍调不到，因为该会话的技能目录缓存为空且监视器挂不上）。
+
+**形态**：仓库根新增 `plugin/roadbook-autoload/`，一个 DSH **组合包（bundle）**：
+
+- `package.json`（`dsh.bundle.patch` → `cordis.patch.yml`，声明 `dsh.compatibility.dshReleases`）＋ `cordis.patch.yml`（`- insert:` 一行把包挂进宿主）
+- `index.js` = Host 半区插件（`export function apply` / `export const inject = ['agents','skills']` / `export const Config`），只做接线
+- `trigger.js` = 纯逻辑（**不 import 任何 dsh 包**，可 `node plugin/roadbook-autoload/test/trigger.test.mjs` 离线单测，11 例）
+- `locale/zh.json`、`locale/en.json`、`icon.svg`（插件页展示）、`README.md`（配置表 / 安装 / 验证）
+
+**机制**：挂 `agent/pre-step`（waterfall，镜像内置手势 `dsh-tool-skill` 的实现）——命中就 `return { ...decision, messages: [...decision.messages, createUserMessage({ content, source: { kind: 'skill-invocation', name, form: 'instructions' } })] }`（spread 决策以保留 `startsRequestSeries`），正文由官方 `renderSkillContent()` 渲染。**这与用户手打 `/roadbook` 走同一条路**，模型看到同一份 `<skill_content>`，也让"自动注入"与"显式调用"在会话日志里可区分（`source.kind`）。
+
+**三层门控（全部可判定，不靠模型）**：① 会话 cwd 向上能找到 `.git`（`requireGitRoot`）；② 用户消息命中开发意图关键词且**未**命中抑制词（"只讨论 / 不要动代码 / 不用流程"一类，抑制词优先）；③ 去重：本会话未注入过、本回合无同名注入、用户没手打 `/<skill>`（让路给内置手势）。另：子代理会话默认不注入（`includeSubagents`）、`note` 在正文后附一行透明说明（为什么加载 / 怎么关）、`mode: off` 整体关闭、`mode: always` 改成"只要在 git 项目里就注入"。
+
+**自进化三环（只观测、只提示，绝不改卡）**：A **命中观测**——`reportPath` 落 JSONL（时间/会话/cwd/技能/命中词/指纹/消息摘要），默认关，开了供 43 卡体检抽样；B **版本对账**——`skillDigest` 与 SKILL.md 当前指纹比对，不一致就在注入说明里提示"技能已更新"，默认开（基线为空则不提示）；C **空转观测**——"注入了但整轮没读 `playbook/*.md`"记为疑似空转，**暂不做**（避免为观测再挂钩子）。**边界**：插件不自动改卡、不自动改配置、不替用户裁决门禁；流程卡变更仍走 43 卡体检 + 用户裁决。
+
+**代价与脆弱面（明说）**：① 误命中成本 ≈ 1.2K tokens/会话，三层门控把它压到"开发意图明确"才发生；② 依赖 DSH 的 `agent/pre-step` 决策形状、`ctx.skills.get`、`renderSkillContent` 三处——DSH 升级后若改动它们，插件可能静默失效，先跑离线单测再按四条验证核对；③ 组合包**不自动更新**，升级 = 插件页卸载 + 重装（配置在 `cordis.patch.yml` 里，重装后按需重填）。
+
+**为什么不用另两条路**：写 `~/.dsh/AGENTS.md` 或改 `template/AGENTS.md` 都是"请遵守"的**软指令**，仍由模型服从（用户要的正是 100% 自动）；且后者只影响装了模板的新项目，还会让项目宪法带上母版依赖。插件是唯一在"每回合注入"这一层生效、又不污染任何项目文件的形态。

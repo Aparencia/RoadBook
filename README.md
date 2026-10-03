@@ -16,6 +16,7 @@
 | `design/` | 设计事实源与写作契约 | 改流程时才看 |
 | `_qc/check.ps1` | 母版一致性校验 | 每次改完跑一次 |
 | `SKILL.md` | DSH skill 入口：路由表 + 四条铁律（不含判据） | agent 自动加载，或你打 `/roadbook` |
+| `plugin/` | DSH 自动加载插件（组合包，可选安装） | 你，装一次 |
 
 ## 三条铁律
 
@@ -40,6 +41,13 @@ git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE\.dsh\skill
 ```
 
 之后新会话的 skill 目录里就有 `roadbook`（说「按流程来」会自动加载），也可以直接打 `/roadbook` 主动加载；更新用 `git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only`。
+
+## 自动加载插件（可选，让流程不靠模型自觉）
+
+skill 是否被加载仍取决于模型判断；想 100% 自动，装这个 Host 组合包插件——在 git 项目里一开口谈开发任务，就把同一份 roadbook 正文注入当前回合（只注入一次、手打 `/roadbook` 时让路、`mode: off` 可整体关闭）：
+
+- 装法：DSH 侧栏「插件」→「添加插件」→ 本地绝对路径 → 指向本仓库的 `plugin/roadbook-autoload` → 安装后「立即启用」。
+- 说明、配置表与四条验证步骤见 [`plugin/roadbook-autoload/README.md`](plugin/roadbook-autoload/README.md)。
 
 ## 维护这套母版
 

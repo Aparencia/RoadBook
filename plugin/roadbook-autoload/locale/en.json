@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Roadbook Autoload",
+    "description": "Loads the Roadbook workflow skill into the current turn as soon as a development task starts inside a git project (disable with mode: off)."
+  }
+}

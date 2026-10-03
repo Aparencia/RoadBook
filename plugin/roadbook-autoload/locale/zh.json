@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Roadbook 自动加载",
+    "description": "在 git 项目里一开口谈开发任务，就自动把 Roadbook 流程卡加载进当前回合（可用 mode: off 关闭）。"
+  }
+}
