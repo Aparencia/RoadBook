@@ -7,7 +7,7 @@
 
 - 一句话：<这个项目做什么、给谁用>
 - 技术栈：<按选型填>；版本锁定见 `.tool-versions`——**开工跑 doctor.ps1 时它被逐行读取比对**（装不上或版本不符会点名）；人装依赖、排查"我这能跑他那不能跑"也以它为准；改它任何一行都算环境变更，归档回执必须说明
-- 文档地图：`docs/ARCHITECTURE.md`（系统怎么组成）｜`docs/RUNBOOK.md`（部署/回滚/备份/恢复演练）｜`docs/UI.md`（屏幕与交互）｜`docs/DESIGN_TOKENS.md`（色彩/字号/间距）｜`docs/MOTION.md`（动效时长与缓动）｜`docs/OBSERVABILITY.md`（观测与告警）｜`docs/PRIVACY.md`（数据与合规）｜`docs/I18N.md`（语言与可访问性）｜`docs/TOOLING.md`（DSH 版本与插件）｜`docs/USER_GUIDE.md`（上手与交接）｜`docs/refactor/`（重构记录）——其中带「由卡触发」的几份未触发时留骨架；谁创建、谁维护、谁读见 `docs/README.md` 对应表
+- 文档地图：`docs/ARCHITECTURE.md`（系统怎么组成）｜`docs/RUNBOOK.md`（部署/回滚/备份/恢复演练）｜`docs/UI.md`（屏幕与交互）｜`docs/DESIGN_TOKENS.md`（色彩/字号/间距）｜`docs/MOTION.md`（动效时长与缓动）｜`docs/OBSERVABILITY.md`（观测与告警）｜`docs/PRIVACY.md`（数据与合规）｜`docs/I18N.md`（语言与可访问性）｜`docs/USER_GUIDE.md`（上手与交接）｜`docs/refactor/`（重构记录）——其中带「由卡触发」的几份未触发时留骨架；谁创建、谁维护、谁读见 `docs/README.md` 对应表
 - 开发流程：**Roadbook V6 母版**——动作照母版流程卡逐张走（卡号与顺序见根 `START-HERE.md`）；状态写在根 `STATE.md`（唯一事实源）
 
 ## 1. 完成的唯一定义（DoD）
@@ -78,8 +78,7 @@ type-check 干净 ≠ 验证；没跑过的测试等于没有测试。
 | 色彩与风格 | `docs/DESIGN_TOKENS.md`（10 阶中性色/语义色/对比度门禁/字号与间距/圆角阴影）（3-5 卡） |
 | 动效与微交互 | `docs/MOTION.md`（时长表/缓动/动效选项/降级策略）（3-6 卡） |
 | 结构重构 | `docs/refactor/REFACTOR_<日期>_<slug>.md`（五阶段与净减目标；旧实现退役同批删）（7-8 卡） |
-| 工具面（DSH 版本与插件） | `docs/TOOLING.md`（版本行/插件用途表/触发词与关闭方式/MCP 纪律）（8-3 卡） |
-| 多 agent 并行任务 | 共享任务板（create → claim → complete）+ 主线程独占共享文件；验收由主线程跑（8-1 卡） |
+| 多 agent 并行任务 | 共享任务板（create → claim → complete）+ 主线程独占共享文件；验收由主线程跑 |
 | 质量与度量报告 | `docs/decisions/QUALITY_<日期>_<主题>.md`（四指标 + 一条流程建议）；过程明细可放 `docs/reviews/QUALITY_<日期>.md`（6-7 卡） |
 | 流程体检提案 | `docs/decisions/PROCESS_<日期>_<主题>.md` + 本文件修订（6-6 卡） |
 
@@ -102,7 +101,7 @@ type-check 干净 ≠ 验证；没跑过的测试等于没有测试。
 - 已知环境坑：<Windows 端口占用/依赖版本 等，踩过的记这里>
 - 编码坑（默认就要知道）：Windows PowerShell 5.1 按系统码页读**无 BOM** 的 .ps1 → 中文判词乱码甚至 ParserError ⇒ .ps1 一律存 UTF-8 **带 BOM**；`>` / `2>` 重定向默认写 UTF-16LE，别拿它生成报告/日志
 - 远端与推送：`git push` **不进 DoD**——DoD 必须本机可判定，断网/没凭据不该让"完成"变假红；没有远端就在 STATE.md「远端仓库」写"本地-only（已裁剪）"，推送挂在 5-1 卡归档收尾
-- DSH（DeepSeek Harness）**0.2.0-rc2**：装了什么插件、用在哪张卡、怎么关，写在 `docs/TOOLING.md`（8-3 卡）。**不要把 `dsh` 写进 `.tool-versions`**——doctor.ps1 会把"工具不在 PATH"判红，而没有 DSH 的机器也要能跑完这套流程
+- DSH（DeepSeek Harness）**0.2.0-rc2**：装了什么插件、怎么关，记在本节（原 8-3 卡与 `docs/TOOLING.md` 已按用户裁决删除）。**不要把 `dsh` 写进 `.tool-versions`**——doctor.ps1 会把"工具不在 PATH"判红，而没有 DSH 的机器也要能跑完这套流程
 
 ## 11. 代码生成硬标准（生成代码时逐条自检；4-2 代码审查卡按此复核）
 
@@ -118,5 +117,5 @@ type-check 干净 ≠ 验证；没跑过的测试等于没有测试。
 - 上文所有"多方 / 干系人 / 沟通节奏"条款走单人分支：结论一行写进 `STATE.md` 的 `裁剪记录`，理由一行即可，不写会议纪要。
 - 门禁默认「轻确认」（说一句就继续）；只有 L 档与红线域才升级为「裁决」（等人确认再动）。
 - 不可委托五条不打折：执行 SQL / 发布部署 / 删除或修改真实数据 / 打 tag / 门禁裁决。
-- 多 agent 并行（Agent Teams / 子 agent）：写作用域互斥、共享文件由主线程独占、并发写者 ≤5；**验收必须由主线程亲自跑门禁并抽查 diff**，子 agent 自报不算证据（8-1 卡）。
-- 长任务用 goal 持续轮次 + 里程碑回执；上下文吃紧时的压缩与记忆口径见 8-2 卡（只写稳定事实，读出的证据不回写）。
+- 多 agent 并行（Agent Teams / 子 agent）：写作用域互斥、共享文件由主线程独占、并发写者 ≤5；**验收必须由主线程亲自跑门禁并抽查 diff**，子 agent 自报不算证据。
+- 长任务用 goal 持续轮次 + 里程碑回执；上下文吃紧时压缩前先把证据落盘，交接靠 STATE.md（只写稳定事实，读出的证据不回写）。
