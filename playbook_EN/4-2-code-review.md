@@ -117,7 +117,7 @@ The report is written to `docs/reviews/CODE_<date>_<slug>.md` (on re-review crea
 1. **Coverage map**: file × dimension tick table (✓ reviewed / — N/A + reason / ○ not reviewed + a reason is mandatory; including phase-skip declarations)
 2. **Issue list**: sorted P0→P3, each with number (new R-01…; old issues keep their original numbers) / level / location (file:line) / description / impact (trigger condition) / fix suggestion
 3. **Passing items**: ✅ pass per dimension (with coverage) + each axis's own passing items (the two axes are listed as separate sections, not merged); leaving it blank is not allowed
-4. **Conclusion**: the four-level counts (including old-issue closing results) + the suggested color per the "suggested-color matrix" + the replacement-and-deprecation check conclusion (number of parallel-state register rows / number of deprecation-marker hits / whether each was declared)
+4. **Conclusion**: the four-level counts (including old-issue closing results) + the suggested color per the "suggested-color matrix" + the replacement-and-deprecation check conclusion (number of parallel-state register rows / number of deprecation-marker hits / whether each was declared) + the review round (round N, cap 3) with the bar-lowering guard's five-check conclusion (each hit judged item by item) + this round's N findings / M of them actionable
 
 In the conversation, receipt: report path + four-level counts + suggested color + replacement-and-deprecation check conclusion + **the deprecation-scan command text and its full output (paste it even when the output is empty, and note that the anchor assertion passed)**; then write `下一步：4-3 验证（回复"继续"即执行）`.
 
@@ -142,6 +142,21 @@ powershell -NoProfile -File check.ps1
 The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not initialized) or non-zero → stop and ask the user; declaring the review complete is forbidden.
 
 **Re-review scope (when reviewing again after going back to 4-1 to fix)**: [disambiguated] the fix diff runs all seven dimensions + the replacement and deprecation check + every old issue closed item by item (fixed / not fixed / newly introduced) + every row of the parallel-state register re-checked (has the deletion condition been honored, has the expiry batch passed) — not just the few fixed lines.
+
+**Bounded re-review loop (3 rounds at most; "the artifact is too big" is a signal to decompose, not a reason to relax the standard)**: if the same batch of issues is still not cleared in round 3 → stop and escalate to the user with three options (split into smaller tasks / relax the standard and state the cost / drop this batch); **starting a fourth round is forbidden**. End every round with one line `本轮发现 N 条，其中可行动 M 条` ("this round found N items, of which M are actionable"); **two consecutive rounds with N>0 and M=0 → stop and escalate** (theater of critique: what is produced is wording, not fixable items).
+
+**Bar-lowering guard, five checks (run on every round's fix diff; any hit = red — the standard was lowered, the problem was not fixed)**:
+① **Threshold moved**: line-count / coverage / timeout / retry / budget ceilings grew in the fix diff with no recorded user ruling
+② **Tests made easier**: new `.skip`/`.only`, tests commented out or deleted, a precise assertion replaced by "it does not throw"
+③ **Checker muted**: new `ts-ignore`/`eslint-disable`/`noqa`/`SuppressWarnings`, or an error swallowed into an empty catch
+④ **Threshold file in the same commit as the failing feature**: the commit that turns the gate green and the commit that raises the ceiling are the same one → red
+⑤ **Artifact size relaxed**: bundle size / image size / dependency-count budget raised to buy a green
+
+```powershell
+# Bar-lowering guard: scan the fix diff for the five patterns (empty output is evidence too — paste it; the second line is a heuristic, judge each hit)
+git diff -U0 "$anchor..HEAD" | Select-String '^\+' | Select-String 'skip\(|\.only\(|eslint-disable|ts-ignore|ts-expect-error|noqa|SuppressWarnings'
+git diff -U0 "$anchor..HEAD" | Select-String '^\+' | Select-String '(max|limit|budget|threshold|tolerance|timeout|retries|coverage)\w*\s*[:=]\s*\d+'
+```
 
 **Six steps before acting on review comments**: ① read them through, change no code ② restate the requirement in your own words (if you cannot restate it = ask first) ③ check the facts in the code ④ judge whether it is technically correct for this project ⑤ confirm technically or rebut with reasons ⑥ fix and test item by item; **Prohibition: "you are right / good suggestion / thanks / fixing it right away" must never replace a technical response — feedback is technical input, not a social occasion**; **if a single item is unclear, stop as a whole** and clarify the unclear ones before touching anything — "fix only the items you understood" is forbidden (items may be interconnected; partial understanding = fixing it wrong).
 

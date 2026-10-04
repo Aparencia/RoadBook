@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 470) "行数 $selfN <= 470 ：_qc/check.ps1 自身（2026-10-04 由 440 上调：C 档内化 · 仪器自检 / 触发布线 / 台账 / 加载面评估集断言；上调须同时改本行与 design §8）"
+Check ($selfN -le 490) "行数 $selfN <= 490 ：_qc/check.ps1 自身（2026-10-04 由 470 上调：C 档内化批次 3 卡面判据；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -393,6 +393,22 @@ if (Test-Path $selfTest) {
     Check ($stLines.Count -le 110) "行数 $($stLines.Count) <= 110 ：_qc/selftest.ps1"
     Check (($stTxt -match 'good：') -and ($stTxt -match 'bad：') -and ($stTxt -match 'finally') -and ($stTxt -match 'Compare-Object')) 'selftest.ps1 含 good/bad 参照实现 + finally 复原 + porcelain 前后比对'
 }
+
+# —— C 档内化批次 3（卡组 1）：判据可执行、标准不许被悄悄改低 ——
+$c24 = [IO.File]::ReadAllText((Join-Path $pb '2-4-非功能需求.md'), [Text.Encoding]::UTF8)
+$c24e = [IO.File]::ReadAllText((Join-Path $pen '2-4-non-functional-requirements.md'), [Text.Encoding]::UTF8)
+Check (($c24 -match '检查命令') -and ($c24 -match '跑在哪阶段') -and ($c24e -match 'Check command') -and ($c24e -match 'Which stage it runs in')) '2-4 六维表两列齐（检查命令 / 跑在哪阶段；中英同批）'
+Check (($c24 -match '有数字没命令 = 愿望') -and ($c24e -match 'A number without a command is a wish')) '2-4 写明「有数字没命令 = 愿望」（每条阈值配产出裁决的命令 + 跑的阶段）'
+$c43 = [IO.File]::ReadAllText((Join-Path $pb '4-3-验证.md'), [Text.Encoding]::UTF8)
+$c43e = [IO.File]::ReadAllText((Join-Path $pen '4-3-verification.md'), [Text.Encoding]::UTF8)
+Check (($c43 -match '外部意见') -and ($c43 -match 'osv-scanner') -and ($c43 -match 'npx axe') -and ($c43e -match 'external opinion') -and ($c43e -match 'non-circular')) '4-3 至少一条外部意见（判据非循环性，agent 争辩不了的工具；中英同批）'
+$c42 = [IO.File]::ReadAllText((Join-Path $pb '4-2-代码审查.md'), [Text.Encoding]::UTF8)
+$c42e = [IO.File]::ReadAllText((Join-Path $pen '4-2-code-review.md'), [Text.Encoding]::UTF8)
+Check (($c42 -match '降标守卫') -and ($c42 -match 'eslint-disable') -and ($c42 -match 'noqa') -and ($c42e -match 'bar-lowering guard') -and ($c42e -match 'ts-ignore')) '4-2 降标守卫五查在位（阈值被挪/测试变简单/检查器被静音/阈值文件同批/工件放宽；中英同批）'
+Check (($c42 -match '最多 3 轮') -and ($c42 -match '禁止开第 4 轮') -and ($c42 -match '可行动') -and ($c42e -match 'Bounded re-review loop') -and ($c42e -match 'fourth round')) '4-2 有界复核循环（≤3 轮 + 可行动率连续两轮为 0 即升级；中英同批）'
+$glsTxt = [IO.File]::ReadAllText((Join-Path $root 'design\glossary-en.md'), [Text.Encoding]::UTF8)
+$glsMissing = @('检查命令','跑在哪阶段','有界复核循环','降标守卫','判据非循环性','外部意见') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
+Check (-not $glsMissing) "术语表含批次 3 新术语（缺：$($glsMissing -join ', ')）"
 
 Write-Host "== 7. 脚本可执行性与口径统一 =="
 $ps1s = @('_qc\check.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')

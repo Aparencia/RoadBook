@@ -53,6 +53,13 @@ When the exit code is not 0, tell two cases apart: `2` = `$STEPS` not configured
   ⚠️ **Mutant hygiene**: when the readings look odd, suspect the runner cache first (vitest writes its cache into node_modules, and `--no-cache` is not enough) — clear the cache between the mutation and the re-run, or run in a temporary copy directory (see the lesson card `docs/lessons/<date>_测量载体脱钩.md`)
 - If you find yourself "changing the test to accommodate the code" → stop immediately and declare it (that is cheating).
 
+**Action 2.2: at least one external opinion (non-circular criterion; mandatory for tiers M/L, otherwise write N/A + reason)**
+"I wrote it, I tested it, I judged it" is circular reasoning — the criteria must include at least one verdict from a tool you cannot argue with (pick the one that fits this change): accessibility `npx axe <url> --exit` | dependency vulnerabilities `osv-scanner -r .` | performance and size `npx lighthouse <url>` | duplicated code `npx jscpd src` | types `npx tsc --noEmit`.
+Criterion: paste that command's exit code or score verbatim into VERIFY.md and the receipt; when the external tool says red, it is red — overriding it with "I looked and it is fine" is forbidden.
+❌ Counter-example: every criterion is an assertion you wrote and a result you interpreted yourself (grading your own exam)
+✅ Good example: `npx axe http://localhost:3000 --exit` exit code 0, or `osv-scanner -r .` with no HIGH/CRITICAL output, pasted verbatim
+Tool cannot be installed / offline / no permission → write "no external opinion this round + reason" in VERIFY.md's honest-boundaries section; silently omitting it is forbidden.
+
 **Action 2.5: scenario walkthrough (tiers M/L; every scenario must carry evidence — no output/JSON/assertion pasted = it was never walked)**
 The agent walks each scenario in the real running state; the results go into VERIFY.md. Scenario menu:
 - □ Normal path: run SCOPE's acceptance criteria item by item
@@ -88,10 +95,11 @@ The checklist is written into VERIFY.md (together with the check output, test re
 Give, item by item:
 1. check.ps1's complete output + exit code (tier A); mark each claim's evidence tier separately — a claim with only tier S is handled as not done
 2. Test output (tiers M/L) + the mutant falsification record (what was injected / which item turned red / back to green after restore)
-3. Scenario walkthrough result table (tiers M/L): scenario → evidence (JSON/output/assertion) matched item by item
-4. VERIFY.md path
-5. The behavior acceptance checklist text (the copy the user will click through)
-6. The honest-boundaries section text (the not-verified list; write "none" if there is none)
+3. The external opinion verbatim (command + exit code/score; N/A + reason if none, never omitted)
+4. Scenario walkthrough result table (tiers M/L): scenario → evidence (JSON/output/assertion) matched item by item
+5. VERIFY.md path
+6. The behavior acceptance checklist text (the copy the user will click through)
+7. The honest-boundaries section text (the not-verified list; write "none" if there is none)
 
 ---
 

@@ -191,6 +191,15 @@
 | 触发词唯一 | one trigger phrase per behavior |
 | 禁用诱导词 | no leading words |
 | 每个问题自带推荐答案 | every question carries a recommended answer |
+| 检查命令 | check command |
+| 跑在哪阶段 | which stage it runs in |
+| 有数字没命令 = 愿望 | a number without a command is a wish |
+| 有界复核循环 | bounded re-review loop |
+| 降标守卫 | bar-lowering guard |
+| 可行动发现 | actionable finding |
+| 质疑剧场 | theater of critique |
+| 判据非循环性 | non-circular criterion |
+| 外部意见 | external opinion |
 
 ## 5. 禁止翻译（原样保留）
 

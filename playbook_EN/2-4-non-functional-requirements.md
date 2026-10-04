@@ -14,7 +14,7 @@ After receiving the start instruction, first receipt the following five items be
    ✅ Good example: "这个页面慢到几秒你会觉得不能接受？峰值大概几个人同时用？" ("At how many seconds would you call this page unacceptably slow? How many people use it at peak, roughly?")
    If the user cannot answer → use a measured current baseline as the basis (Action 3); picking a number out of thin air is forbidden.
 4. **Paste this card's checklist verbatim (repeat these five lines word for word at start, tick them one by one before closing)**:
-   - [ ] ① All six dimensions are filled in: a measurable threshold (number + unit) + how to verify it; both are required
+   - [ ] ① All six dimensions are filled in: a measurable threshold (number + unit) + how to verify it + the check command (the one that produces the verdict) + which stage it runs in; all four are required
    - [ ] ② Where no threshold can be given, `N/A（理由）` is written; nothing is left blank and there is no "尽量/差不多/待定" ("as far as possible / roughly / to be decided")
    - [ ] ③ Every threshold has one verification action 4-3 can execute directly (the text is written into this card's output)
    - [ ] ④ Thresholds are measurable boundaries (P95 ≤ 800 ms), not adjectives (the response should be fast)
@@ -27,18 +27,19 @@ After receiving the start instruction, first receipt the following five items be
 
 **Action 1: fill in the six-dimension list dimension by dimension (in a table, one row per dimension; all six rows are required)**
 
-| Dimension | The question it must answer | Typical threshold example (change the numbers to fit the project; copying them is forbidden) | How to verify |
-| :-- | :-- | :-- | :-- |
-| Performance | how slow counts as slow? | list page P95 ≤ 800 ms; a single export ≤ 5 s | load test, or run a timing script 3 times in a row and take the median |
-| Capacity | how much data / concurrency can it still carry? | one table ≤ 100 万 rows (1 million); one uploaded file ≤ 50 MB; peak concurrency ≤ 200 | data-generation script + load test |
-| Availability | how much downtime is allowed? | monthly availability ≥ 99.5% (monthly downtime ≤ 3.6 h); start-up ≤ 3 s | health checks and runtime-log statistics |
-| Security | who can see it, who can change it? | not logged in returns 401; accessing another user's data without authorization returns 403; logs contain no phone numbers | run the test cases item by item (each threat-modeling check item lands as a test case) |
-| Maintainability | how long until a newcomer can run it? | runs on a clean machine in ≤ 30 minutes; single file ≤ 500 lines | actually run it once following docs/RUNBOOK.md and time it |
-| Compatibility | in which environments must it work? | Chrome/Edge latest 2 major versions; Windows 10+; installer ≤ 20 MB | visual check on each target environment |
+| Dimension | The question it must answer | Typical threshold example (change the numbers to fit the project; copying them is forbidden) | How to verify | Check command (the one that produces the verdict) | Which stage it runs in |
+| :-- | :-- | :-- | :-- | :-- | :-- |
+| Performance | how slow counts as slow? | list page P95 ≤ 800 ms; a single export ≤ 5 s | load test, or run a timing script 3 times in a row and take the median | `powershell -NoProfile -File scripts/bench.ps1 -Rows 1000` | 4-3 Verification (must run before close-out) |
+| Capacity | how much data / concurrency can it still carry? | one table ≤ 100 万 rows (1 million); one uploaded file ≤ 50 MB; peak concurrency ≤ 200 | data-generation script + load test | `powershell -NoProfile -File scripts/make-data.ps1 -Rows 1000000` | 4-3 Verification (after generating data) |
+| Availability | how much downtime is allowed? | monthly availability ≥ 99.5% (monthly downtime ≤ 3.6 h); start-up ≤ 3 s | health checks and runtime-log statistics | `powershell -NoProfile -File scripts/uptime.ps1 -Days 30` | 5-4 Runtime observation (run monthly) |
+| Security | who can see it, who can change it? | not logged in returns 401; accessing another user's data without authorization returns 403; logs contain no phone numbers | run the test cases item by item (each threat-modeling check item lands as a test case) | `powershell -NoProfile -File scripts/security-cases.ps1` | 4-3 Verification + whenever auth or permissions are touched |
+| Maintainability | how long until a newcomer can run it? | runs on a clean machine in ≤ 30 minutes; single file ≤ 500 lines | actually run it once following docs/RUNBOOK.md and time it | `Measure-Command { powershell -NoProfile -File scripts/onboard.ps1 }` | before 5-1 Archive (runnability recheck) |
+| Compatibility | in which environments must it work? | Chrome/Edge latest 2 major versions; Windows 10+; installer ≤ 20 MB | visual check on each target environment | `powershell -NoProfile -File scripts/compat.ps1` | 4-3 Verification + before 5-2 Release |
 
 "Peak concurrency ≤ 200" is read as concurrent users, not requests per second [disambiguated].
 ❌ Counter-example: `性能：响应要快，体验要好` ("performance: the response should be fast, the experience good") — not measurable, so it is as good as unwritten
 ✅ Good example: `性能：列表页 P95 ≤ 800 ms（1000 行数据）；验证：脚本连跑 3 次取中位数` ("performance: list page P95 ≤ 800 ms (1000 rows of data); verify: run the script 3 times in a row and take the median")
+**A number without a command is a wish**: "how to verify" says how to measure it, the check command says which command produces the verdict — it must be one real copyable line (`powershell -NoProfile -File scripts/<script>.ps1`), never "take a look" or "seems fine"; which stage it runs in must name a concrete card or moment, otherwise nobody ever runs that threshold.
 
 **Action 2: give every threshold one action 4-3 can execute directly**
 Append one line after each threshold in NFR.md: `验证动作：<命令／打开哪页 → 做什么 → 看什么>` ("verification action: <which command / which page to open → do what → look at what>").
@@ -76,7 +77,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 1. NFR.md full path + line count
 2. The six-dimension value table (dimension → threshold or `N/A（理由）`), all six rows present
 3. The number of `N/A（理由）` items and the reason text
-4. One line per threshold: threshold text → verification-action text (write `N/A` items the same way)
+4. One line per threshold: threshold text → verification-action text → check-command text → which stage it runs in (write `N/A` items the same way)
 5. The blank-value self-check command output (a `Select-String` with no output is the pass)
 6. A quote of the user's words confirming the thresholds (without that confirmation the next card must not start)
 7. This commit's hash (verbatim `git rev-parse HEAD`)
