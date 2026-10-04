@@ -222,6 +222,13 @@
 | 作用域（项目｜全局） | scope (project ｜ global) |
 | 最近复发 | last recurrence |
 | 妥协点收口 | concession close-out |
+| 切斯特顿栅栏 | Chesterton's Fence |
+| 删除前六问 | six questions before deleting |
+| 渐进披露三级 | three-level progressive disclosure |
+| 常设 DoD | standing DoD |
+| 单任务验收 | per-task acceptance |
+| 字面近似层 | literal-similarity layer |
+| 路由 rank-1 命中率 | routing rank-1 hit rate |
 
 ## 5. 禁止翻译（原样保留）
 

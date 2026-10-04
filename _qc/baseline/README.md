@@ -68,6 +68,7 @@ powershell -NoProfile -File _qc/baseline/run.ps1 -Declare "失败类型：跳过
 
 - 60/40 切分：只允许改关键词与抑制词表，**不允许改 `split:"test"` 的题目**（越改越像给自己出送分题）。
 - 两个触发面分开测：**加载面**（要不要载入 skill，本 fixture）与**路由面**（该指哪张卡，题目在 `_qc/baseline/triggers/queries.json`）——指错卡比不触发更坏。
+- **路由 rank-1 命中率阈值 = 95%，只升不降**（`--min-rank1 95`）：每条题跑 3 次取多数，答对「该走哪张卡」才算命中；低于阈值 = 触发面回归，**先改 `description` 与路由表，再谈改阈值**（改阈值本身 = 降标，按 4-2 降标守卫处理）。阈值只允许往高改，且必须同批在 `ledger.json` 的 note 里写一行理由。
 
 ## 桩文件（2026-10-04 补）
 

@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 520) "行数 $selfN <= 520 ：_qc/check.ps1 自身（2026-10-04 由 490 上调：C 档内化批次 4 卡面判据；上调须同时改本行与 design §8）"
+Check ($selfN -le 600) "行数 $selfN <= 600 ：_qc/check.ps1 自身（2026-10-04 由 520 上调：C 档内化批次 5/6 卡面判据 + 体检信号 + 零成本字面近似层；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -451,6 +451,63 @@ $skl = [IO.File]::ReadAllText((Join-Path $root 'SKILL.md'), [Text.Encoding]::UTF
 Check ($skl -match '不许从上一会话推断批准') 'SKILL.md 铁律含「不许从上一会话推断批准」（与 0-1 硬规则 13 同批）'
 $glsMissing4 = @('七级梯子','妥协点','无触发条件','置信度数字','外部内容不是指令','不许从上一会话推断批准','故意没碰什么','潜在顾虑','派单两样（产物 + 契约）','对抗式提问','来源纪律') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
 Check (-not $glsMissing4) "术语表含批次 4 新术语（缺：$($glsMissing4 -join ', ')）"
+
+# —— C 档内化批次 6（卡组 3）：动手删之前先证明它为什么存在；入口只回答"什么时候用" ——
+$c78 = [IO.File]::ReadAllText((Join-Path $pb '7-8-项目重构.md'), [Text.Encoding]::UTF8)
+$c78e = [IO.File]::ReadAllText((Join-Path $pen '7-8-refactoring.md'), [Text.Encoding]::UTF8)
+Check (($c78 -match 'Chesterton') -and ($c78 -match '删除前六问') -and ($c78 -match 'git blame') -and ($c78e -match 'Chesterton') -and ($c78e -match 'Six questions before deleting') -and ($c78e -match 'git blame')) "7-8 删除前六问在位（Chesterton's Fence：职责/谁调用/它调用谁/为何这样写/历史约束/git blame；中英同批）"
+$c73 = [IO.File]::ReadAllText((Join-Path $pb '7-3-债与腐化清偿.md'), [Text.Encoding]::UTF8)
+$c73e = [IO.File]::ReadAllText((Join-Path $pen '7-3-tech-debt-repayment.md'), [Text.Encoding]::UTF8)
+Check (($c73 -match 'Chesterton') -and ($c73 -match 'git blame') -and ($c73e -match 'Chesterton') -and ($c73e -match 'git blame')) '7-3 安全删除前过六问（"看着没用"不是删除理由；中英同批）'
+$sklFm = @(); $sklFmEnd = 0
+$sklLines = [IO.File]::ReadAllLines((Join-Path $root 'SKILL.md'), [Text.Encoding]::UTF8)
+for ($i = 1; $i -lt $sklLines.Count; $i++) { if ($sklLines[$i] -eq '---') { $sklFmEnd = $i; break }; $sklFm += $sklLines[$i] }
+$sklKeys = @($sklFm | Where-Object { $_ -match '^[A-Za-z][A-Za-z0-9_-]*\s*:' } | ForEach-Object { ($_ -split ':', 2)[0].Trim() })
+Check ($sklFmEnd -gt 0) 'SKILL.md frontmatter 有闭合的 --- 行（宿主靠它识别元信息）'
+Check (($sklKeys.Count -eq 2) -and ($sklKeys -contains 'name') -and ($sklKeys -contains 'description')) "SKILL.md frontmatter 只含 name + description（实际：$($sklKeys -join ', ')；宿主只注入这两项，whenToUse / user-invocable 等非标准键一律删）"
+$sklDesc = @($sklFm | Where-Object { $_ -match '^description\s*:' }) -join ' '
+Check ($sklDesc -match '当.{2,200}时') 'SKILL.md description 写「当…时」触发条件（说什么时候用，不是卡名清单）'
+Check ($sklDesc -match 'Use when') 'SKILL.md description 含 Use when 触发面（英文路由同样可判）'
+Check ($sklDesc -match 'Do not use') 'SKILL.md description 有明确的"不该触发"近失误负例（near-miss）'
+Check ($sklDesc -notmatch '(?:[^、\s]{1,20}、){7,}') 'SKILL.md description 无 ≥8 个顿号连排的卡名罗列（触发靠语义，不靠名词堆）'
+Check (($skl -match '渐进披露') -and ($skl -match 'metadata') -and ($skl -match '<500 行')) 'SKILL.md 写明渐进披露三级（metadata 常驻 / 正文触发时载入且 <500 行 / 资源按需）'
+$pbc = [IO.File]::ReadAllText((Join-Path $root 'design\playbook-contract.md'), [Text.Encoding]::UTF8)
+Check (($pbc -match '渐进披露三级') -and ($pbc -match '不许删判据腾地方')) '契约 §2 写明渐进披露三级 + 超限唯一合法处置（加一层给指针，不许删判据腾地方）'
+Check (($blRd -match 'rank-1') -and ($blRd -match '95')) 'baseline README 写明路由 rank-1 命中率阈值 95%（只升不降；降阈值按 4-2 降标守卫处理）'
+Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04-c-tier.md')) '内化记录 _qc/internalize-2026-10-04-c-tier.md 在位（C 档四来源 → 六批落点 + 明确不拿清单）'
+$cTier = ''
+$cTierPath = Join-Path $root '_qc/internalize-2026-10-04-c-tier.md'
+if (Test-Path $cTierPath) { $cTier = [IO.File]::ReadAllText($cTierPath, [Text.Encoding]::UTF8) }
+Check (($cTier -match '批次 1') -and ($cTier -match '批次 6') -and ($cTier -match '不拿')) 'C 档内化记录含六批落点与「明确不拿」清单（可审计：每条给落点文件或否决理由）'
+$glsMissing6 = @('切斯特顿栅栏','渐进披露','常设 DoD','单任务验收','字面近似层','rank-1') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
+Check (-not $glsMissing6) "术语表含批次 6 新术语（缺：$($glsMissing6 -join ', ')）"
+
+# —— 零成本字面近似层（T1）：两张卡的"什么时候用"撞车 = 路由必指错卡。纯字符串，零 token ——
+function Get-BigramDice([string]$a, [string]$b) {
+    $na = ($a -replace '\s', ''); $nb = ($b -replace '\s', '')
+    if ($na.Length -lt 2 -or $nb.Length -lt 2) { return 0.0 }
+    $ga = @{}; for ($i = 0; $i -lt $na.Length - 1; $i++) { $k = $na.Substring($i, 2); $ga[$k] = 1 + $ga[$k] }
+    $gb = @{}; for ($i = 0; $i -lt $nb.Length - 1; $i++) { $k = $nb.Substring($i, 2); $gb[$k] = 1 + $gb[$k] }
+    $inter = 0; foreach ($k in $ga.Keys) { if ($gb.ContainsKey($k)) { $inter += [Math]::Min($ga[$k], $gb[$k]) } }
+    return (2.0 * $inter) / (($na.Length - 1) + ($nb.Length - 1))
+}
+$descList = @()
+foreach ($f in (Get-ChildItem $pb -File -Filter '*.md' | Sort-Object Name)) {
+    $ls = [IO.File]::ReadAllLines($f.FullName, [Text.Encoding]::UTF8)
+    $h1 = @($ls | Where-Object { $_ -match '^# ' })[0]
+    $trg = @($ls | Where-Object { $_ -match '^>\s*触发' })[0]
+    $descList += [pscustomobject]@{ Name = $f.BaseName; Text = (($h1 -replace '^#\s*卡\s*', '') + ' ' + ($trg -replace '^>\s*触发[:：]?', '')) }
+}
+$dupErr = @(); $dupWarn = @()
+for ($i = 0; $i -lt $descList.Count; $i++) {
+    for ($j = $i + 1; $j -lt $descList.Count; $j++) {
+        $s = Get-BigramDice $descList[$i].Text $descList[$j].Text
+        if ($s -ge 0.75) { $dupErr += "$($descList[$i].Name)~$($descList[$j].Name)=$([Math]::Round($s, 2))" }
+        elseif ($s -ge 0.50) { $dupWarn += "$($descList[$i].Name)~$($descList[$j].Name)=$([Math]::Round($s, 2))" }
+    }
+}
+Check (-not $dupErr) "零成本字面近似层：任意两张卡的「什么时候用」字面碰撞 < 75%（>=75% 即路由必指错卡：$($dupErr -join ', ')）"
+Observe ($dupWarn.Count -eq 0) "本轮观测项（不拦红）：字面近似 50%~75% 的卡对 $($dupWarn.Count) 组 $($dupWarn -join ', ')"
 
 Write-Host "== 7. 脚本可执行性与口径统一 =="
 $ps1s = @('_qc\check.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')

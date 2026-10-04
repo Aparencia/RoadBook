@@ -52,6 +52,7 @@ git diff --numstat "$anchor..HEAD"
 Each line = added / deleted / file; sum the "deleted" column and compare it with the reduction target written down at start. **Hard threshold (written down at start; changing it midway is forbidden): net reduction ≥200 lines or ≥3 files**; falling short = this batch does not count as complete (it may be continued, but the target must not be changed).
 
 **P2 Safe deletion (master repo lesson: a recursive delete that pierced a junction once caused an incident)**
+- **Run the six questions before deleting (Chesterton's Fence: if you cannot answer, you may not delete)**: ① what does it do ② who calls it (paste the matching lines) ③ what does it call ④ why is it written this way (paste the comment / commit message verbatim) ⑤ do external users, data formats or compatibility lock it in place ⑥ what do `git blame -L 1,40 -- src/export/rate_limit.py` and `git log --oneline -5 -- src/export` say — any question you cannot answer, investigate before touching it; "looks useless" is not a reason to delete
 - Batch deletion **must first dry-run and output the list** (list the paths only without deleting, or use `-WhatIf`), and **whitelist the paths** (delete only the exact paths inside the whitelist)
 - Paste the list into the receipt, **let the human glance over it before deleting** — not one line is executed before confirmation
 - ❌ Counter-example: `Remove-Item -Recurse` applied directly to an unconfirmed directory (one piercing = an irreversible incident)

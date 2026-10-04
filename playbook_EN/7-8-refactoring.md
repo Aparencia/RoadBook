@@ -39,6 +39,20 @@ Change surface = affected files ÷ project files:
 - ❌ Counter-example: delete first and write later, a one-shot full rewrite (no rollback point, no equivalence evidence)
 - ✅ Good example: 12/180 ≈ 7% → change in place, replacing one call site first
 
+**Six questions before deleting (Chesterton's Fence: if you cannot answer, you may not touch it)**: before deleting or replacing any piece of implementation, answer each question and give evidence for it —
+1. **Responsibility**: what does it do today (one sentence; "looks useless" is not an answer)
+2. **Who calls it**: which places in the repo call or reference it (paste the search command and the matching lines)
+3. **What it calls**: which modules / tables / external interfaces it depends on
+4. **Why it is written this way**: which concrete problem was it working around (paste the comment / issue / commit message verbatim)
+5. **Historical constraints**: external users / data formats / compatibility / regulation that lock it in place (if any → write it into the "invariants" section)
+6. **`git blame`**: what do the last person who changed it and the commit say:
+```powershell
+git log --oneline -5 -- src/export
+git blame -L 1,40 -- src/export/rate_limit.py
+```
+❌ Counter-example: deleting it outright because "this looks useless" (it may have been added to work around a data-boundary bug)
+✅ Good example: question 4 turns up a commit message saying "for IE11" → keep that branch and write it into the invariants
+
 **Step 2 Safety net first (green before you touch anything)**
 - Characterization tests: turn the old implementation's current behavior (including its odd behavior) into assertions and run them green.
 - Golden samples: pick 3–5 real inputs, save the old implementation's output as the "same input, same output" baseline.
