@@ -1,0 +1,54 @@
+{
+  "name": "roadbook-atlas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Roadbook Atlas（路书·图册）：把 typed JSON 规格渲染成自包含交互式 HTML 图纸，在 better-sidebar 的「图册」标签页里浏览、预览、打开、导出；自带 skill 与 CLI，可独立于其他 Roadbook 插件开关。",
+  "license": "MIT",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "skills",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "dsh-better-sidebar": "^0.24.0"
+  },
+  "peerDependenciesMeta": {
+    "dsh-better-sidebar": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "roadbook",
+    "better-sidebar",
+    "diagram",
+    "atlas"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime"
+      ]
+    }
+  }
+}

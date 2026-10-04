@@ -1,0 +1,16 @@
+# Roadbook Atlas 的可选文件系统 Skill provider。
+# 与本插件同名的 Loader 行（id: roadbook-atlas）由 profile 的 bundles 列表产生；
+# 这里只多插一行：把本插件自带的 skills/ 目录挂成 DSH 技能根。
+# 独立开关（三处，互不影响）：
+#   1) profile cordis.patch.yml 里给 id: roadbook-atlas 加 disabled: true —— 整个插件停用（含侧边栏标签页）
+#   2) 同一文件里给 id: roadbook-atlas-skill-filesystem 加 disabled: true —— 只停用 skill 分发，保留侧边栏
+#   3) DSH 设置 → 侧边卡片 → 图册：关掉标签页本身
+# Skill 根按安装身份解析（createRequire(baseUrl)），绝不把路径拼到 baseUrl 上，
+# 这样 link: 安装、npm 安装、聚合包三种情形都解析到同一份真实目录。
+- insert:
+    - id: roadbook-atlas-skill-filesystem
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: roadbook-atlas-plugin
+        includeDefaultRoots: false
+        bundledSkillDir: !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('roadbook-atlas/package.json')), 'skills')

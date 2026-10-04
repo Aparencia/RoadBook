@@ -17,7 +17,7 @@
 | `_qc/check.ps1` | 母版唯一验收口径（结构校验 + 40 张卡中英逐张对齐；断言项数以脚本输出为准） | 每次改完跑一次 |
 | `_qc/baseline/` | 卡行为自测脚手架（压力提示词 → 真实 harness → 原样落盘证据；判定由人填 `judge.md`，脚本不改卡） | 改卡前跑一次；同一失败类型 ≥2 次复现才动卡 |
 | `SKILL.md` | DSH skill 入口：路由表 40 行 + 五条铁律 + 双语规则（不含判据） | agent 自动加载，或你打 `/roadbook` |
-| `plugin/roadbook-autoload/` | DSH 自动加载插件（组合包，可选安装） | 你，装一次 |
+| `plugin/` | 两个可选的 DSH 插件：`roadbook-autoload`（命中触发词自动加载本流程）、`roadbook-atlas`（图纸工作台，侧栏「图册」标签页） | 你，装一次 |
 | `LICENSE` | MIT 许可（可自由复制、改造、再分发） | 复用前看一眼 |
 
 ## 五条铁律（前三条给人，第 4、5 条约束 agent——第 5 条只管子 agent：它只需遵守红灯 = 停与三种证据，开工确认与 DoD 粘贴输出对它是空转；原文在 `SKILL.md`）
@@ -45,12 +45,11 @@ git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE/.dsh/skill
 
 之后新会话的 skill 目录里就有 `roadbook`（说「按流程来」会自动加载），也可以直接打 `/roadbook` 主动加载；更新用 `git -C "$env:USERPROFILE/.dsh/skills/roadbook" pull --ff-only`。**分发自检（升级后一分钟）**：装好的那份是 clone，不会自己变新——`git -C "$env:USERPROFILE/.dsh/skills/roadbook" log --oneline -1` 与母版 `git log --oneline -1` 不一致，就说明本机跑的还是旧流程（症状：skill 描述里的卡数、`_qc/check.ps1` 的断言数与母版对不上），pull 一次即修。
 
-## 自动加载插件（可选，让流程不靠模型自觉）
+## DSH 插件（可选，让流程不靠模型自觉）
 
-skill 是否被加载仍取决于模型判断；想 100% 自动，装这个 Host 组合包插件——在 git 项目里一开口谈开发任务，就把同一份 roadbook 正文注入当前回合（只注入一次、手打 `/roadbook` 时让路、`mode: off` 可整体关闭）：
+skill 是否被加载仍取决于模型判断；想 100% 自动就装 `roadbook-autoload`——在 git 项目里一开口谈开发任务，就把同一份 roadbook 正文注入当前回合（只注入一次、手打 `/roadbook` 时让路、`mode: off` 可整体关闭）。装法：DSH 侧栏「插件」→「添加插件」→ 本地绝对路径 → 指向本仓库的 `plugin/roadbook-autoload` → 安装后「立即启用」；说明、配置表与四条验证步骤见 [`plugin/roadbook-autoload/README.md`](plugin/roadbook-autoload/README.md)。
 
-- 装法：DSH 侧栏「插件」→「添加插件」→ 本地绝对路径 → 指向本仓库的 `plugin/roadbook-autoload` → 安装后「立即启用」。
-- 说明、配置表与四条验证步骤见 [`plugin/roadbook-autoload/README.md`](plugin/roadbook-autoload/README.md)。
+- `roadbook-atlas`：说「画一张架构图 / 流程图 / 时序图 / 数据流图 / 状态机」，agent 写一份 typed JSON 规格（`docs/diagrams/<slug>.atlas.json`），渲染成自包含的交互式 HTML（明暗主题、缩放、导出都在文件里）并产出可核对的回执 `<slug>.receipt.json`，成品在侧栏「图册」标签页里预览、打开、导出；渲染器随包 vendored，装法、三处独立开关与验证步骤见 [`plugin/roadbook-atlas/README.md`](plugin/roadbook-atlas/README.md)。
 
 ## 维护这套母版
 

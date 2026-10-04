@@ -354,6 +354,8 @@
 
 28. ✅ UI/UX 设计流程增强（2026-10-04，用户指令「用 top50 里的 UI/UX 技能增强设计卡」→ 裁决「采用推荐，全部执行」；记录 `_qc/internalize-2026-10-04-uiux.md`）：四个来源 `nextlevelbuilder/ui-ux-pro-max-skill`(132826★) + `Leonxlnx/taste-skill`(92355★) + `Nutlope/hallmark`(29474★) + `vercel-labs/agent-skills`(31891★)，只提炼可执行判据不引人依赖、不照抄文件形态。六批落点：**批 1-3**（commit `5fc9ca1`）3-4 卡加布局与页面纪律 / 交互五态与焦点环 / 响应式四宽度与防溢出 / 反 AI 味与文案格式，3-5 卡加 token 角色化（accent ≤2 且面积 ≤3%）、暗色六条、字体族与排版纪律、z-index 七档，3-6 卡加时长作用域表（hover 100／press 50–120／进入 200–300、模态抽屉 300–420／退出 = 进场的 60–75%）、降级两条、性能与实现禁令、演示投屏档；**批 4**（commit `34`）3-1 卡加设计计划前置与 DESIGN.md 九节骨架 + 六轴预发自评，7-1 卡加界面自检三命令与"一套制式"，7-6 卡加可访问性实测三命令（axe / pa11y / lhci）；**批 5**（commit `35`）`template/docs/{UI,DESIGN_TOKENS,MOTION}.md` 补槽位并把上限上调到 **120 / 110 / 100**（`$budget` 与 §5、§8 三处同改）；**批 6** §4 卡表三行补新判据、术语表加 16 条、`_qc/check.ps1` §2b 加 14 组 needle + 内化记录断言（断言 263 → 265）。中英同批改，英文镜像经行数 / 行号 / 行类序列 / 数字 token 多重集四处零差异核验。**已知摩擦**：`edit` 工具写回 `.ps1` 会吃掉 UTF-8 BOM（同第 23 条），改完必须复查前 3 字节 = `EF BB BF`。
 
+29. ✅ 图纸插件 roadbook-atlas（2026-10-04，用户指令「根据 tt-a1i/archify 这个技能设计一个在 roadbook 下可独立开关的插件，能在 better sidebar 上显示，要求功能一致」）：仓库根新增 `plugin/roadbook-atlas/`，一个 DSH **组合包**——`cordis.patch.yml` 挂 `@deepseek-ai/dsh-skill-filesystem` 分发 skill（`bundledSkillDir` 由 `createRequire(baseUrl).resolve('roadbook-atlas/package.json')` 解析，绝不拼 baseUrl），`lib/client.js` 是**手写 ModuleLoader bundle**（只 require `react`，无 JSX/构建链）注册 `roadbook-atlas:gallery` 标签页（order 45、`single: true`、`settings.pluginToggles.dir` 默认 `docs/diagrams`，根节点满足宿主 `flex/height/min-height` 高度契约；`inject = ['betterSidebar']`，无该服务时静默不注册）；渲染器来自 `tt-a1i/archify`（MIT，v2.14）**vendored 到 `skills/roadbook-atlas/vendor/archify/`**（58 文件 / 1.7 MB，排除 5 份预渲染 HTML 演示、保留 13 份 JSON 夹具，来源与排除清单见 `VENDOR-PROVENANCE.md`）——**只 spawn 不 import**（上游 `bin/archify.mjs` 零 export，`deliver` 只落一个 HTML、回执只在 stdout），agent 侧 CLI `skills/roadbook-atlas/bin/atlas.mjs`（`render/validate/list/new/guide/doctor`，退出码 0 成功 / 1 渲染或环境失败 / 2 用法错误）成功才写 `docs/diagrams/<slug>.receipt.json`（schema `roadbook-atlas/receipt@1`，规格与产物双 sha256 + 校验计数）；三处独立开关与安装验证写在插件 README，根 README 组成表与 §17.2 工具面表同步。测试 `node --test "test/*.test.mjs"` 8 例（CLI 端到端 / 客户端契约 / 渲染冒烟，含 `%TEMP%` 游离 `.git` 导致图纸写到项目外的回归守卫）；`_qc/check.ps1` 不新增断言，提交时 **265/265 通过**。
+
 ## 11. 维护规则（写进 START-HERE）
 
 改流程 = 改对应卡 + 本设计文档同步；改宪法模板 = 检查所有卡引用；每季度跑 `_qc/check.ps1`。改母版本身 = `_qc/check.ps1` 退出码 0 + 一次提交 + `git push`（`~/.dsh/skills/roadbook` 是母版仓库的 clone，不推 = 分发的 skill 永远停在旧版）。
@@ -515,6 +517,7 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 | code-review / auto-review | 4-2 卡的人审替代车道 | 4-2 卡 |
 | better-sidebar / `present` | 证据展示（截图、报告） | 3-4 卡验收、5-1 卡回执 |
 | roadbook-autoload | 命中触发词自动加载本流程 | §15（三层门控与关闭方式） |
+| roadbook-atlas | 图纸工作台：typed JSON 规格 → 自包含交互式 HTML，成品进 better-sidebar「图册」标签页（渲染器随包 vendored） | `plugin/roadbook-atlas/README.md`（三处独立开关、回执契约、退出码口径） |
 | gitbash-shell | 命令解释器差异 | 契约 §2② 正斜杠 + PowerShell 5.1 兼容（`Select-String` 无 `-Recurse`） |
 
 > 2026-10-03 用户裁决：运行时协作三张工具卡（原 8-1 / 8-2 / 8-3）已删除，本表保留的是**DSH 官方工具面的适配记录**——工具仍可直接使用，动作仍照主线卡走；多 agent 并行的机械判据在 4-1 卡并行车道，验收口径在 §12 个人档。
