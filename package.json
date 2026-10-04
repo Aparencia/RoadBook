@@ -1,6 +1,6 @@
 {
   "name": "roadbook",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "RoadBook（路书）DSH 主插件：一个组合包装齐流程技能、自动加载与图纸工作台；每个子行在 DSH 插件面板里可独立开关。",
   "license": "MIT",

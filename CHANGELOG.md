@@ -18,6 +18,11 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
 
+## [0.2.2] - 2026-10-04
+
+**装出来的副本不再误报缺件**（0.2.1 装机验证时发现）：主行的就绪自检把根 `SKILL.md` 也算成「随包文件」，而它**不在** `package.json` 的 `files` 白名单里 —— git / npm 安装（插件面板「Git 地址」走的就是这条路）只分发白名单内的文件，于是每一份装出来的副本都会打一条
+`roadbook v0.2.1: 缺少随包文件（相关能力会不可用）：SKILL.md` 并**提前 return**，把真正的 `ready` 日志吞掉。运行时要的是 `skills/roadbook/SKILL.md`（镜像，随 `skills/` 分发）—— 自检列表改为只列运行时真正需要的文件。
+
 ## [0.2.1] - 2026-10-04
 
 **两个面板问题**（用户看插件面板后报的）——都修在结构上，不靠修饰显示：
