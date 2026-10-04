@@ -9,7 +9,7 @@ After receiving the start order, echo these five items before touching anything 
 2. **Assumption list**: one line each, "I assume X; if wrong, Y breaks" (e.g. I assume target devices run at ≥60Hz; if wrong, every duration is recomputed for 30Hz). Anything findable in package.json or SCOPE.md must not appear here.
 3. **Clarifying questions (≤5, delete what you can)**: ask only what decides motion — is this mainly phone or desktop? Is there a marketing page that must feel flashy? Any low-end device or screen-share scenario? Has the user mentioned motion sickness or an accessibility requirement?
 4. **This card's checklist, quoted verbatim at start and ticked before finishing (thirteen items)**:
-   - [ ] ① Duration table, all six classes with their scope: hover 100ms / press 50–120ms / enter 150–300ms (modal and drawer 300–420ms) / exit = 60–75% of enter / page transition 200–300ms / skeleton loop 1200ms
+   - [ ] ① Duration table, all six classes with their scope: hover 100ms / press 50–120ms / enter 200–300ms (modal and drawer 300–420ms) / exit = 60–75% of enter / page transition 200–300ms / skeleton loop 1200ms
    - [ ] ② All four cubic-bezier curves with their use cases
    - [ ] ③ ≥6 button motion options, each with scenario / duration / easing / one-line CSS / taboo
    - [ ] ④ Ten microinteractions: hover, press, focus ring, in-button loading, skeleton, Toast in/out, list add/remove, collapse/expand, number change, success tick
@@ -41,7 +41,7 @@ After receiving the start order, echo these five items before touching anything 
 | :-- | :-- | :-- |
 | hover | 100ms | Instant feedback without displacement only (colour, border, shadow); with displacement or lift use 150–200ms |
 | press | 50–120ms | Colour-only deepen 50–100ms; with displacement or scaling (`scale`) 80–120ms |
-| enter | 150–300ms | Product UI 200–300ms; modal and drawer 300–420ms; presentation/screen-share 400–600ms |
+| enter | 200–300ms | Product UI uses this band (below 150ms it is invisible, so it is not a value); modal and drawer 300–420ms; presentation/screen-share 400–600ms |
 | exit | 60–75% of enter | Exit must be faster than enter (300ms in → 180–225ms out), never the other way round |
 | page | 200–300ms | Page transition, never above 300ms |
 | skeleton | 1200ms | One skeleton loop; never scaled to content length |
@@ -181,4 +181,4 @@ powershell -NoProfile -File check.ps1
 The exit code must be 0; if non-0, stop and ask the user — never declare this card done.
 
 Fixed closing line:
-`The motion spec is fixed with every value and every opt-out. Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

@@ -233,4 +233,4 @@ powershell -NoProfile -File check.ps1
 The exit code must be 0; if non-0, stop and ask the user — never declare this card done.
 
 Fixed closing line:
-`The design tokens are fixed and the contrast gates are runnable. Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`
+`Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

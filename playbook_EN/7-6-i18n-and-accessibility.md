@@ -19,6 +19,15 @@
 
 ## ② Execution
 
+**Rationalization red-flag table (recite it item by item when starting; any hit = stop and do the missing work this card requires)**
+
+| You may think | Reality |
+| :-- | :-- |
+| Let us do Chinese first, the second language can come later | Every extra hard-coded string is one more string to externalize later; the criterion of this card is "zero scan hits" |
+| The colours are roughly readable, no need to measure the contrast | Contrast is a checkable number (body text ≥4.5:1); "it looks fine" is not evidence |
+| axe reports 0 errors, so the target is met | A machine cannot scan keyboard order, lost focus, or misuse of semantic tags; three of the seven items must be walked through by a human |
+| Leave the items not yet met blank, fill them in when there is time | Blank = fails; they must be written into the "not yet met" table of `docs/I18N.md` (with due date and owner) |
+
 **Checklist of this card (the four i18n/a11y checks, tick item by item):**
 - [ ] Strings externalized: the hard-coded UI string scan under src returns zero hits (whitelisted lines have their reason registered)
 - [ ] The language and locale table has all 5 rows and 4 columns (5 rows = language / date / number / currency / time zone; 4 columns = item / Chinese / second language / convention), every cell with a checkable example
@@ -76,12 +85,25 @@ Get-ChildItem -Path src -Recurse -File | Select-String -Pattern '[\u4e00-\u9fa5]
 **Action 6: write `docs/I18N.md`**
 Six sections: supported languages and locale table / string-externalization whitelist / where the three traps land in this project / measured results of the seven accessibility items / items not yet met and their due dates / the process for new strings (a new string must enter the language pack first).
 
+**Action 7: the three accessibility measurement commands (run at the project root; start the local service first, change the port to the real one)**
+```powershell
+npx --yes @axe-core/cli http://localhost:3000 --exit
+npx --yes pa11y http://localhost:3000 --standard WCAG2AA
+npx --yes lhci autorun --only-categories=accessibility --collect.url=http://localhost:3000
+```
+- Criteria: axe exit code 0 (zero violations) / pa11y exit code ≤1 with every error registered / lighthouse accessibility score ≥90.
+- Paste the complete output of the three commands into receipt ③; write every failing item into the "not yet met" table of `docs/I18N.md` (with due date and owner).
+- ❌ Counter-example: pasting a screenshot saying "looks fine" (no command output = no evidence)
+- ✅ Good example: paste the `0 violations` line from axe + the `0 errors` line from pa11y + the lighthouse score line
+
 **Prohibitions (violating any one of them = this round's output is void):**
 - Adding new hard-coded UI strings is forbidden (a scan hit without a whitelisted reason fails)
 - Assembling sentences by string concatenation is forbidden, and assuming "Chinese only" is forbidden
 - `outline: none` without an alternative focus style is forbidden
 - Changing the code without writing back the registry's "影响面" column is forbidden
 - Leaving an unmet accessibility item blank is forbidden: write it into the "not yet met" table in docs/I18N.md (with due date and owner)
+- Pasting a screenshot without the command output is forbidden (of the three accessibility commands, at least axe and pa11y must be run)
+- Announcing that this card is complete while an unmet item still says "待补" is forbidden
 
 ---
 
@@ -92,6 +114,8 @@ Give, item by item:
 2. `docs/I18N.md` path + the number of rows in the language and locale table + the measured results of the seven accessibility items (including items not yet met)
 3. The registry write-back lines (before → after)
 4. The user's verdict on "language priority / accessibility target line", quoted
+5. The complete output of the three commands of Action 7 (the axe violations count line + the pa11y errors count line + the lighthouse accessibility score line)
+6. The "not yet met" table verbatim (with due date and owner; write "none" if there is none)
 
 ---
 

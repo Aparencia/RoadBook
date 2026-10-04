@@ -19,6 +19,14 @@
 
 ## ② Execution
 
+**Rationalization red-flag table (recite it item by item when starting; any hit = stop and do the missing work this card requires)**
+
+| You may think | Reality |
+| :-- | :-- |
+| It is just one colour, no need to check the token | A hard-coded colour = a second design system; once changed, a token of the same name must be findable in `docs/DESIGN_TOKENS.md` |
+| I may as well unify the radius / font along the way | Changing something along the way = out of scope; touch only the elements in SCOPE, open a separate card for any other change |
+| This interface has long deserved a new style | Swapping the design system is an L-tier project (3-4 / 3-5 / 3-6), not 7-1 |
+
 **Four steps of a UI change:**
 
 **Step 1 Locate the component**
@@ -46,6 +54,16 @@ Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $text | Select-O
 - The commit action goes in §④ (write back state first, then commit); this step only prepares the changes and the registry row, and confirms that no other component was changed along the way.
 
 **Step 4 Write-back and acceptance**
+- **Re-run the three UI self-checks**: once the change has landed, run the command below; every hit must be either a token definition itself or already written as `var(--…)`; a hard-coded value appearing = stop and go back to 3-5 / 3-6 to add the token.
+```powershell
+$changed = git diff --name-only HEAD~1..HEAD
+$pat = '#[0-9a-fA-F]{3,8}\b','font-family\s*:','border-radius\s*:','box-shadow\s*:'
+$hit = Select-String -Path $changed -Pattern $pat -ErrorAction SilentlyContinue
+$hit | Select-Object Path, LineNumber, Line
+"命中 $($hit.Count) 处"
+```
+  Verdict: hit count = explained count (a token definition site / already changed to `var(--…)`) means pass; any unexplained hit = this card is not complete.
+- **One single system**: one interface allows only one radius set, one shadow level, one icon library, and ≤3 font families (see `docs/DESIGN_TOKENS.md` and `docs/UI.md`).
 - **Write back the registry**: if the program name changed, change the row; if the affected surface changed, update the column; fill "most recent confirmation" with today.
 - Give the acceptance description: "open which page → what should be seen" (one line).
 
@@ -53,6 +71,9 @@ Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $text | Select-O
 - Changing only the code without writing back the registry is forbidden (otherwise next time it is the same cycle of "where is that thing")
 - Changing a shared component without reporting the affected pages is forbidden
 - Introducing a new UI library / design system is forbidden (that is an L-tier project)
+- Writing hard-coded colours / font sizes / radii / shadows / durations inside a component is forbidden (always reference token names)
+- Introducing a second radius set / shadow level / icon library / font family is forbidden
+- Skipping the three UI self-checks of Step 4 is forbidden (not having run them = this card is not complete)
 
 ---
 
@@ -62,6 +83,8 @@ Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $text | Select-O
 2. Commit hash + changed files
 3. Registry write-back row (before → after)
 4. Acceptance description in one line
+5. The Step 4 self-check command verbatim + the "命中 N 处" line + the verdict for each hit (a token definition / already changed to `var(--…)`)
+6. The list of affected pages (required when a shared component changed; write "none" when not applicable)
 
 ---
 
