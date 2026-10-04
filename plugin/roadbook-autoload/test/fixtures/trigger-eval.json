@@ -1,0 +1,142 @@
+[
+  {
+    "id": "LT-01",
+    "split": "train",
+    "query": "这个登录页点进去老是白屏，帮我排查一下",
+    "should_trigger": true,
+    "note": "真实开发意图，不提技能名"
+  },
+  {
+    "id": "LT-02",
+    "split": "train",
+    "query": "把这个下单流程重构成三个小模块",
+    "should_trigger": true,
+    "note": "重构意图"
+  },
+  {
+    "id": "LT-03",
+    "split": "train",
+    "query": "接口返回的时间格式不对，改代码修一下",
+    "should_trigger": true,
+    "note": "改动意图"
+  },
+  {
+    "id": "LT-04",
+    "split": "train",
+    "query": "给设置页新增一个导出按钮",
+    "should_trigger": true,
+    "note": "新增功能意图"
+  },
+  {
+    "id": "LT-05",
+    "split": "train",
+    "query": "这段逻辑跑不起来，控制台一直报错",
+    "should_trigger": true,
+    "note": "故障排查意图"
+  },
+  {
+    "id": "LT-06",
+    "split": "train",
+    "query": "按流程把这个需求接一下",
+    "should_trigger": true,
+    "note": "显式要求走流程，但不喊技能名"
+  },
+  {
+    "id": "LT-07",
+    "split": "test",
+    "query": "数据库要迁移到新的表结构",
+    "should_trigger": true,
+    "note": "留出集：只允许改词表，不允许改本条"
+  },
+  {
+    "id": "LT-08",
+    "split": "test",
+    "query": "帮我给这个函数写测试",
+    "should_trigger": true,
+    "note": "留出集"
+  },
+  {
+    "id": "LT-09",
+    "split": "test",
+    "query": "把没用的旧代码清理掉",
+    "should_trigger": true,
+    "note": "留出集"
+  },
+  {
+    "id": "LT-10",
+    "split": "test",
+    "query": "这版做完了，先归档吧",
+    "should_trigger": true,
+    "note": "留出集"
+  },
+  {
+    "id": "LF-01",
+    "split": "train",
+    "query": "重构是什么意思？解释一下这个词",
+    "should_trigger": false,
+    "note": "near-miss：问词义，不是要动手"
+  },
+  {
+    "id": "LF-02",
+    "split": "train",
+    "query": "这个正则怎么读？",
+    "should_trigger": false,
+    "note": "near-miss：只问知识点"
+  },
+  {
+    "id": "LF-03",
+    "split": "train",
+    "query": "帮我改个文案措辞，别的别动",
+    "should_trigger": false,
+    "note": "near-miss：改文案不是改代码"
+  },
+  {
+    "id": "LF-04",
+    "split": "train",
+    "query": "解释一下这个报错的英文原文",
+    "should_trigger": false,
+    "note": "near-miss：含「报错」但只是要翻译"
+  },
+  {
+    "id": "LF-05",
+    "split": "train",
+    "query": "你记得我们上次聊的那个概念吗",
+    "should_trigger": false,
+    "note": "near-miss：回忆闲聊"
+  },
+  {
+    "id": "LF-06",
+    "split": "test",
+    "query": "发布这个词在软件里指什么？",
+    "should_trigger": false,
+    "note": "留出集：含「发布」但是术语提问"
+  },
+  {
+    "id": "LF-07",
+    "split": "test",
+    "query": "流程卡这套东西的设计理念是什么",
+    "should_trigger": false,
+    "note": "留出集：含「流程卡」但是理念讨论"
+  },
+  {
+    "id": "LF-08",
+    "split": "test",
+    "query": "帮我把这段话翻译成英文",
+    "should_trigger": false,
+    "note": "留出集：纯翻译"
+  },
+  {
+    "id": "LF-09",
+    "split": "test",
+    "query": "谢谢，先这样，明天再说",
+    "should_trigger": false,
+    "note": "留出集：收尾闲聊"
+  },
+  {
+    "id": "LF-10",
+    "split": "test",
+    "query": "今天天气不错，随便聊聊",
+    "should_trigger": false,
+    "note": "留出集：纯闲聊（最易，用来守住下界）"
+  }
+]

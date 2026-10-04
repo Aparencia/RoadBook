@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import {
   DEFAULT_KEYWORDS,
   DEFAULT_SUPPRESS,
@@ -132,4 +134,25 @@ test('指纹与说明文案', () => {
   assert.match(buildNote({ skillName: 'roadbook', hit: '重构', digest: 'aaaaaaaa', expectedDigest: '' }), /命中「重构」/)
   const driftNote = buildNote({ skillName: 'roadbook', hit: '重构', digest: 'aaaaaaaa', expectedDigest: 'bbbbbbbb' })
   assert.match(driftNote, /技能内容已更新/)
+})
+
+// 加载面评估集（S7）：真实措辞的正样本 + 近似命中（near-miss）的负样本。
+// 误命中 = 把整张 0-1 驱动卡塞进一次无关闲聊，代价远大于漏一次；所以负样本不许是「给 PDF 技能测 fibonacci」那种送分题。
+test('加载面评估集：正样本命中 ≥8/10，负样本误命中 = 0', () => {
+  const fixturePath = fileURLToPath(new URL('./fixtures/trigger-eval.json', import.meta.url))
+  const cases = JSON.parse(readFileSync(fixturePath, 'utf8'))
+  const positives = cases.filter((c) => c.should_trigger)
+  const negatives = cases.filter((c) => !c.should_trigger)
+  assert.ok(positives.length >= 10, `正样本至少 10 条，实际 ${positives.length}`)
+  assert.ok(negatives.length >= 10, `负样本至少 10 条，实际 ${negatives.length}`)
+
+  const hitPositive = positives.filter((c) => matchIntent(c.query, {}) !== undefined)
+  const falsePositive = negatives.filter((c) => matchIntent(c.query, {}) !== undefined)
+  assert.deepEqual(falsePositive.map((c) => c.id), [], '负样本误命中（near-miss 被当开发意图）')
+  assert.ok(hitPositive.length >= 8, `正样本命中 ≥8/10，实际 ${hitPositive.length}/${positives.length}`)
+
+  // 只说兼容：留出集（split=test）只允许改词表，不允许改题目本身。
+  assert.ok(cases.some((c) => c.split === 'test'), '存在留出集 split=test')
+  assert.ok(cases.some((c) => c.split === 'train'), '存在训练集 split=train')
+  assert.equal(new Set(cases.map((c) => c.id)).size, cases.length, 'id 唯一')
 })

@@ -7,6 +7,9 @@
         powershell -NoProfile -File _qc/baseline/run.ps1 -Declare "失败类型：跳过规则" -IsolationProof "插件 mode=off，空提示词已验证不注入" -HarnessCmd "node path/to/headless.mjs"
         powershell -NoProfile -File _qc/baseline/run.ps1 -TriggerSet _qc/baseline/triggers/queries.json -Declare "失败类型：条件规则" -IsolationProof "同上" -HarnessCmd "node path/to/headless.mjs"
 
+    -StubFile 可选（多个用逗号写在同一个引号里）：题面预置的「必须被改动的桩」文件，跑前跑后各取一次 sha256，
+    没被动过 → signals.tsv 的 stub_untouched = 1，该 case 的「完成」声明直接判负；没声明桩 → n/a（不得声称完成）。
+
     退出码：0 = 全部 case 跑完且有输出；1 = 有 case 失败（命令退出码非 0 或输出为空）——证据不可信，先修仪器；
             2 = 未接线（缺 -HarnessCmd / -Declare / -IsolationProof，命令不存在，提示词目录为空，题目清单读不出）。
 #>
@@ -18,6 +21,7 @@ param(
     [string]$Declare = '',
     [string]$IsolationProof = '',
     [string]$TriggerSet = '',
+    [string]$StubFile = '',
     [string]$Model = '',
     [int]$Repeats = 3
 )
@@ -100,8 +104,32 @@ $manifest.Add('')
 $manifest.Add('case' + "`t" + 'sha256' + "`t" + 'exit' + "`t" + 'bytes')
 
 $signals = [Collections.Generic.List[string]]::new()
-$signals.Add(('case' + "`t" + 'bytes' + "`t" + 'exit' + "`t" + 'check_ps1' + "`t" + 'STATE_md' + "`t" + 'closing_line' + "`t" + 'card_receipt'))
+$signals.Add(('case' + "`t" + 'bytes' + "`t" + 'exit' + "`t" + 'check_ps1' + "`t" + 'STATE_md' + "`t" + 'closing_line' + "`t" + 'card_receipt' + "`t" + 'stub_untouched' + "`t" + 'turns' + "`t" + 'total_tokens' + "`t" + 'duration_ms'))
 $judgeRows = [Collections.Generic.List[string]]::new()
+
+# 桩文件（S4）：题面预置的「必须被改动」的文件；跑完还是原样 → stub_untouched = 1，该 case 的完成声明判负。
+$stubList = @()
+if (-not [string]::IsNullOrWhiteSpace($StubFile)) {
+    $stubList = @($StubFile -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+}
+$stubBefore = @{}
+foreach ($sp in $stubList) {
+    $full = $sp
+    if (-not [IO.Path]::IsPathRooted($full)) { $full = Join-Path $RepoRoot $full }
+    if (Test-Path -LiteralPath $full) { $stubBefore[$full] = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash }
+}
+function Get-StubUntouched {
+    if ($stubList.Count -eq 0) { return 'n/a' }
+    foreach ($full in $stubBefore.Keys) {
+        if ((Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash -eq $stubBefore[$full]) { return '1' }
+    }
+    return '0'
+}
+function Get-NumberFromOutput {
+    param([string]$Text, [string]$Name)
+    $m = [regex]::Match($Text, '(?im)^\s*' + $Name + '\s*[:=]\s*(\d+)')
+    if ($m.Success) { return $m.Groups[1].Value } else { return '' }
+}
 
 $failed = 0
 $redCases = [Collections.Generic.List[string]]::new()
@@ -110,7 +138,9 @@ foreach ($p in $prompts) {
     $text = [IO.File]::ReadAllText($p.FullName, [Text.Encoding]::UTF8)
     $sha = (Get-FileHash -LiteralPath $p.FullName -Algorithm SHA256).Hash.ToLower()
 
+    $sw = [Diagnostics.Stopwatch]::StartNew()
     $r = Invoke-Harness -Text $text
+    $sw.Stop()
     $output = $r.Output
 
     $outFile = Join-Path $OutDir ($case + '.txt')
@@ -122,7 +152,7 @@ foreach ($p in $prompts) {
     $manifest.Add($case + "`t" + $sha + "`t" + $r.Code + "`t" + $bytes)
 
     $flag = { param($re) if ($output -match $re) { 'yes' } else { 'no' } }
-    $signals.Add($case + "`t" + $bytes + "`t" + $r.Code + "`t" + (& $flag 'check\.ps1') + "`t" + (& $flag 'STATE\.md') + "`t" + (& $flag '等待你裁决|Awaiting your verdict') + "`t" + (& $flag '清单原文|正在执行'))
+    $signals.Add($case + "`t" + $bytes + "`t" + $r.Code + "`t" + (& $flag 'check\.ps1') + "`t" + (& $flag 'STATE\.md') + "`t" + (& $flag '等待你裁决|Awaiting your verdict') + "`t" + (& $flag '清单原文|正在执行') + "`t" + (Get-StubUntouched) + "`t" + (Get-NumberFromOutput $output 'turns') + "`t" + (Get-NumberFromOutput $output 'total_tokens') + "`t" + $sw.ElapsedMilliseconds)
     $judgeRows.Add('| ' + $case + ' |  |  |  |')
 }
 
@@ -184,13 +214,32 @@ $judge.Add('- 判定口径：失败类型 = 跳过规则 / 形态不对 / 元素
 $judge.Add('- 改卡门槛：同一失败类型在本脚手架复现 ≥2 次（同 6-6 卡「信号 ≥2 次复现才改规则」）。')
 $judge.Add('- 断言区分度自查：这条判据在什么情况下会红？答不出来就删掉。')
 $judge.Add('- 分析 pass 只许报观察（恒过 / 恒败 / 高方差 / 证据不足）；改进建议单开一节，每条指回 <case>.txt:行号。')
+$judge.Add('- 桩文件：signals.tsv 的 stub_untouched = 1 → 该 case 的「完成」声明判负，不看其它信号；n/a = 没声明桩，不得声称完成。')
 $judge.Add('')
+$judge.Add('## 观察（只写事实 + <case>.txt:行号，不写建议）')
+$judge.Add('- ____')
+$judge.Add('')
+$judge.Add('## 判据命中')
 $judge.Add('| case | 失败类型 | 证据（<case>.txt:行） | 结论（改卡/不改卡/证据不足） |')
 $judge.Add('| --- | --- | --- | --- |')
 foreach ($r in $judgeRows) { $judge.Add($r) }
+$judge.Add('')
+$judge.Add('## 改动建议（只能由人填；跑实验与做分析的人不得填这一节）')
+$judge.Add('- ____')
 [IO.File]::WriteAllText((Join-Path $OutDir 'judge.md'), ($judge -join "`r`n"), $utf8NoBom)
 
 # 机械汇总（零 token）：结论不在这里，只把这次跑了什么、红了什么、声明与隔离证明原样照录。
+$hits = @{ check = 0; state = 0; closing = 0; receipt = 0 }
+for ($i = 1; $i -lt $signals.Count; $i++) {
+    $c = $signals[$i] -split "`t"
+    if ($c[3] -eq 'yes') { $hits.check++ }
+    if ($c[4] -eq 'yes') { $hits.state++ }
+    if ($c[5] -eq 'yes') { $hits.closing++ }
+    if ($c[6] -eq 'yes') { $hits.receipt++ }
+}
+$stubRows = @($signals | Select-Object -Skip 1 | ForEach-Object { ($_ -split "`t")[7] })
+$stubDeclared = @($stubRows | Where-Object { $_ -ne 'n/a' }).Count
+$stubUntouched = @($stubRows | Where-Object { $_ -eq '1' }).Count
 $summary = [Collections.Generic.List[string]]::new()
 $summary.Add('# baseline 机械汇总（脚本产出，不含结论）')
 $summary.Add('')
@@ -202,6 +251,9 @@ $summary.Add('- 声明      : ' + $Declare)
 $summary.Add('- 臂隔离证明 : ' + $IsolationProof)
 $summary.Add('- 压力组    : ' + $prompts.Count + ' 个 case，失败 ' + $failed + ' 个')
 $summary.Add('- RED 清单  : ' + (($redCases | ForEach-Object { $_ }) -join ', '))
+$summary.Add('- 样本量    : 压力组每 case 1 次；触发组每题目 ' + $Repeats + ' 次（同 harness + 同 model + 同 HEAD 才可跨 run 比较；跨模型不得混算）')
+$summary.Add('- 信号命中  : check.ps1 ' + $hits.check + ' / STATE.md ' + $hits.state + ' / 收尾语 ' + $hits.closing + ' / 清单原文 ' + $hits.receipt + '（跨 case 计数，不含结论）')
+$summary.Add('- 桩文件    : 声明 ' + $stubDeclared + ' 个 case，其中未被动过 ' + $stubUntouched + ' 个（未被动过 = 该 case 完成声明判负）')
 if ($useTriggers) { $summary.Add('- 触发布线  : ' + $trigCount + ' 条题目 × ' + $Repeats + ' 次 → runs/' + $runId + '/triggers.tsv') }
 $summary.Add('')
 $summary.Add('下一步：人填 judge.md（与 triggers.tsv 的 note），脚本不判卡。')

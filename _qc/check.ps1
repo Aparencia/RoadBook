@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 440) "行数 $selfN <= 440 ：_qc/check.ps1 自身（2026-10-04 由 400 上调：mattpocock/skills 内化断言 20 组 + 内化记录；上调须同时改本行与 design §8）"
+Check ($selfN -le 470) "行数 $selfN <= 470 ：_qc/check.ps1 自身（2026-10-04 由 440 上调：C 档内化 · 仪器自检 / 触发布线 / 台账 / 加载面评估集断言；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -367,6 +367,21 @@ Check (($trigQ.Count -ge 20) -and ($trigY.Count -ge 12) -and ($trigN.Count -ge 6
 $trigRd = ''
 if (Test-Path (Join-Path $trigDir 'README.md')) { $trigRd = [IO.File]::ReadAllText((Join-Path $trigDir 'README.md'), [Text.Encoding]::UTF8) }
 Check (($trigRd -match '3 次') -and ($trigRd -match '指错卡') -and ($trigRd -match 'split="test"')) '触发布线判据在位（每条 3 次、指错卡与未触发分开记、只按 test 选优）'
+Check (($blRd -match 'inject_events') -and ($blRd -match 'trigger-eval\.json') -and ($blRd -match '## 观察') -and ($blRd -match '## 判据命中') -and ($blRd -match '## 改动建议') -and ($blRd -match 'stub_untouched')) 'baseline README 写明机判口径（臂内 inject_events / judge.md 三区 / 桩文件 stub_untouched / 加载面评估集）'
+Check (($blRun -match '-StubFile') -and ($blRun -match 'stub_untouched') -and ($blRun -match 'turns') -and ($blRun -match 'total_tokens') -and ($blRun -match 'duration_ms') -and ($blRun -match '样本量')) 'run.ps1 落盘机判列与样本量（stub_untouched / turns / total_tokens / duration_ms；拿不到留空不算失败）'
+$evPath = Join-Path $plg 'test\fixtures\trigger-eval.json'
+$evCases = @()
+# 注意：PS 5.1 下 `@(<字符串> | ConvertFrom-Json)` 会把整个数组当成一个对象（实测 Count=1），必须先赋值再 @()。
+if (Test-Path $evPath) { $evObj = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($evPath, [Text.Encoding]::UTF8)); $evCases = @($evObj) }
+$evPos = @($evCases | Where-Object { $_.should_trigger -eq $true })
+$evNeg = @($evCases | Where-Object { $_.should_trigger -eq $false })
+$evIds = @($evCases | ForEach-Object { $_.id })
+$evSplits = @($evCases | ForEach-Object { $_.split })
+Check (($evCases.Count -ge 20) -and ($evPos.Count -ge 10) -and ($evNeg.Count -ge 10) -and (($evIds | Select-Object -Unique).Count -eq $evCases.Count) -and ($evSplits -contains 'train') -and ($evSplits -contains 'test')) "加载面评估集在位：≥20 条（正 ≥10 / 负 ≥10）、id 唯一、train/test 俱在（实际 $($evCases.Count) 条）"
+$trgTxt = [IO.File]::ReadAllText((Join-Path $plg 'test\trigger.test.mjs'), [Text.Encoding]::UTF8)
+Check (($trgTxt -match 'should_trigger') -and ($trgTxt -match 'trigger-eval\.json') -and ($trgTxt -match '误命中')) 'trigger 单测断言近失误报 = 0（正样本命中率不得靠送分题刷出来）'
+$trgJs = [IO.File]::ReadAllText((Join-Path $plg 'trigger.js'), [Text.Encoding]::UTF8)
+Check ($trgJs -match '是什么意思') '触发词表含问答类抑制词（含关键词的术语提问不得误触发：重构是什么意思）'
 $lgObj = $null
 if (Test-Path (Join-Path $blDir 'ledger.json')) { $lgObj = ([IO.File]::ReadAllText((Join-Path $blDir 'ledger.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json) }
 Check (($null -ne $lgObj) -and ($lgObj.schema -match 'ledger') -and ($lgObj.comparability_rule -match '换代') -and ($null -ne $lgObj.entries)) 'baseline 台账 ledger.json 在位（同代可比、换代即新条目、旧条目不覆盖）'
