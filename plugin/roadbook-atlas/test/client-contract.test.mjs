@@ -10,7 +10,8 @@
  *   4) better-sidebar 缺席时静默跳过（不抛错）；
  *   5) 注册的是一个 single tab，且注册动作包在 ctx.effect 里（卸载能撤销）；
  *   6) 标签页根节点满足原生 tab 的高度契约（flex:1 / height:100% / min-height:0）；
- *   7) 无 JSX（纯 React.createElement）。
+ *   7) 无 JSX（纯 React.createElement）；
+ *   8) 版本号三处一致（package.json = 客户端常量 = 宿主半 pluginVersion()），且页脚真的显示它。
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -158,4 +159,48 @@ test('tab 根节点满足原生 tab 高度契约，且列表/空态都能首帧�
     };
     walk(en);
     assert.ok(labels.includes('Atlas'), `英文 locale 应显示 Atlas，实际：${labels.slice(0, 8).join(' | ')}`);
+});
+
+test('版本号三处一致，且页脚真的显示它', async () => {
+    const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    const { exports } = loadBundle();
+    // 客户端 bundle 读不到 package.json（ModuleLoader 的 require 只有白名单），所以常量是手写的 ——
+    // 这条断言就是防它悄悄漂移：升版本时漏改 client.js 会在这里红。
+    assert.equal(exports.PLUGIN_VERSION, manifest.version, '客户端常量必须等于 package.json 的 version');
+
+    const host = await import(new URL('../lib/index.js', import.meta.url).href);
+    assert.equal(host.pluginVersion(), manifest.version, '宿主半 pluginVersion() 必须等于 package.json 的 version');
+
+    let descriptor = null;
+    exports.apply({
+        locale: 'zh-CN',
+        betterSidebar: { features: [], registerTab: (d) => { descriptor = d; return () => {}; } },
+        effect: (factory) => factory(),
+    });
+    const tree = descriptor.component({
+        ctx: { locale: 'zh-CN', betterSidebar: { features: [] } },
+        store: { getPrefs: () => ({ pluginSettings: {} }) },
+        scope: { sessionId: 'session-1', cwd: '/repo' },
+        tab: { type: TAB_ID },
+        visible: true,
+        onReferenceFile() {},
+    });
+    const labels = [];
+    const walk = (node) => {
+        if (node === null || node === undefined || typeof node === 'boolean') return;
+        if (typeof node === 'string' || typeof node === 'number') {
+            labels.push(String(node));
+            return;
+        }
+        if (Array.isArray(node)) {
+            node.forEach(walk);
+            return;
+        }
+        if (typeof node === 'object') (node.children || []).forEach(walk);
+    };
+    walk(tree);
+    assert.ok(
+        labels.some((label) => label.endsWith(`v${manifest.version}`)),
+        `页脚应显示 v${manifest.version}，实际尾部文案：${labels.slice(-4).join(' | ')}`,
+    );
 });

@@ -11,7 +11,7 @@
  * 侧边栏「图册」标签页在客户端半（./client）。宿主半不注册任何工具，也不碰用户数据。
  */
 import { createRequire } from 'node:module';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,6 +30,19 @@ export const DEFAULT_DIAGRAM_DIR = 'docs/diagrams';
  */
 export function packageRoot() {
   return dirname(dirname(fileURLToPath(import.meta.url)));
+}
+
+/**
+ * 本插件版本：直接读 package.json —— 版本号只有一处事实源，不在代码里留副本。
+ * 读不到就报 unknown 而不是抛错：一条就绪日志不该因为版本号让整个 profile 加载失败。
+ */
+export function pluginVersion(root = packageRoot()) {
+  try {
+    const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+    return typeof manifest.version === 'string' && manifest.version ? manifest.version : 'unknown';
+  } catch (error) {
+    return `unknown（package.json 读不到：${error && error.message ? error.message : '未知原因'}）`;
+  }
 }
 
 /**
@@ -78,8 +91,8 @@ export function apply(ctx) {
     if (sink) sink.call(ctx.logger, text);
   };
   if (missing.length > 0) {
-    line('warn', `roadbook-atlas: 缺少随包文件（图册会不可用）：${missing.join(', ')}`);
+    line('warn', `roadbook-atlas v${pluginVersion()}: 缺少随包文件（图册会不可用）：${missing.join(', ')}`);
     return;
   }
-  line('info', `roadbook-atlas: ready（skill=${SKILL_NAME}, diagrams=${DEFAULT_DIAGRAM_DIR}）`);
+  line('info', `roadbook-atlas v${pluginVersion()}: ready（skill=${SKILL_NAME}, diagrams=${DEFAULT_DIAGRAM_DIR}）`);
 }

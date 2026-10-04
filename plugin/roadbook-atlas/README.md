@@ -66,9 +66,18 @@ node skills/roadbook-atlas/bin/atlas.mjs doctor
 
 ```bash
 cd plugin/roadbook-atlas
-node --test "test/*.test.mjs"     # 8 项：CLI 端到端 3 + 契约 4 + 渲染冒烟 1（内含 5 类渲染）
+node --test "test/*.test.mjs"     # 9 项：CLI 端到端 3 + 契约 5 + 渲染冒烟 1（内含 5 类渲染）
 ```
 
 - `test/atlas-cli.test.mjs`：退出码纪律 + **项目根陷阱回归守卫**（本机 `%TEMP%` 里有游离 `.git`，`git rev-parse` 会把图纸写到项目外；CLI 拒绝家目录/临时目录做根，退回 cwd）。
 - `test/client-contract.test.mjs`：在 `vm` 里跑客户端 bundle，校验 ModuleLoader 形状、`ctx.effect` 注册、标签页根节点高度契约、双语。
 - `test/render-smoke.test.mjs`：五类各渲染一次，断言 9/9 校验通过、`showcase:pass`、三次运行同 SHA-256。
+
+## 版本
+
+`package.json` 的 `version` 是**唯一事实源**（当前 `0.1.0`）：客户端半的 `PLUGIN_VERSION`（标签页页脚显示它）
+与宿主半的 `pluginVersion()`（启动日志里的 `roadbook-atlas v0.1.0: ready`）由测试强制与它一致，漏改即判红。
+升版规则（加能力 → 次版本，修 bug → 修订号）与逐版本记录见 [`CHANGELOG.md`](CHANGELOG.md)：
+
+- 本机是 `link:` 安装 ⇒ **改完文件即时生效，不需要重装**；版本号只是给人看与对账用，要按规则手升并记一笔。
+- `git tag` **由人打**（agent 不打 tag）；对外发布要先去 `private` 并准备 npm 发布流程。

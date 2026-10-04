@@ -33,6 +33,12 @@ window.__ModuleLoader__.load({
 		var RECEIPT_EXT = ".receipt.json";
 		/** 列表里最多自动读多少份回执/规格元信息（防止大目录把标签页拖死）。 */
 		var MAX_META_READS = 40;
+		/**
+		 * 插件版本，显示在标签页页脚，方便一眼看出界面里跑的是哪一版。
+		 * 必须与 package.json 的 version 一致 —— test/client-contract.test.mjs 会逐字核对，
+		 * 因为客户端 bundle 不能用 require 读 package.json（ModuleLoader 的 require 只有白名单）。
+		 */
+		var PLUGIN_VERSION = "0.1.0";
 
 		// ── 文案 ──────────────────────────────────────────────────────────────
 		var zh = {
@@ -618,7 +624,7 @@ window.__ModuleLoader__.load({
 					)
 				),
 				body,
-				E("div", { style: { fontSize: "11px", color: TOKEN.muted, flex: "0 0 auto" } }, t("hint.settings"))
+				E("div", { style: { fontSize: "11px", color: TOKEN.muted, flex: "0 0 auto" } }, t("hint.settings") + " · v" + PLUGIN_VERSION)
 			);
 		}
 
@@ -667,6 +673,7 @@ window.__ModuleLoader__.load({
 		exports.apply = apply;
 		exports.inject = inject;
 		exports.TAB_ID = TAB_ID;
+		exports.PLUGIN_VERSION = PLUGIN_VERSION;
 		return module.exports;
 	}
 });
