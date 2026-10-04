@@ -57,6 +57,9 @@ Execute in order; if any item is missing, stop immediately and ask the user — 
    only tier L and red-line domains escalate to a "verdict" (wait for the human first). The five non-delegable items never soften: running SQL / releasing / deleting data / tagging / gate verdicts.
 9. Whenever you think "this card does not fit my task / I remember the rules / skip this step for now", scan the red-flag table below first;
    hitting any row = stop and follow that row's Reality column.
+10. Clarifying questions: every question carries a recommended answer — give your recommended answer first, and one word from the user is enough to reply; **facts are yours to look up** (files, commands, git) and **decisions are the user's to make** (trade-offs, priorities, acceptance criteria). An empty question with no recommended answer ("你想怎么做？" ("what do you want to do?")) is forbidden.
+11. Context budget: keep a single session inside the smart zone (about 150k tokens). When any of these occurs, land the evidence first, then compress or hand over: ① approaching the ceiling; ② crossing a stage (one card finished, the next beginning); ③ the user says they are switching machines / continuing tomorrow. Write the handover note into the system temp directory: pointers only, with no content restated, and de-identified.
+12. Artifacts fall into three lifetime classes（产物寿命三分类）: write at the top of any artifact which class it belongs to — persistent (goes into the repo) / in-session (temp directory, deletable at any time) / never into the repo (only the receipt is pasted back). An artifact with no lifetime declaration is treated as "in-session".
 
 [ Red flags: what you will tell yourself ] (hitting any row = follow the Reality column, never the Thought column)
 | You may think | Reality |

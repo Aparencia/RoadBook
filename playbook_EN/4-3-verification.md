@@ -18,6 +18,16 @@ After receiving the start instruction, first receipt the following six items:
 
 ## ② Execution
 
+**Evidence tiers (first say which tier the evidence in hand counts as):**
+
+| Tier | Form | Who verifies it | Can it count as done |
+| :-- | :-- | :-- | :-- |
+| **Tier A** | command execution output (including exit code, test output, request/response JSON, `Select-String` results) | anyone in another session or another person re-running the pasted command gets the same result | yes |
+| **Tier S** | screenshots, screen recordings | a human understands it, but a machine cannot verify it | no |
+
+**Claiming "done" requires at least tier-A evidence; tier S alone = not done** (screenshots stay as an aid to manual acceptance; they do not replace tier A).
+**No red-capable command, no second stage**: any judgment that cannot produce a command that "would turn red on failure" may only go to human review (write it into the behavior acceptance checklist); it must not be written as a machine criterion, and it must not be treated as verified — every criterion later in this card passes this gate first, and one that cannot is downgraded to a manual item.
+
 **Action 1: run the close-out ceremony (guardrail)**
 
 ```powershell
@@ -76,7 +86,7 @@ The checklist is written into VERIFY.md (together with the check output, test re
 ## ③ Evidence receipt
 
 Give, item by item:
-1. check.ps1's complete output + exit code
+1. check.ps1's complete output + exit code (tier A); mark each claim's evidence tier separately — a claim with only tier S is handled as not done
 2. Test output (tiers M/L) + the mutant falsification record (what was injected / which item turned red / back to green after restore)
 3. Scenario walkthrough result table (tiers M/L): scenario → evidence (JSON/output/assertion) matched item by item
 4. VERIFY.md path

@@ -78,6 +78,12 @@ powershell -NoProfile -File doctor.ps1
 **Action 8: RUNBOOK write-back**
 Add/update the "环境与配置" (environments and config) section of `docs/RUNBOOK.md`: the environment tier table, the staging difference table, the key-meaning table (three columns: key / meaning / example value, including every key added this time), the switch steps, and the rollback config list.
 
+**Action 9: for human-only steps, generate a script for the human to run (the agent does not run it for them)**
+For **human-only steps** such as requesting secrets, opening a browser to authorise, creating a remote repository, or confirming a paid item, do not make the human hand-copy scattered command lines — generate a **copyable interactive script**: step by step "explain → wait for confirmation → collect input → write to a local file"; the human runs the script, and the agent does not run it for them.
+The script is **single-use** by default (use it once and discard it: it does not go into the repo and is not registered); only once it is confirmed that it will be used repeatedly is it registered in the repo (`docs/registry/COMPONENTS.md`) and added to the registry.
+❌ Counter-example: the receipt scatters five commands for the user to hand-copy into the terminal in order (one copy error = the secret lands in the wrong file)
+✅ Good example: generate `scripts/setup-staging-secrets.ps1` for the human to run; only once it is confirmed that every rotation needs it again is it registered in the repo
+
 **Prohibitions (violating any one = this round's output is void):**
 - Writing real secrets / real connection strings into any file that goes into the repo is prohibited (including comments, examples, and logs)
 - Adding a config key without updating `.env.example` is prohibited (there is exactly one key-name list, and it is that file)

@@ -27,6 +27,9 @@ After receiving the bug report, first send back a receipt for the following six 
 - The agent must not claim "already reproduced based on the code".
   ❌ Counter-example: "From the code it must error here, no need to reproduce"
   ✅ Good example: "Please click the '导出' (Export) button after logging in; I will be watching the log in the terminal at the same time — did you click it? What did you see?"
+- **Stage one is reproduction (without it, stage two must not start)**: first find a command that is "red before the change, green after the change", and paste that command's raw output into RCA.md — **with no red-capable command, there is no stage two**; if you cannot find one, stop at stage one and ask the human; changing code on a guess is forbidden.
+  ❌ Counter-example: "I already know the cause, I will just change it"
+  ✅ Good example: `npm test -- export` showed 1 failed (red) before the change and 0 failed (green) after — the raw output is pasted
 - Cannot reproduce → register it in `docs/TECH_DEBT.md` (known-issue), give an information-collection plan (such as screenshot + steps + time point), and this card ends.
 
 **Action 2: localization (try in order, stop at the first hit)**

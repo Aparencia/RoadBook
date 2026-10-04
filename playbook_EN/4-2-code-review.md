@@ -16,13 +16,13 @@ If the lane is not taken, first receipt these nine items; a missing item means d
 1. **Restate the task in plain words and the landing point**: which feature and which batch of diff is being reviewed this time (one sentence); output = `docs/reviews/CODE_<date>_<slug>.md`; next card = 4-3 verification (on red/amber go back to 4-1 to fix). [disambiguated]
 2. **Assumptions list**: write "I assume X; if that is wrong then Y is void" for each item — anything findable in the project files must not be written as an assumption; go look it up first.
 3. **Clarifying questions (≤5, delete them if you can)**: ask only about things that cannot be found in STATE.md / SCOPE.md and that determine the review standard; if there is none at all, write "none".
-4. **Anchor verification**: read it from the `起点锚点` field of STATE.md and assign it to `$anchor` → `git log --oneline $anchor -1` proves that commit really exists; cannot be read / invalid → **stop and ask the user** (reviewing from STATE memory is forbidden).
+4. **Anchor verification**: read it from the `起点锚点` field of STATE.md into `$anchor` → `git log --oneline $anchor -1` proves that commit really exists; cannot be read / invalid → **stop and ask the user** (reviewing from STATE memory is forbidden).
 5. **Diff-reading confirmation**: the full output of `git diff --stat "$anchor..HEAD"` (a receipt item) + **read `git diff "$anchor..HEAD"` in full** (the receipt only reports "read the full diff, N lines in total" — judging any dimension without having read the full diff is forbidden).
 6. **Review scope declaration**: limited to this diff and its directly related calls. Code outside the diff is not reviewed at all (scope creep = an invalid review).
 7. **Referenced-reports list**: the old reports under docs/reviews/ that are relevant this time (write "none" if there are none). If there are old reports → receipt the current state of their P0/P1 items (fixed / not fixed); **old P0/P1 that have not been closed keep their original numbering and count toward this review's counts**; old P2/P3 are marked item by item (fixed / not fixed / false positive).
    **"False positive" upgraded to an evidence-backed rebuttal**: marking an item "false positive" requires a rebuttal basis at the same time (a technical reason + a code location or measured output); an item you cannot back with evidence is counted as "not fixed" in this round's counts, and clearing the books with "false positive" is forbidden.
 8. **Paste the reference checklist verbatim** (paste word for word this card's §② "seven fixed dimensions" name list + severity criteria + suggested-color matrix + replacement and deprecation check).
-9. **Dispatch input sheet** (copy it verbatim when dispatching a subagent; one missing item means do not dispatch): `DESCRIPTION` = what was built this time (≤3 lines) ｜ `PLAN_OR_REQUIREMENTS` = the `docs/specs/<date>_<slug>/SCOPE.md` path + the acceptance criteria verbatim ｜ `BASE_SHA` = `$anchor` ｜ `HEAD_SHA` = HEAD (the verbatim `git rev-parse HEAD`). **Prohibition: never hand the reviewer this session's history, your reasoning process or your self-check conclusions — it reviews the work product only, not your thinking.**
+9. **Dispatch input sheet** (copy it verbatim when dispatching a subagent; one missing item means do not dispatch; copy one sheet per axis): `DESCRIPTION` = what was built this time (≤3 lines) ｜ `PLAN_OR_REQUIREMENTS` = the `docs/specs/<date>_<slug>/SCOPE.md` path + the acceptance criteria verbatim ｜ `BASE_SHA` = `$anchor` ｜ `HEAD_SHA` = HEAD (the verbatim `git rev-parse HEAD`). **Prohibition: never hand the reviewer this session's history, your reasoning process or your self-check conclusions or the other axis's findings — it reviews the work product only, not your thinking.**
 
 Also declare: this card only outputs a report and a suggested color; it does not modify any code; the go-ahead is decided by a human.
 
@@ -30,13 +30,32 @@ Also declare: this card only outputs a report and a suggested color; it does not
 
 ## ② Execution
 
-The review proceeds in three phases by dependency topology; each phase runs all applicable dimensions and gives its own conclusion independently:
-Phase 1 data layer and backend → Phase 2 frontend and interface integration → Phase 3 tests, configuration, scripts, documentation sync.
-**When a phase has no diff coverage → the coverage map declares "no changes, skipped", which is not a violation** (a purely backend project having no phase 2 is normal).
+**Two-axis parallel review** (one subagent per axis; the two axes' scopes do not overlap):
+- **Standards axis** = the standards this repository has already written down + the smell baseline table below
+- **Spec axis** = missing or half-written requirements, out-of-scope behavior, implementation that does not match the requirements
+- When aggregating, **never merge or reorder findings across axes**: the split exists precisely to stop the two classes of problem from being kneaded into one muddy account and losing decidability; the report lists two sections, each axis numbered on its own.
+- Dispatch still uses the ① dispatch input sheet, and **the other axis's findings must not be stuffed into the dispatch** (cross-contamination = the two axes degrade into one ordinary review).
+
+**Smell baseline** (≥6 rows, each row gives its criterion; the reviewer judges against it, not by feel):
+
+| Smell | Criterion |
+| :-- | :-- |
+| Long function | exceeds this repository's line limit (see dimension 6's 50/500/1000-line thresholds) |
+| Duplicated code | the same piece of logic appears a 2nd time |
+| Too many parameters | >4 parameters |
+| Divergent change | one file is changed for multiple unrelated reasons |
+| Shotgun surgery | one change requires touching >3 files |
+| Unclear naming | the name does not let you guess the behavior |
+
+**These are judgment calls, not hard violations** — the reviewer gives a judgment and a reason, not a "violation" ruling; items a tool can already enforce mechanically (line counts, formatting, lint) are out of the review's scope.
+
+**AI-generated declaration and duplicate check**: if the review report is **AI-generated**, it must begin with the line `> 本条由 AI 生成（代码审查）`; before dispatching, check two things — ① whether the same issue has already been raised (check `docs/reviews/` and `docs/TECH_DEBT.md`) ② whether it belongs to a proposal that has already been rejected (check the rejected-proposals section of `docs/decisions/`); on a hit, do not argue it again, only cite the original record (original record path + a one-line conclusion).
+
+The review proceeds in three phases by dependency topology; each phase runs all applicable dimensions and gives its own conclusion independently: Phase 1 data layer and backend → Phase 2 frontend and interface integration → Phase 3 tests, configuration, scripts, documentation sync. **When a phase has no diff coverage → the coverage map declares "no changes, skipped", which is not a violation** (a purely backend project having no phase 2 is normal).
 
 **The only exit for crossing the boundary — a named-risk targeted check**: when you genuinely need to look at code outside the diff, you must first write down "the risk name + what I am going to check", then check it; one risk, one spot, and the report must state both the risk name and the conclusion for that spot; checking without being able to name the risk = scope creep = an invalid review. Cross-cutting changes (lock ordering, shared mutable state, function or interface contract changes) are legitimate named risks and go through this exit.
 
-**Seven fixed dimensions (the review object = newly added** and modified** code; for deleted symbols, confirm zero residual references across the whole repository. Each phase runs the applicable ones and gives a conclusion item by item):**
+**Seven fixed dimensions (the review object = **newly added and modified code**; for deleted symbols, confirm zero residual references across the whole repository. Each phase runs the applicable ones and gives a conclusion item by item):**
 
 1. **Integration and wiring**: does every newly added/modified symbol have a call site (file:line)? Is the route / dependency-injection registration in place? **With a UI, walk the three-layer chain against SCOPE's UI description — ① route/mount registration ② is the entry reachable (which existing screen can reach it? If you cannot name a concrete entry = broken) ③ do the interactive elements have handlers bound and linked to business logic. A break in any layer = P1 (core feature unusable), not P2** — "the feature is written but the user cannot get in" dies right here. For frontend-backend projects also check: do the request/response structures match the contract registered in registry/APIS.md (field names / nesting / types)?
    ❌ Counter-example: the page component and the API are both written, but the route table does not mount it → judge P2 "minor issue, next batch"
@@ -59,17 +78,13 @@ Phase 1 data layer and backend → Phase 2 frontend and interface integration �
 
 **Error-code gate**: a new error code must be findable in `docs/registry/APIS.md` and already registered; give the `Select-String` search result.
 
-**Out-of-bounds check (a violation is a red flag):**
-- A **semantic** "while I was there / by the way" optimization appears in the diff (changing logic / renaming / refactoring unrelated code) → recommend reverting all of it
-- **Purely mechanical formatting** (output of prettier/black and similar tools) → do not revert: state the tool it came from and recommend splitting it into a separate formatting commit (reverting it just makes lint demand it again — a dead loop)
-- A file SCOPE never discussed appears → red flag, demand an explanation
+**Out-of-bounds check (a violation is a red flag):** a **semantic** "while I was there / by the way" optimization in the diff (changing logic / renaming / refactoring unrelated code) → recommend reverting all of it; **purely mechanical formatting** (output of prettier/black and similar tools) → do not revert, state the tool it came from and recommend splitting it into a separate formatting commit (reverting it just makes lint demand it again — a dead loop); a file SCOPE never discussed appears → red flag, demand an explanation.
 
 **Replacement and deprecation check (a hit is a red light, judge the suggested color 🔴 directly; this card only reviews and does not fix, fixes go back to 4-1):** [disambiguated]
 1. **Parallel implementation not deleted**: an old implementation that has been replaced but not deleted (old file / old function / old branch / old constant) appears in the files this batch touches, and `STATE.md`'s parallel-state register has no corresponding registration row → red light.
    The registration row format is fixed (column names not changed by one character): `并行态 | 旧实现 | 新实现 | 删除条件（可判定） | 到期 | 登记批次`.
    Even with a registration row, check two things: is the deletion condition decidable? Has the expiry batch already passed (passed and still not deleted → red light)?
-   There are only three legitimate retention reasons: ① progressive delivery / rollback (with a deadline) ② external compatibility contract (with a deprecation period) ③ evidence retention — **the answer for evidence retention is git history**; a second evidence copy in the working tree (`.bak`, `旧版/`, `副本 2`) is a violation (inlined in this card: creating `xxx_v2.ts` in this batch while keeping the old `xxx.ts`, or leaving a `.bak` copy in the same batch, both count).
-   ❌ Counter-example: create `xxx_v2.ts` and implement it again, keep the old `xxx.ts` around "just in case", the register has no row → judge P2 and let it pass
+   There are only three legitimate retention reasons: ① progressive delivery / rollback (with a deadline) ② external compatibility contract (with a deprecation period) ③ evidence retention — **the answer for evidence retention is git history**; a second evidence copy in the working tree (`.bak`, `旧版/`, `副本 2`) is a violation (inlined in this card: creating `xxx_v2.ts` in this batch while keeping the old `xxx.ts`, or leaving a `.bak` copy in the same batch, both count).   ❌ Counter-example: create `xxx_v2.ts` and implement it again, keep the old `xxx.ts` around "just in case", the register has no row → judge P2 and let it pass
    ✅ Good example: old deleted in the same batch + registration row's deletion condition decidable + expiry batch not passed → write the closing evidence in the passing items
 2. **Deprecation marker not declared**: the batch's **newly added lines** hit any of `_old\b|_legacy|_v2\b|Deprecated|暂时保留|废弃|TODO[:：]\s*(删|remove|delete)` (the body and the command use exactly the same regex; inconsistent strictness is not allowed) → the report must state the retention reason and (if any) the deletion condition, otherwise red light.
 
@@ -81,28 +96,18 @@ git diff -U0 "$anchor..HEAD" | Select-String '^\+' | Select-String '_old\b|_lega
 (It covers every commit in the whole batch; `HEAD~1` only looking at the last commit would miss them. **Empty output is also evidence**: paste the command text together with its output into the receipt and the report, and state "the anchor assertion passed" — otherwise "0 hits" and "the command failed" cannot be told apart. Paste hit lines into the issue list one by one, each with a "declared / not declared" verdict.)
 
 **Severity criteria (only these four levels; when unsure use P2):**
+- P0 = crash / data loss / security vulnerability ｜ P1 = core feature unusable (including broken wiring) → both must be zeroed, merging forbidden
+- P2 = edge feature errors / poor experience ｜ P3 = spelling / style / non-critical hints → register in `docs/TECH_DEBT.md` (source = this report's number); keep the number reference in the report, and P3's ledger registration may be deferred
 
-| Level | Meaning | Handling |
-| :-- | :-- | :-- |
-| P0 | crash / data loss / security vulnerability | must be zeroed, merging forbidden |
-| P1 | core feature unusable (including broken wiring) | must be zeroed, merging forbidden |
-| P2 | edge feature errors / poor experience | register in `docs/TECH_DEBT.md` (source = this report's number); keep the number reference in the report |
-| P3 | spelling / style / non-critical hints | same as above; ledger registration may be deferred |
-
-**Suggested-color matrix (the only basis for judging the color):**
-- 🔴 Red = P0≥1 or P1≥1 (**including old reports' unclosed P0/P1**) or a "replacement and deprecation check" hit (missing register row / undeclared deprecation marker)
-- 🟡 Amber = P0=P1=0 but P2/P3 exist or there is a trade-off awaiting the user's verdict
-- 🟢 Green = P0=P1=0 and all old reports' P0/P1 are closed
+**Suggested-color matrix (the only basis for judging the color):** 🔴 Red = P0≥1 or P1≥1 (**including old reports' unclosed P0/P1**) or a "replacement and deprecation check" hit (missing register row / undeclared deprecation marker) ｜ 🟡 Amber = P0=P1=0 but P2/P3 exist or there is a trade-off awaiting the user's verdict ｜ 🟢 Green = P0=P1=0 and all old reports' P0/P1 are closed
 
 **Prohibitions:**
 - Modifying any code is forbidden (this card only reviews and does not fix; fixes go back to 4-1) [disambiguated]
-- Giving a conclusion without evidence is forbidden (must be file:line + trigger condition)
-- Skipping a dimension or a phase is forbidden (write N/A + reason when not applicable)
-- Declaring a pass on your own is forbidden (only give the suggested color; the verdict belongs to the human)
-- P3 must be listed too; "the issue is too small" is not a reason to omit it
+- Giving a conclusion without evidence is forbidden (must be file:line + trigger condition); skipping a dimension or a phase is forbidden (write N/A + reason when not applicable)
+- Declaring a pass on your own is forbidden (only give the suggested color; the verdict belongs to the human); P3 must be listed too — "the issue is too small" is not a reason to omit it
 - Downgrading "replaced but not deleted" to P2 and letting it pass is forbidden (it is a red light; there are only two roads: delete it or register it)
 - Seeing a deprecation marker without giving a verdict is forbidden (every hit must be written as "declared (reason X) / not declared = red light")
-- The reviewer spawning a subagent is forbidden (whether to review part of the diff or to get a second opinion) — the review seat exists only this once, and a conclusion from a subagent you spawned counts for nothing; during the review, touching the working tree / the index / HEAD / branch state is forbidden
+- The reviewer spawning a subagent is forbidden (whether to review part of the diff or to get a second opinion) — the review seat exists only this once, and a conclusion from a subagent you spawned counts for nothing; **the only exception is the standards-axis and spec-axis subagents of the ② section's two-axis parallel review**; during the review, touching the working tree / the index / HEAD / branch state is forbidden
 
 ---
 
@@ -111,10 +116,10 @@ git diff -U0 "$anchor..HEAD" | Select-String '^\+' | Select-String '_old\b|_lega
 The report is written to `docs/reviews/CODE_<date>_<slug>.md` (on re-review create a new file and reference the previous report's path in its header), in a fixed four-section format:
 1. **Coverage map**: file × dimension tick table (✓ reviewed / — N/A + reason / ○ not reviewed + a reason is mandatory; including phase-skip declarations)
 2. **Issue list**: sorted P0→P3, each with number (new R-01…; old issues keep their original numbers) / level / location (file:line) / description / impact (trigger condition) / fix suggestion
-3. **Passing items**: ✅ pass per dimension (with coverage), leaving it blank is not allowed
+3. **Passing items**: ✅ pass per dimension (with coverage) + each axis's own passing items (the two axes are listed as separate sections, not merged); leaving it blank is not allowed
 4. **Conclusion**: the four-level counts (including old-issue closing results) + the suggested color per the "suggested-color matrix" + the replacement-and-deprecation check conclusion (number of parallel-state register rows / number of deprecation-marker hits / whether each was declared)
 
-In the conversation, receipt: report path + four-level counts + suggested color + replacement-and-deprecation check conclusion + **the deprecation-scan command text and its full output (paste it even when the output is empty, and note that the anchor assertion passed)**.
+In the conversation, receipt: report path + four-level counts + suggested color + replacement-and-deprecation check conclusion + **the deprecation-scan command text and its full output (paste it even when the output is empty, and note that the anchor assertion passed)**; then write `下一步：4-3 验证（回复"继续"即执行）`.
 
 ---
 
@@ -139,8 +144,6 @@ The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not in
 **Re-review scope (when reviewing again after going back to 4-1 to fix)**: [disambiguated] the fix diff runs all seven dimensions + the replacement and deprecation check + every old issue closed item by item (fixed / not fixed / newly introduced) + every row of the parallel-state register re-checked (has the deletion condition been honored, has the expiry batch passed) — not just the few fixed lines.
 
 **Six steps before acting on review comments**: ① read them through, change no code ② restate the requirement in your own words (if you cannot restate it = ask first) ③ check the facts in the code ④ judge whether it is technically correct for this project ⑤ confirm technically or rebut with reasons ⑥ fix and test item by item; **Prohibition: "you are right / good suggestion / thanks / fixing it right away" must never replace a technical response — feedback is technical input, not a social occasion**; **if a single item is unclear, stop as a whole** and clarify the unclear ones before touching anything — "fix only the items you understood" is forbidden (items may be interconnected; partial understanding = fixing it wrong).
-
-In the conversation, receipt: the four-level counts + suggested color + the replacement-and-deprecation check conclusion; then write `下一步：4-3 验证（回复"继续"即执行）`.
 
 Fixed closing line:
 `Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

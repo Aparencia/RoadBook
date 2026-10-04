@@ -8,12 +8,21 @@
 1. **Restate the release contents**: which completed tasks this release contains (STATE.md's 最近完成 compared against CHANGELOG's unreleased section).
 2. **Assumptions list**: the 3~5 default assumptions you are making on the user's behalf (e.g. "no table-structure change this time", "there are no real users"), each with the way it was verified.
 3. **Clarifying questions (≤5, keep them to a minimum)**: the default three questions — where is it deployed (local demo / static hosting / a hosting platform / a cloud server)? Are there real users? Does the data need migrating? Plus which version number to fix (a concrete number, e.g. v0.3.0). Anything findable in RUNBOOK or CHANGELOG must not be asked of a human.
-4. **Paste the reference checklist verbatim** (paste word for word this card's §② "release seven checks").
+4. **Paste the reference checklist verbatim** (paste word for word this card's §② "Merge Danger marking + release seven checks").
 5. Also declare: the output lands in = `docs/versions/vX.Y.Z.md` (this release's concrete version number) + a formal version section in the root `CHANGELOG.md` + tag (**tagged by a human**) + the deployment section of `docs/RUNBOOK.md`; next card = awaiting a new intent (an incident → 6-1 incident response).
 
 ---
 
 ## ② Execution
+
+**First mark every item's Merge Danger (mark each item in the two columns below before releasing, and only then run the release seven checks):**
+
+| Item | What is judged | How to judge it |
+| :-- | :-- | :-- |
+| **One-way door / two-way door** | can it be backed out as-is after something goes wrong | **one-way door** = it cannot be rolled back as-is: deleting data, changing a table structure, an external commitment (a time / price / feature already told to users), changing an interface contract; **two-way door** = undoing it returns things to how they were (changing copy, adding a switch, adding logs) |
+| **Blast radius** | how many users / how many modules are affected when it breaks | write a concrete number or range ("0 real users", "all 3 modules"); if you cannot write one, treat it as a large radius |
+
+**Criterion: one-way door + a large blast radius = a human must be present to decide (red line); and the rollback plan must have been rehearsed first — not rehearsed = must not ship** (attach the rehearsal record to the receipt). A two-way door + a small blast radius may be released on your own.
 
 **Release seven checks:**
 
@@ -61,7 +70,7 @@ git push origin $ver      # when a remote exists
 ## ③ Evidence receipt
 
 1. The version number + the three-way alignment check result
-2. The deployment action record (who ran it / when / the address) + the rollback plan text
+2. The deployment action record (who ran it / when / the address) + the rollback plan text + **the rollback rehearsal record (mandatory for one-way-door items: what was rehearsed / the result)**
 3. The versions/vX.Y.Z.md path + the tag name
 4. The RUNBOOK update content
 

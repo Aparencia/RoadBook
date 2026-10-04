@@ -85,6 +85,12 @@ Get-ChildItem -Path src -Recurse -Filter *.py | Select-String -Pattern '^from |^
 - ❌ Counter-example: the report only says "roll back if something goes wrong" (no hash, no down script)
 - ✅ Good example: a 5-row batch table, each row "batch / commit hash / net lines added and removed / rollback command", with the data-migration batch carrying the down-script path
 
+**Seam criterion (decide before the refactor whether an interface belongs here)**
+- **One adapter means a hypothetical seam; two adapters mean a real seam**: an abstraction layer extracted when there is only one implementation is a guess — register it as tech debt and do it when the second implementation appears; only when two implementations exist do you extract an interface / adapter for it.
+- Landing point: a speculative abstraction goes into `docs/TECH_DEBT.md` (stating "extract the interface when the second implementation appears"), not into this batch's code.
+- ❌ Counter-example: "we may hook up another payment channel later, so let's extract the interface now" (with only one implementation, the shape extracted will necessarily be wrong)
+- ✅ Good example: the second payment channel is confirmed → extract the interface in this batch, write both adapters in the same batch, and run the characterization tests against both
+
 **Prohibitions (violating any one of them = this round's output is void):**
 - Changing the external contract or observable behavior is forbidden (to change behavior → go back to 2-1 for scoping)
 - Touching implementation code with all three safety nets (characterization tests / golden samples / contract tests) missing is forbidden

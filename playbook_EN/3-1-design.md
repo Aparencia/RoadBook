@@ -76,6 +76,16 @@ When "rewrite" is chosen, the design section must deliver two things (missing on
 ❌ Counter-example: create a fresh `xxx_v2.ts` and implement it again, leaving the old file around "for later"
 ✅ Good example: in-place rework + delete the old implementation in the same batch + paste the deletion evidence in the receipt (the deleted lines in `git diff --stat`)
 
+**Action 7: the three requirements for a decision record (all three must hold to write it into `docs/decisions/`)**
+Write one only when it is **hard to reverse** AND **surprising** AND a **real trade-off**, all three at the same time; if any one is missing, do not write it — writing it is pure noise and drowns the records that really need re-reading.
+❌ Counter-example: "turn the log level from info up to debug" (reversible at any time, the result is not surprising, no trade-off → do not write it)
+✅ Good example: "store the order amount as integer cents" (reverting means touching the migration and the historical data = hard to reverse; the team assumed two decimal places = surprising; there is a precision-versus-compatibility trade-off = a real trade-off → write one)
+
+**Action 8: Rejected options (DESIGN.md must have this section)**
+Write one line per rejected option saying "why it was not chosen", so a later re-review reads it first; when the same option is re-reviewed, paste that line verbatim before discussing it — not pasting it = re-deciding from scratch, and last time's judgment was wasted.
+❌ Counter-example: after rejecting "add a message queue", write nothing at all → the next person raises it again and the whole discussion restarts
+✅ Good example: `Rejected options: message queue —— reason for rejection: single-machine deployment this cycle, operational cost > benefit (2026-09-12)`
+
 **The four design evidence items (missing one = the design does not pass):**
 
 ```text

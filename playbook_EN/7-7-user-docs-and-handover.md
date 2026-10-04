@@ -63,6 +63,18 @@ Select-String -Path docs/registry/COMPONENTS.md -Pattern '人话标识'
 - Write "最近核对：<日期> @ <提交哈希>" ("last checked: <date> @ <commit hash>") at the top of each document; if a screen or a command changed and the document did not follow → register it in `docs/TECH_DEBT.md`.
 - ❌ Counter-example: "文档早就写好了" ("the docs were written long ago") ｜ ✅ Good example: "USER_GUIDE 最近核对 2026-10-01 @ a1b2c3d；界面改了没跟上 → 登记 TD-013，到期 2026-10-20" ("USER_GUIDE last checked 2026-10-01 @ a1b2c3d; the screen changed and it did not follow → registered as TD-013, due 2026-10-20")
 
+**Action 5b: handover note (written for the next session / the taker)**
+- **The handover note goes into the system temp directory** (not into the repository), with the fixed file name `handover_<日期>.md`:
+```powershell
+$tmp = if ($env:TEMP) { $env:TEMP } else { '/tmp' }
+"handover note path = $tmp/handover_$(Get-Date -Format 'yyyy-MM-dd').md"
+```
+- The content holds **pointers, not copies**: the repository path, the current card number, the start anchor, the next step, the open questions, and which files must be read (each with its file path + line numbers).
+- Copying out the body text that already exists in other artifacts is forbidden (a copy will always drift): for the body text of USER_GUIDE / STATE.md / the reports, give the path and never duplicate the paragraphs.
+- Desensitize secrets and personal information before writing: tokens, passwords, phone numbers, e-mail addresses and real names are all written as "see entry X in the password manager / ask the user", and the file in the temp directory is deleted once the handover is done.
+- ❌ Counter-example: pasting the whole USER_GUIDE into the handover note (two copies of the body text; next time one place is changed and the other is not → the taker reads the stale one)
+- ✅ Good example: "repository <project root> | current card 7-7 | start anchor a1b2c3d | next step 5-1 Archive | open: the handover checklist lacks expiry dates | read first docs/USER_GUIDE.md:70-90, STATE.md `未决问题`"
+
 **Action 6: the taker runs it independently (the confirmation is done by a human)**
 - Hand "quick start + what to do when it fails" to the person taking over and have them walk it from zero on their own machine; the agent only prepares the commands and the record table.
 - If it does not run → stop and ask the user (stop when the same error happens twice); operating the machine on the taker's behalf is forbidden.

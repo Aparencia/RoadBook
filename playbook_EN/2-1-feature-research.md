@@ -5,7 +5,7 @@
 
 ## ① Start confirmation
 
-After receiving the start instruction, first issue a receipt for the following five items, then act (a missing item means do not start):
+After receiving the start instruction, first issue a receipt for the following six items, then act (a missing item means do not start):
 
 1. **Restate the task**: in one plain sentence, say what feature is to be built.
 2. **Upstream references + assumptions list**: whether this idea is already in docs/pool/IDEAS.md (yes → paste the line number); the landing constraints for this change in docs/ARCHITECTURE.md; list the default assumptions one by one (e.g. "导出格式 CSV 与 Markdown 都要支持" ("both CSV and Markdown export formats must be supported")).
@@ -14,6 +14,8 @@ After receiving the start instruction, first issue a receipt for the following f
    ✅ Example: "导出功能需要支持 Excel 吗，还是 Markdown 就够？" ("does the export feature need to support Excel, or is Markdown enough?")
 4. **Quote the checklist verbatim** (paste verbatim this card's §② "the four research-compliance checks" + "the three checks for a new dependency").
 5. **Path pre-judgment (judge first, ask after)**: before asking the first clarifying question, first announce that this task is handled as tier <S/M/L>, with a one-sentence criterion; and add one line "本次要改的流程在仓库里已经可读吗：是/否" ("is the flow this change touches already readable in the repo: yes/no"). If the judgment is wrong or you disagree → re-judge now, then ask.
+
+6. **Decomposability pre-judgment (split before asking)**: if this intent contains ≥2 mutually independent subsystems (each with its own entry point and data), first list the sub-projects and the suggested order, and research only the first one in this card; each sub-project runs its own 2-1→…→4-1 round. If it cannot be split, write one line: "我判断它不可拆，依据是 …" ("I judge it cannot be split, because …").
 
 Also state: the output lands at `docs/specs/<日期>_<slug>/RESEARCH.md`; the approach and the tier are both decided by the user's verdict.
 
@@ -41,6 +43,12 @@ The rejected approach must state a concrete reason for rejection:
 ❌ Counter-example: "方案 C：用 WebSocket——不考虑" ("approach C: use WebSocket — not considered") (a filler entry, no reason)
 ✅ Example: "方案 C（被否）：WebSocket 实时同步——单人本地应用无第二客户端，且引入常驻服务进程，改动面 ×3" ("approach C (rejected): WebSocket real-time sync — a single-user local app has no second client, and it introduces an always-on service process, tripling the change surface")
 
+**Action 2.5: rejection ledger（拒绝台账）— a rejected approach leaves a trace; re-opening the same proposal without the ledger is forbidden**
+Keep one line per rejected approach: `日期 | 提案 | 否决理由 | 既往请求编号` ("date | proposal | reason for rejection | prior request number"), written into the matching file under `docs/decisions/` or the "已否" ("rejected") section of `docs/pool/IDEAS.md`.
+When the same proposal appears a second time, **read the ledger first** and paste the previous reason for rejection verbatim before discussing it; re-arguing it without the ledger is forbidden.
+❌ Counter-example: writing only "这个方案不考虑" ("this approach is not considered") and stopping there
+✅ Example: "2026-10-04 否掉 X：与本项目单机离线约束冲突（既往请求 #3）" ("X rejected on 2026-10-04: it conflicts with this project's single-machine offline constraint (prior request #3)")
+
 **Action 3: the three checks for a new dependency (go through them item by item before introducing any package)**
 
 ```text
@@ -57,7 +65,7 @@ git grep -n "相关符号名"     # replace "相关符号名" with the real symb
 ```
 List the files expected to be touched + the affected lines in the registry (paste the lines if there are any).
 
-**Action 5: tier proposal (criteria table inlined; upgrade only, never downgrade — when unsure, propose one tier higher)**
+**Action 5: tier proposal (criteria table inlined; upgrade only, never downgrade — when unsure, propose one tier higher; hidden complexity discovered mid-task (a new dependency / cross-module change / a breaking table schema) → stop immediately and announce the upgrade; finishing the work first and reporting later is forbidden)**
 
 | Tier | Criterion (meeting any one puts the task in this tier) |
 | :-- | :-- |

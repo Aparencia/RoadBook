@@ -68,6 +68,10 @@
 | 不可委托 | non-delegable |
 | 裁决 | verdict |
 | 自行裁决留痕 | verdict trail |
+| 探针分支 | probe branch |
+| 可分解性先判 | decomposability pre-judgment |
+| 批准不跨段 | approval does not carry across stages |
+| 展示即开工 | presenting and starting in the same breath |
 | 轻确认 | light confirmation |
 | 信号（成本最低的知会） | signal |
 | 起点锚点 | start anchor |
@@ -160,6 +164,33 @@
 | 上下文预算 | context budget |
 | 热记忆 | hot memory |
 | 交接三件 | handover triad |
+| 拒绝台账 | rejection ledger |
+| 路由漂移 | route drift |
+| no-op 规则 | no-op rule |
+| 双轴并行审查 | two-axis parallel review |
+| 气味基线 | smell baseline |
+| 证据分档 | evidence tiers |
+| 单向门 | one-way door |
+| 双向门 | two-way door |
+| 爆炸半径 | blast radius |
+| Merge Danger 标注 | Merge Danger annotation |
+| 可开工前沿 | ready frontier |
+| 快进合并 | fast-forward merge |
+| 被否方案 | rejected options |
+| 接缝 | seam |
+| 接缝先约定 | agree the seam first |
+| 同义反复测试 | tautological test |
+| 横向切片 | horizontal slicing |
+| 产物寿命三分类 | three lifetime classes |
+| 阻塞依赖显式登记 | blocking-dependency register |
+| 指针不复述 | pointers, not copies |
+| 会话上下文甜区 | smart zone |
+| 写作教义 | writing doctrine |
+| 正说优先 | state the positive first |
+| 信息阶梯与就近放置 | information ladder and proximity |
+| 触发词唯一 | one trigger phrase per behavior |
+| 禁用诱导词 | no leading words |
+| 每个问题自带推荐答案 | every question carries a recommended answer |
 
 ## 5. 禁止翻译（原样保留）
 

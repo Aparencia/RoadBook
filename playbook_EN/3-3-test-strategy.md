@@ -79,6 +79,16 @@ A hit = a suspected real phone number / email address; replace each one with gen
 - Tier L: add negative tests and privilege-escalation-refusal cases on top (zero tests is not allowed).
 - At the end of TESTPLAN.md write a "commands for 4-3 to run" section, one line per command, so 4-3 can copy and execute them directly.
 
+**Action 7: agree the seam first + name the two anti-patterns (settled before dispatching to an implementer; written into TESTPLAN.md)**
+Before dispatching to an implementer, **agree the seam first** with the user/reviewer: which functions and which interface may be replaced or stubbed, named one by one in TESTPLAN.md — with the seam unwritten, the implementer picks one themself, and it only turns out at 4-2 review that it cannot be substituted.
+Name the two anti-patterns one by one (written next to "what is not tested" in TESTPLAN.md; self-checked item by item before close-out):
+- **tautological test**: the assertion copies the implementation again (break the implementation and the test is still green). The criterion in one sentence: can this test name "which line of production code, if changed, turns it red"? If not → it is tautological, so rewrite it as an assertion about **the behavior that depends on that decision**.
+- **horizontal slicing**: cutting the task by layer (finish the whole data layer first, then the whole interface layer), where finishing a whole layer produces no runnable behavior. The criterion in one sentence: every slice must run vertically through to something runnable — once the slice is done, one user behavior can be demonstrated; if it cannot → that way of slicing is void, re-cut it.
+❌ Counter-example: `expect(add(1, 2)).toBe(1 + 2)` (the assertion copies the implementation again; breaking `add` still leaves it green)
+✅ Good example: `expect(cartTotal(items)).toBe(1980)` (the expected amount is hard-coded; breaking the calculation turns it red)
+
+Also state: **refactoring is not part of this loop** — the "refactor" in test-implement-refactor is an in-place small step (tidying up the code just written inside the same batch), not a separate batch; to refactor at scale, make it its own task and walk its own process.
+
 **Prohibitions:**
 - Using production data as fixtures is forbidden ("redact it and then use it" does not work either — incomplete redaction is a leak)
 - Writing "not tested" without a reason is forbidden; "the environment is not available" is not a reason — go find a substitute

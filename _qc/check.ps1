@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 400) "行数 $selfN <= 400 ：_qc/check.ps1 自身（2026-10-03 由 360 上调：superpowers 内化断言 26 条 + 内化记录；上调须同时改本行与 design §8）"
+Check ($selfN -le 440) "行数 $selfN <= 440 ：_qc/check.ps1 自身（2026-10-04 由 400 上调：mattpocock/skills 内化断言 20 组 + 内化记录；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -158,32 +158,47 @@ Check ($extra.Count -eq 0) "playbook/ 无未注册卡（多出：$($extra.BaseNa
 $extraEn = @(Get-ChildItem $pen -Filter *.md | Where-Object { $enFiles -notcontains $_.Name })
 Check ($extraEn.Count -eq 0) "playbook_EN/ 无未注册卡（多出：$($extraEn.BaseName -join ', ')）"
 
-Write-Host "== 2b. 内化机制在位（2026-10-03：superpowers 15 个 skill → 10 张卡 + 母版层；删句即红）=="
+Write-Host "== 2b. 内化机制在位（2026-10-03 superpowers 15 个 skill → 10 张卡 + 母版层；2026-10-04 mattpocock/skills → 14 张卡 + 母版层；删句即红）=="
 $intl = [ordered]@{
-    'playbook/2-1-功能调研.md'              = @('路径预判')
-    'playbook_EN/2-1-feature-research.md'   = @('Path pre-judgment')
-    'playbook/2-2-需求范围.md'              = @('范围合规七查', '自洽查', '动作 3.5')
-    'playbook_EN/2-2-scope-definition.md'   = @('seven scope-compliance checks', 'Self-consistency check', 'Action 3.5')
-    'playbook/3-3-测试策略.md'              = @('轮询条件')
-    'playbook_EN/3-3-test-strategy.md'      = @('polling condition')
-    'playbook/4-1-分批编码.md'              = @('批次接口契约', '每批必念六查', '批次完成行', 'TDD 红先行')
-    'playbook_EN/4-1-batch-coding.md'       = @('Batch interface contract', 'six checks to recite every batch', 'Batch completion line', 'TDD red first')
-    'playbook/4-2-代码审查.md'              = @('派单输入单', '命名风险定点检查', 'SCOPE 沉默')
-    'playbook_EN/4-2-code-review.md'        = @('Dispatch input sheet', 'named-risk targeted check', 'SCOPE silence is not permission')
-    'playbook/4-3-验证.md'                  = @('变异点至少覆盖三类', '禁止在证据出现前表达满意')
-    'playbook_EN/4-3-verification.md'       = @('Mutant points must cover at least three classes', 'before the evidence appears')
+    'playbook/0-1-驱动卡.md'                = @('自带推荐答案', 'smart zone', '产物寿命三分类')
+    'playbook_EN/0-1-driver-card.md'        = @('every question carries a recommended answer', 'smart zone', 'three lifetime classes')
+    'playbook/1-1-想法调研.md'              = @('动作 0.5', '探针分支')
+    'playbook_EN/1-1-idea-research.md'      = @('Action 0.5', 'probe branch')
+    'playbook/2-1-功能调研.md'              = @('路径预判', '可分解性先判', '立即停下声明升档', '拒绝台账')
+    'playbook_EN/2-1-feature-research.md'   = @('Path pre-judgment', 'Decomposability pre-judgment', 'announce the upgrade', 'rejection ledger')
+    'playbook/2-2-需求范围.md'              = @('范围合规九查', '自洽查', '动作 3.5', '批准不跨段查', '展示即开工查', '阻塞依赖显式登记', '用户故事给人看，验收命令给 agent 跑')
+    'playbook_EN/2-2-scope-definition.md'   = @('nine scope-compliance checks', 'Self-consistency check', 'Action 3.5', 'Approval does not carry across stages', 'Presenting and starting in the same breath', 'blocking dependencies are registered explicitly', 'Stories are for humans, acceptance commands are for agents')
+    'playbook/3-1-设计.md'                  = @('难以回退', '被否方案')
+    'playbook_EN/3-1-design.md'             = @('hard to reverse', 'Rejected options')
+    'playbook/3-3-测试策略.md'              = @('轮询条件', '接缝先约定', '同义反复测试', '横向切片')
+    'playbook_EN/3-3-test-strategy.md'      = @('polling condition', 'agree the seam first', 'tautological test', 'horizontal slicing')
+    'playbook/4-1-分批编码.md'              = @('批次接口契约', '每批必念六查', '批次完成行', 'TDD 红先行', '可开工前沿', '快进合并', '批量机械改写之后必须跑全量门禁')
+    'playbook_EN/4-1-batch-coding.md'       = @('Batch interface contract', 'six checks to recite every batch', 'Batch completion line', 'TDD red first', 'ready frontier', 'fast-forward', 'after a bulk mechanical rewrite, run the full gate')
+    'playbook/4-2-代码审查.md'              = @('派单输入单', '命名风险定点检查', 'SCOPE 沉默', '双轴并行审查', '气味基线', 'AI 生成')
+    'playbook_EN/4-2-code-review.md'        = @('Dispatch input sheet', 'named-risk targeted check', 'SCOPE silence is not permission', 'two-axis parallel review', 'smell baseline', 'AI-generated')
+    'playbook/4-3-验证.md'                  = @('变异点至少覆盖三类', '禁止在证据出现前表达满意', '证据分档', '没有能变红的命令')
+    'playbook_EN/4-3-verification.md'       = @('Mutant points must cover at least three classes', 'before the evidence appears', 'Evidence tiers', 'No red-capable command')
+    'playbook/4-5-环境与配置.md'            = @('只有人能做的步骤')
+    'playbook_EN/4-5-environments-and-config.md' = @('human-only steps')
     'playbook/5-1-归档.md'                  = @('--force')
     'playbook_EN/5-1-archive.md'            = @('`--force` is forbidden')
-    'playbook/6-2-根因分析.md'              = @('反向追链')
-    'playbook_EN/6-2-root-cause-analysis.md' = @('Reverse chain tracing')
+    'playbook/5-2-发布.md'                  = @('单向门', '双向门', '爆炸半径')
+    'playbook_EN/5-2-release.md'            = @('one-way door', 'two-way door', 'blast radius')
+    'playbook/6-2-根因分析.md'              = @('反向追链', '没有能变红的命令')
+    'playbook_EN/6-2-root-cause-analysis.md' = @('Reverse chain tracing', 'no red-capable command')
     'playbook/6-3-修复.md'                  = @('修复尝试计数')
     'playbook_EN/6-3-bugfix.md'             = @('Fix-attempt count')
-    'playbook/6-6-流程体检.md'              = @('十二类信号', '信号 12', '改卡前三问')
-    'playbook_EN/6-6-process-audit.md'      = @('twelve classes of signals', 'Signal 12', 'Three questions before changing a card')
+    'playbook/6-6-流程体检.md'              = @('十四类信号', '信号 13', '信号 14', '改卡前三问')
+    'playbook_EN/6-6-process-audit.md'      = @('fourteen classes of signals', 'Signal 13', 'Signal 14', 'Three questions before changing a card')
     'playbook/7-3-债与腐化清偿.md'          = @('每批必念六查')
     'playbook_EN/7-3-tech-debt-repayment.md' = @('six checks to recite every batch')
+    'playbook/7-7-用户文档与交接.md'        = @('系统临时目录', '指针不复述')
+    'playbook_EN/7-7-user-docs-and-handover.md' = @('system temp directory', 'pointers, not copies')
+    'playbook/7-8-项目重构.md'              = @('一个适配器 = 假设的接缝')
+    'playbook_EN/7-8-refactoring.md'        = @('One adapter means a hypothetical seam')
     'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent')
-    'design/playbook-contract.md'           = @('违反规则的字面', '形态选择')
+    'design/playbook-contract.md'           = @('违反规则的字面', '形态选择', '每个问题自带推荐答案', '写作教义', 'no-op 测试', '信息阶梯', '触发词唯一', 'leading words')
+    'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies')
     'SKILL.md'                              = @('子 agent 边界')
     '_qc/baseline/README.md'                = @('对照组', '行号')
 }
@@ -196,6 +211,7 @@ foreach ($k in $intl.Keys) {
 }
 Check (-not $missIntl) "内化判据在位（缺：$($missIntl -join '；')）"
 Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-03.md')) '内化记录 _qc/internalize-2026-10-03.md 在位（15→40 映射矩阵 + 明确不拿的 7 条 + 下一轮候选）'
+Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04.md')) '内化记录 _qc/internalize-2026-10-04.md 在位（mattpocock/skills → 14 张卡 + 母版层：来源、落点、needle 清单、写者裁决）'
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
@@ -294,7 +310,7 @@ $t12 = [IO.File]::ReadAllText((Join-Path $pb '1-3-接入已有项目.md'), [Text
 Check ($t12 -match 'git remote -v') '1-3 卡接入时查远端（防老项目无远端）'
 Check (([IO.File]::ReadAllText((Join-Path $pb '5-1-归档.md'), [Text.Encoding]::UTF8)) -match 'git push') '5-1 卡归档收尾有远端同步（push）'
 $t43 = [IO.File]::ReadAllText((Join-Path $pb '6-6-流程体检.md'), [Text.Encoding]::UTF8)
-Check ($t43 -match '提交节奏' -and $t43 -match '推送滞后' -and $t43 -match '十二类' -and $t43 -match '信号 12') '6-6 卡有提交节奏与推送滞后信号 + 十二类信号（含 baseline 空转信号 12）'
+Check ($t43 -match '提交节奏' -and $t43 -match '推送滞后' -and $t43 -match '十四类' -and $t43 -match '信号 13' -and $t43 -match '信号 14') '6-6 卡有提交节奏与推送滞后信号 + 十四类信号（新增信号 13 路由漂移 / 信号 14 no-op 规则）'
 $commitCards = [ordered]@{ '1-2-选型初始化' = '1-2'; '1-3-接入已有项目' = '1-3'; '4-1-分批编码' = '4-1'; '6-3-修复' = '6-3'; '5-1-归档' = '5-1'; '6-5-复盘' = '6-5'; '7-1-UI改动' = '7-1'; '7-2-依赖升级' = '7-2'; '7-4-功能下线' = '7-4' }
 $noNum = @($commitCards.Keys | Where-Object { ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -notmatch ('git commit -m "' + $commitCards[$_] + ' ') })
 Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）"

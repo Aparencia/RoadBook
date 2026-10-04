@@ -1,5 +1,5 @@
 # Card 1-1 · Idea research (the only entry point of the project phase; Kill is a legitimate outcome)
-> Trigger: the user says "启动/立项/调研一下" ("start / kick off / look into it") about a concrete idea | Output: docs/decisions/IDEA_<日期>_<主题>.md | Next: Go → 1-2 stack init; Pivot → re-run this card (≤2 rounds); Kill → flow ends
+> Trigger: the user says "启动/立项/调研一下" ("start / kick off / look into it") about a concrete idea, or only asks "这能不能做 / 可不可行" ("can this be done / is it feasible") (→ §② Action 0.5 probe branch) | Output: docs/decisions/IDEA_<日期>_<主题>.md | Next: Go → 1-2 stack init; Pivot → re-run this card (≤2 rounds); Kill → flow ends
 
 ---
 
@@ -29,6 +29,14 @@ Set-Location $proj
 New-Item -ItemType Directory -Force docs/decisions, docs/pool | Out-Null
 if (-not (Test-Path docs/pool/IDEAS.md)) { Set-Content docs/pool/IDEAS.md @('# IDEAS · 需求池', '', '| 日期 | 想法 | 状态 | 复活条件 / 结论 |', '|---|---|---|---|') }
 ```
+
+**Action 0.5: probe branch (taken when the user only asks "can this be done / is it feasible"; also when they never asked to launch anything)**
+The user never said they want to launch it, they only ask about feasibility → take this branch; do not run Actions 1–5 and do not read the six Kill criteria questions:
+1. First give three sentences: the question to answer / how you plan to probe / the expected effort; then **stop and wait for a nod** (single-person mode: the user replying "可以" / "试" ("ok" / "try") is enough); acting without the nod is forbidden.
+2. Do it in the system temp directory; creating business files inside the project repo, copying the template set, and running `git init` are forbidden (consistent with the prohibitions below).
+3. Get the answer as cheaply as correctness allows: running commands and pasting real output is allowed; delete the probe artifacts at wrap-up.
+4. The deliverable is an answer, not code. The receipt states: the answer + a one-line recommendation + where it landed (the "复活条件 / 结论" ("revival condition / conclusion") column of the idea's row in `docs/pool/IDEAS.md`); if code really was kept, add "一次性探针，结论已入 <文件>，代码不保留" ("a throwaway probe; the conclusion is recorded in <文件>; the code is not kept").
+5. This is a recommendation only; whether to turn it into a formal research run is the user's verdict (agree → start from Action 1).
 
 **Action 1: market and status-quo data (every number must be traceable)**
 One rule: a number must be followed by a source link, or marked "⚠️ 估算：依据" ("estimate: basis").
