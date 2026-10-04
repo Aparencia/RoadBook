@@ -37,6 +37,12 @@
 
 ## 安装（GUI）
 
+**Git 地址要指到本插件这一层，别填仓库根**：`https://github.com/Aparencia/RoadBook.git` 整仓**装不了**——仓库根放的是流程卡与模板，没有 `package.json`，DSH 会判「这个包没有声明组合包，不能作为插件管理」。两个插件同在一个仓库里，选「Git 地址」时必须带 `#path:` 指到其中之一：
+
+```text
+git+https://github.com/Aparencia/RoadBook.git#path:plugin/roadbook-autoload
+```
+
 1. 侧栏打开「**插件**」页 → 「**添加插件**」。
 2. 选「本地绝对路径」，填本目录（仓库里的 `plugin/roadbook-autoload`，或已 clone 的技能目录下 `roadbook/plugin/roadbook-autoload`）→ 先 `inspect` 再安装。
 3. 装完点「**立即启用**」（本 profile 已开 HMR，无需重启）。

@@ -13,6 +13,13 @@
 
 插件本身不含任何本机路径（`files` 白名单只收 `lib/ skills/ cordis.patch.yml README.md CHANGELOG.md`），克隆或装包之后即可运行。三条路任选：
 
+**别填仓库根地址**：`https://github.com/Aparencia/RoadBook.git` 整仓装不了——仓库根没有 `package.json`，DSH 会判「这个包没有声明组合包，不能作为插件管理」。在「添加插件」里选 Git 地址时要带 `#path:` 指到本插件：
+
+```text
+git+https://github.com/Aparencia/RoadBook.git#path:plugin/roadbook-atlas
+```
+
+
 **A. 本地克隆 + 指向目录**（最稳，不需要发布）
 
 ```powershell
