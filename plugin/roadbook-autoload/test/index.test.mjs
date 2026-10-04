@@ -22,12 +22,18 @@ const skill = (over = {}) => ({ name: 'roadbook', userInvocable: true, __content
 const user = (text) => ({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
 const next = async () => ({ kind: 'continue', messages: [] })
 
+/**
+ * 读观测文件里的**会话事件**。
+ * `apply()` 会先写一行就绪回执（`event: 'loaded'`，面板之外的「本行真的跑起来了」自证），
+ * 它不是会话事件，单独由下面的「就绪回执」测试断言。
+ */
 const readReport = (file) =>
   existsSync(file)
     ? readFileSync(file, 'utf8')
         .split('\n')
         .filter((line) => line.trim().length > 0)
         .map((line) => JSON.parse(line))
+        .filter((entry) => entry.event !== 'loaded')
     : []
 
 /** 假 ctx：只实现插件真正用到的 on / skills.get / logger。 */
@@ -81,6 +87,17 @@ test('模块形状：name / inject / Config', () => {
   assert.equal(name, 'roadbook-autoload')
   assert.deepEqual(inject, ['agents', 'skills'])
   assert.ok(Config, 'Config 必须导出')
+})
+
+test('就绪回执：apply() 往观测文件写一行 loaded（面板之外的自证）', () => {
+  const file = join(TMP, 'loaded.jsonl')
+  setup({ skills: { roadbook: skill() }, config: { reportPath: file } })
+  const [first] = readFileSync(file, 'utf8')
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line))
+  assert.equal(first.event, 'loaded')
+  assert.deepEqual(first.fallbacks, [], '宿主包在桩环境里可解析 ⇒ 不该走兜底')
 })
 
 test('命中关键词：注入 skill-invocation 并记一行 inject', async () => {

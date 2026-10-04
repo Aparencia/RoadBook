@@ -1,6 +1,6 @@
 {
   "name": "roadbook",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "RoadBook（路书）DSH 主插件：一个组合包装齐流程技能、自动加载与图纸工作台；每个子行在 DSH 插件面板里可独立开关。",
   "license": "MIT",
@@ -8,7 +8,6 @@
   "main": "./lib/index.js",
   "exports": {
     ".": "./lib/index.js",
-    "./bundle": "./lib/bundle.js",
     "./autoload": "./plugin/roadbook-autoload/index.js",
     "./atlas": "./plugin/roadbook-atlas/lib/index.js",
     "./client": "./lib/client.js",
@@ -28,9 +27,21 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "3.18.4",
     "dsh-better-sidebar": "^0.24.0"
   },
   "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-skill": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    },
     "dsh-better-sidebar": {
       "optional": true
     }

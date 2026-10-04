@@ -11,8 +11,10 @@
  * 分工：门控与文案等纯逻辑在 ./trigger.js（不 import dsh 包，可离线单测）；
  * 本文件只做 Host 侧接线：读会话、查技能、注入消息、落观测。
  *
- * 依赖：@deepseek-ai/dsh-llm / dsh-skill / schemastery 由宿主提供，见 package.json
- * 的 peerDependencies —— 插件内不下载、不打包，宿主大版本升级后要重新核对。
+ * 依赖：@deepseek-ai/dsh-llm / dsh-skill / schemastery 由宿主提供，见本目录与仓库根
+ * package.json 的 peerDependencies —— 插件内不下载、不打包，宿主大版本升级后要重新核对。
+ * 三者都是**守卫式动态 import**：解析不到就退回 ./host-fallback.js 的等价实现，绝不让
+ * 整行插件因为缺宿主包而静默变成面板上的「未运行」（原因见 host-fallback.js 顶部注释）。
  *
  * 观测：自进化 A 环默认开启 —— 每个分支（inject / skip / error）都往
  * <os.tmpdir()>/roadbook-autoload.jsonl 追加一行 JSONL；观测是旁路，写失败只吞自己，
@@ -21,9 +23,11 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { isUserInvocable, renderSkillContent } from '@deepseek-ai/dsh-skill'
-import z from '@deepseek-ai/schemastery'
+import {
+  createUserMessage as fallbackCreateUserMessage,
+  isUserInvocable as fallbackIsUserInvocable,
+  renderSkillContent as fallbackRenderSkillContent,
+} from './host-fallback.js'
 import {
   DEFAULT_KEYWORDS,
   DEFAULT_SUPPRESS,
@@ -38,6 +42,40 @@ import {
   surfaceInjectionState,
 } from './trigger.js'
 
+/**
+ * 守卫式解析宿主包（正常路径 = 宿主注入的 peerDependencies；兜底 = ./host-fallback.js）。
+ *
+ * 解析失败必须被接住：loader 对「入口模块 import 失败」只写一条 logger.error 然后 return，
+ * `entry.fiber` 不赋值 ⇒ 插件面板显示「未运行」，用户看不出是缺包、缺文件还是版本不符。
+ * 这里把失败原因收进 hostFallbacks，由 apply() 写进日志与观测文件（症状 → 原因一次到手）。
+ */
+const HOST_PACKAGES = {
+  llm: '@deepseek-ai/dsh-llm',
+  skill: '@deepseek-ai/dsh-skill',
+  schema: '@deepseek-ai/schemastery',
+}
+
+async function loadHostPackage(specifier) {
+  try {
+    return { specifier, module: await import(specifier) }
+  } catch (error) {
+    return { specifier, module: null, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+const hostLlm = await loadHostPackage(HOST_PACKAGES.llm)
+const hostSkill = await loadHostPackage(HOST_PACKAGES.skill)
+const hostSchema = await loadHostPackage(HOST_PACKAGES.schema)
+
+/** 解析不到、已改用本地等价实现的宿主包（apply() 报到日志与观测文件；空数组 = 全部用宿主真实现）。 */
+export const hostFallbacks = [hostLlm, hostSkill, hostSchema]
+  .filter((host) => host.module === null)
+  .map((host) => ({ specifier: host.specifier, error: host.error, replacement: './host-fallback.js' }))
+
+const createUserMessage = hostLlm.module?.createUserMessage ?? fallbackCreateUserMessage
+const isUserInvocable = hostSkill.module?.isUserInvocable ?? fallbackIsUserInvocable
+const renderSkillContent = hostSkill.module?.renderSkillContent ?? fallbackRenderSkillContent
+
 export const name = 'roadbook-autoload'
 
 /** skills 用来解析技能正文；agents 提供 agent/pre-step 事件。 */
@@ -46,28 +84,47 @@ export const inject = ['agents', 'skills']
 /** 观测文件缺省名（放在 os.tmpdir() 下，任何系统都可写）。 */
 const DEFAULT_REPORT_FILE = 'roadbook-autoload.jsonl'
 
-export const Config = z.object({
-  /** 要自动加载的技能名（按序取第一个能解析的）。 */
-  skills: z.array(z.string()).default(['roadbook']),
-  /** keyword：命中关键词注入；always：只要是 git 项目里的用户消息就注入；off：完全关闭。 */
-  mode: z.union([z.const('keyword'), z.const('always'), z.const('off')]).default('keyword'),
-  keywords: z.array(z.string()).default(DEFAULT_KEYWORDS),
-  suppressKeywords: z.array(z.string()).default(DEFAULT_SUPPRESS),
-  /** 子代理会话是否也注入，默认不注入。 */
-  includeSubagents: z.boolean().default(false),
-  /** 只在本会话位于 git 项目内时注入。 */
-  requireGitRoot: z.boolean().default(true),
-  /** 一次会话只注入一次。 */
-  oncePerSession: z.boolean().default(true),
-  /** 在技能正文后附一行透明说明（为什么加载、怎么关）。 */
-  note: z.boolean().default(true),
-  /** 自进化 A 环：观测是否落盘，默认开（注入/跳过/报错都记一行）。 */
-  report: z.boolean().default(true),
-  /** 自进化 A 环：观测记录（JSONL）落盘路径，空 = <os.tmpdir()>/roadbook-autoload.jsonl。 */
-  reportPath: z.string().default(''),
-  /** 自进化 B 环：SKILL.md 指纹基线，对不上就在说明里提示技能已更新。 */
-  skillDigest: z.string().default(''),
-})
+/**
+ * 配置 schema：由宿主提供的 schemastery 构造。宿主没给（解析失败或构造抛错）时为 undefined ——
+ * 此时 cordis 不校验行配置，schema 里的缺省值不生效，apply() 会打一条警告说明这件事。
+ */
+export const Config = buildConfig(hostSchema.module)
+
+function buildConfig(schema) {
+  const z = schema?.default ?? schema
+  if (z === null || z === undefined || typeof z.object !== 'function') return undefined
+  try {
+    return z.object({
+      /** 要自动加载的技能名（按序取第一个能解析的）。 */
+      skills: z.array(z.string()).default(['roadbook']),
+      /** keyword：命中关键词注入；always：只要是 git 项目里的用户消息就注入；off：完全关闭。 */
+      mode: z.union([z.const('keyword'), z.const('always'), z.const('off')]).default('keyword'),
+      keywords: z.array(z.string()).default(DEFAULT_KEYWORDS),
+      suppressKeywords: z.array(z.string()).default(DEFAULT_SUPPRESS),
+      /** 子代理会话是否也注入，默认不注入。 */
+      includeSubagents: z.boolean().default(false),
+      /** 只在本会话位于 git 项目内时注入。 */
+      requireGitRoot: z.boolean().default(true),
+      /** 一次会话只注入一次。 */
+      oncePerSession: z.boolean().default(true),
+      /** 在技能正文后附一行透明说明（为什么加载、怎么关）。 */
+      note: z.boolean().default(true),
+      /** 自进化 A 环：观测是否落盘，默认开（注入/跳过/报错都记一行）。 */
+      report: z.boolean().default(true),
+      /** 自进化 A 环：观测记录（JSONL）落盘路径，空 = <os.tmpdir()>/roadbook-autoload.jsonl。 */
+      reportPath: z.string().default(''),
+      /** 自进化 B 环：SKILL.md 指纹基线，对不上就在说明里提示技能已更新。 */
+      skillDigest: z.string().default(''),
+    })
+  } catch (error) {
+    hostFallbacks.push({
+      specifier: HOST_PACKAGES.schema,
+      error: error instanceof Error ? error.message : String(error),
+      replacement: '无 schema（行配置必须显式给出 skills / mode 等，缺省值不生效）',
+    })
+    return undefined
+  }
+}
 
 export function apply(ctx, config = {}, runtime = {}) {
   const injectedSessions = new Set()
@@ -109,6 +166,20 @@ export function apply(ctx, config = {}, runtime = {}) {
 
   const reportError = (reason, meta, sessionId) => {
     writeReport({ event: 'error', reason, session: sessionId, ...meta })
+  }
+
+  // 就绪回执：观测文件里这一行 =「本行真的跑起来了」的可读证据（面板之外的第二条自证路径）。
+  writeReport({ event: 'loaded', fallbacks: hostFallbacks.map((host) => host.specifier) })
+  if (hostFallbacks.length > 0) {
+    try {
+      ctx.logger?.warn?.(
+        `[roadbook-autoload] 宿主包解析失败，已改用本地等价实现：${hostFallbacks
+          .map((host) => `${host.specifier}（${host.error}）`)
+          .join('；')}`,
+      )
+    } catch {
+      /* 日志是旁路 */
+    }
   }
 
   const inGitProject = (cwd) => {

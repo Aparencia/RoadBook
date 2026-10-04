@@ -63,7 +63,9 @@ git+https://github.com/Aparencia/RoadBook.git#path:plugin/roadbook-autoload
 
 ### 依赖：由宿主提供，运行时不下载
 
-`index.js` 用到的三个宿主包写在 `package.json` 的 `peerDependencies` 里，**由 DSH 宿主提供，插件内不下载、不打包**；`peerDependenciesMeta` 全部标 `optional`，缺包只会让插件静默失效，不会把安装搞挂：
+`index.js` 用到的三个宿主包写在 `package.json` 的 `peerDependencies` 里，**由 DSH 宿主提供，插件内不下载、不打包**；`peerDependenciesMeta` 全部标 `optional`。主插件（仓库根）的 `package.json` 里也声明了同样三个包 —— 宿主对 `link:` / 本地路径安装的插件，只给「自己 manifest 的 `peerDependencies` 声明过该名字」的包做拦截注入，不声明就解析不到。
+
+**解析不到也不会让整行变「未运行」**（0.2.1 起）：这三个包走**守卫式动态 import**，宿主里解析不到就降级用 [`host-fallback.js`](host-fallback.js) 的本地等价实现（`createUserMessage` / `isUserInvocable` / `renderSkillContent`），并把原因写进宿主日志（`[roadbook-autoload] 宿主包解析失败…`）与观测文件的 `{"event":"loaded","fallbacks":[…]}` 行。**为什么以前会静默失效**：入口静态 import 失败 ⇒ cordis loader 的 `_init()` 只写一条 `logger.error` 就 return、不给 `entry.fiber` 赋值 ⇒ 面板上该行显示「**未运行**」（而不是「异常」），看起来像没装。
 
 | 包 | peer 范围 | 本机取证 |
 | --- | --- | --- |

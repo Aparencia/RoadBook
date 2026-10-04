@@ -18,6 +18,14 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
 
+## [0.2.1] - 2026-10-04
+
+**两个面板问题**（用户看插件面板后报的）——都修在结构上，不靠修饰显示：
+
+- **子行改为平铺**：0.2.0 用一条 `group` 容器行 `roadbook-bundle` 挂四个子行。容器行自己**没有 fiber**，宿主的 `readPluginInventory` 又 `if (entry.options.group) continue` 跳过 group 行 —— 面板只能照 `cordis.patch.yml` 的字面把它显示成「已关闭」，看上去像整个主插件被关掉。现在 `- insert:` 下平铺四条顶层行；`lib/bundle.js` 与 `exports` 的 `./bundle` 一并删除。代价明说：**没有「关一行连停四行」的祖先门**了，四行各自开关。
+- **`roadbook-autoload` 从「未运行」修活**：入口静态 import 三个宿主包（`@deepseek-ai/dsh-llm`、`@deepseek-ai/dsh-skill`、`@deepseek-ai/schemastery`），而插件通常按 `link:` / 本地绝对路径安装 —— 宿主的解析拦截层只对「manifest 里 `peerDependencies` 声明过该名字」的链接根生效，于是这三个 import 解析失败；cordis loader 的 `_init()` 对 import 失败**只写一条 `logger.error` 然后 return**（`entry.fiber` 不赋值），面板上就只剩「未运行」。现在三管齐下：① 宿主包改**守卫式动态 import** + 新增 `host-fallback.js`（`createUserMessage` / `isUserInvocable` / `renderSkillContent` 的本地等价实现），解析不到时降级运行，并把失败原因写进日志与观测文件；② 三个宿主包补进根 `package.json` 的 `peerDependencies`（`optional: true`），让宿主在 `link:` 安装下也做拦截注入；③ `apply()` 往观测文件写一行 `{"event":"loaded"}` 就绪回执 —— 面板之外的「本行真的跑起来了」自证（默认 `<tmpdir>/roadbook-autoload.jsonl`）。
+- **测试**：根 `test/` 16 项（`umbrella-contract.test.mjs` 换平铺断言、并**真的 import** autoload 子行）、`plugin/roadbook-autoload/test/` 37 项（新增 `host-fallback.test.mjs` 3 项 + 就绪回执 1 项）；`_qc/check.ps1` 308 项全绿。
+
 ## [0.2.0] - 2026-10-04
 
 **主插件化**：仓库根成为 DSH 组合包 `roadbook`；原来两个独立插件变成它的子插件，每个子行仍可在插件面板里单独开关。

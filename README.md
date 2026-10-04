@@ -48,7 +48,7 @@ git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE/.dsh/skill
 
 ## DSH 插件（可选，让流程不靠模型自觉）
 
-**装一个主插件就有全部能力**：DSH 侧栏「插件」→「添加插件」→ Git 地址填 `https://github.com/Aparencia/RoadBook.git`（或本地绝对路径指向本仓库根）。装上后面板里出现四个**可独立开关**的子行：`roadbook`（主行：版本与随包文件就绪自检；关它 = 四个子行一起停）、`roadbook-skills`（把包内 `skills/` 交给 skill 子系统：流程技能 + 图纸技能）、`roadbook-autoload`（在 git 项目里一开口谈开发任务就注入流程正文——只注入一次、手打 `/roadbook` 让路、`mode: off` 整体关闭）、`roadbook-atlas`（说「画一张架构图 / 流程图 / 时序图 / 数据流图 / 状态机」→ typed JSON 规格 → 自包含交互式 HTML + 回执，成品在侧栏「图册」标签页预览 / 打开 / 导出）。
+**装一个主插件就有全部能力**：DSH 侧栏「插件」→「添加插件」→ Git 地址填 `https://github.com/Aparencia/RoadBook.git`（或本地绝对路径指向本仓库根）。装上后面板里出现四个**可独立开关**的子行（平铺，没有「关一行连停四行」的祖先开关）：`roadbook`（主行：版本与随包文件就绪自检）、`roadbook-skills`（把包内 `skills/` 交给 skill 子系统：流程技能 + 图纸技能）、`roadbook-autoload`（在 git 项目里一开口谈开发任务就注入流程正文——只注入一次、手打 `/roadbook` 让路、`mode: off` 整体关闭）、`roadbook-atlas`（说「画一张架构图 / 流程图 / 时序图 / 数据流图 / 状态机」→ typed JSON 规格 → 自包含交互式 HTML + 回执，成品在侧栏「图册」标签页预览 / 打开 / 导出）。
 
 细则与验证：自动加载见 [`plugin/roadbook-autoload/README.md`](plugin/roadbook-autoload/README.md)（触发规则、配置表、四条验证）；图纸见 [`plugin/roadbook-atlas/README.md`](plugin/roadbook-atlas/README.md)（目录约定、CLI、渲染器边界）。子插件只是宿主半，**不单独安装**。
 

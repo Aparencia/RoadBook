@@ -68,6 +68,6 @@ node --test "plugin/roadbook-autoload/test/*.test.mjs" # 自动加载子插件�
 
 ## 版本
 
-伞包根 `package.json` 的 `version` 是**唯一事实源**（当前 `0.2.0`）：客户端半的 `PLUGIN_VERSION`（标签页页脚显示它）
-与宿主半的 `pluginVersion()`（启动日志里的 `roadbook v0.2.0: ready`）由测试强制与它一致，漏改即判红。
+伞包根 `package.json` 的 `version` 是**唯一事实源**（当前 `0.2.1`）：客户端半的 `PLUGIN_VERSION`（标签页页脚显示它）
+与宿主半的 `pluginVersion()`（启动日志里的 `roadbook v0.2.1: ready`）由测试强制与它一致，漏改即判红。
 升版规则（加能力 → 次版本，修 bug → 修订号）与逐版本记录见仓库根的 [`CHANGELOG.md`](../../CHANGELOG.md)。

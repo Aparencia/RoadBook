@@ -364,6 +364,8 @@
 
 31. ✅ 主插件化：伞形组合包（2026-10-04，用户指令「请优化一下插件 / 主插件RoadBook / 然后子插件这样」）：**仓库根成为主插件包 `roadbook`**（version 0.2.0），两个原独立插件降为子插件。① 根 `package.json`：`private`、`dsh.bundle.patch: ./cordis.patch.yml`、`dsh.client.platform: web`、exports 五个子路径（`.`→`lib/index.js`、`./bundle`→`lib/bundle.js`、`./autoload`→`plugin/roadbook-autoload/index.js`、`./atlas`→`plugin/roadbook-atlas/lib/index.js`、`./client`→`lib/client.js`）、`files` 白名单含 `lib`/`skills`/`plugin`。② 根 `cordis.patch.yml`：`- insert:` 一条 **group 行** `roadbook-bundle`（`name: roadbook/bundle`、`group: true`、`disabled` 表达式读**主行自身**开关以免经过祖先门递归）挂四个子行——`roadbook`（主行）/`roadbook-skills`（`@deepseek-ai/dsh-skill-filesystem`，`bundledSkillDir` 由 `createRequire(baseUrl).resolve('roadbook/package.json')` 解析后接 `skills`，绝不拼 baseUrl）/`roadbook-autoload`（`roadbook/autoload`）/`roadbook-atlas`（`roadbook/atlas`）；新增 `lib/bundle.js`（group 容器：`Symbol.for('cordis.group')` + `loader.builtins.group`）。③ 搬迁：技能上移 `skills/roadbook-atlas/`（vendor 渲染器与 CLI 随之）、客户端半上移 `lib/client.js`（`id`→`roadbook`、`TAB_ID`→`roadbook:gallery`）、三个测试套件上移 `test/`、`CHANGELOG.md` 上移根；新增 `skills/roadbook/SKILL.md` = 根 `SKILL.md` 的**逐字节镜像**（DSH 只认 `<root>/<name>/SKILL.md`，由 `test/skill-mirror.test.mjs` 守卫 frontmatter 首行与 name）。④ 子插件半定性：`plugin/roadbook-atlas/` 只剩宿主半（删 `dsh.bundle` 与 `dsh.client`，`resolveSkillRoot` 解析伞包身份并在 `link:` 安装下退回文件位置推断）；`plugin/roadbook-autoload/` 保持可独立安装（校验器 §6 的 19 项断言全部依赖它的包名与 patch 形状）。⑤ **为什么必须是伞包而不是「父包自动带子包」**（实测）：profile 的 pnpm 11.7.0 在 `blockExoticSubdeps` 下拒绝子依赖里的 `file:`（`ERR_PNPM_LINKED_PKG_DIR_NOT_FOUND`）与 git 子目录（`ERR_PNPM_EXOTIC_SUBDEP`），而 DSH 的 `reconcile()` 只把**直接依赖**里声明了 `dsh.bundle.patch` 的包登记为组合包 ⇒ 不发布到 npm 就无法让父包带出子包；伞包把「一次安装」与「四个开关」同时拿到。⑥ 开关落点（三条互不干扰）：DSH 插件面板每一行（组行不显示）、设置→侧边卡片→图册、profile `cordis.patch.yml` 里给任一行加 `disabled: true`。⑦ 验收：根 `node --test "test/*.test.mjs"` **16/16**（含新增 `umbrella-contract.test.mjs` 5 项与 `skill-mirror.test.mjs` 2 项）、`plugin/roadbook-autoload/test/*.test.mjs` **33/33**；五类渲染产物 SHA-256 与改造前逐个一致（渲染器未被触碰）；`_qc/check.ps1` 283 项全绿。
 
+32. ✅ 平铺四行 + 自动加载子行修活（2026-10-04，用户看插件面板后的两条裁决「修好它」/「平铺四个子行」，version 0.2.1）：① **平铺**：0.2.0 的 group 容器行在面板上恒显「已关闭」，看上去像整个主插件被关掉——容器行自己不是插件（无 fiber），而宿主 `dsh-host-plugin-inventory/lib/index.js:125` 又 `if (entry.options.group) continue` 跳过 group 行，面板只能照 `cordis.patch.yml` 的字面渲染那一格；现改为 `- insert:` 下**平铺四条顶层行**，删 `lib/bundle.js` 与 `exports['./bundle']`。代价明说：`Entry.get disabled()`（cordis loader `config/entry.ts:74-85`）原本提供「关一行连停四行」的祖先门，平铺后四行各自开关。② **autoload 修活**：该行恒显「未运行」（不是「异常」）——根因是入口的三个宿主裸导入（`@deepseek-ai/dsh-llm`/`dsh-skill`/`schemastery`）在 `link:`/本地路径安装下解析失败（宿主拦截层只对 `peerDependencies` 里声明过该名字的链接根注入 installation 作用域的包，见 `dsh-app-boot/lib/index.js` 的 `routeLinked`），而 loader 的 `Entry._init()`（`config/entry.ts:213-234`）对 import 失败**只写一条 `logger.error` 然后 return**、不赋 `entry.fiber` ⇒ 面板 `phase === null` ⇒ 显示「未运行」。修法三管齐下：宿主包改**守卫式动态 import** + 新增 `plugin/roadbook-autoload/host-fallback.js`（`createUserMessage` / `isUserInvocable` / `renderSkillContent` 的本地等价实现，降级运行并把原因写进日志与观测）；三个宿主包补进根 `package.json` 的 `peerDependencies`（`optional: true`）让宿主在 `link:` 安装下也做拦截注入；`apply()` 写一行 `{"event":"loaded"}` 到观测文件（面板之外的「本行跑起来了」自证）。③ 验收：根 `node --test "test/*.test.mjs"` **16/16**、`plugin/roadbook-autoload/test/*.test.mjs` **37/37**、`_qc/check.ps1` **308/308**；`skills/` 与 vendored 渲染器未触碰。
+
 ## 11. 维护规则（写进 START-HERE）
 
 改流程 = 改对应卡 + 本设计文档同步；改宪法模板 = 检查所有卡引用；每季度跑 `_qc/check.ps1`。改母版本身 = `_qc/check.ps1` 退出码 0 + 一次提交 + `git push`（`~/.dsh/skills/roadbook` 是母版仓库的 clone，不推 = 分发的 skill 永远停在旧版）。
@@ -452,7 +454,7 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 
 **形态**：仓库根新增 `plugin/roadbook-autoload/`，一个 DSH **组合包（bundle）**：
 
-> 2026-10-04 主插件化后：本包仍是**可独立安装**的组合包（「只想装自动加载」的场景），但推荐路径是装主插件（仓库根 `roadbook`）——根 `cordis.patch.yml` 的 group 行以 `roadbook/autoload` 声明本行，见 §17.2 与 §10 第 31 条。
+> 2026-10-04 主插件化后：本包仍是**可独立安装**的组合包（「只想装自动加载」的场景），但推荐路径是装主插件（仓库根 `roadbook`）——根 `cordis.patch.yml` **平铺**的一行以 `roadbook/autoload` 声明本行，见 §17.2 与 §10 第 31、32 条。
 
 - `package.json`（`dsh.bundle.patch` → `cordis.patch.yml`，声明 `dsh.compatibility.dshReleases`）＋ `cordis.patch.yml`（`- insert:` 一行把包挂进宿主）
 - `index.js` = Host 半区插件（`export function apply` / `export const inject = ['agents','skills']` / `export const Config`），只做接线
@@ -527,7 +529,7 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 | cost-meter | 成本读数 | 工具层：成本读数（不进流程门禁） |
 | code-review / auto-review | 4-2 卡的人审替代车道 | 4-2 卡 |
 | better-sidebar / `present` | 证据展示（截图、报告） | 3-4 卡验收、5-1 卡回执 |
-| roadbook（主插件 = 本仓库根） | 伞形组合包：一条 group 行挂四个**可独立开关**的子行；装它一次 = 技能分发 + 自动加载 + 图纸工作台 | 根 `README.md` 插件一节、根 `package.json` |
+| roadbook（主插件 = 本仓库根） | 伞形组合包：`- insert:` 下**平铺**四条**可独立开关**的子行（无 group 容器行 —— 容器行在面板上显示成「已关闭」）；装它一次 = 技能分发 + 自动加载 + 图纸工作台 | 根 `README.md` 插件一节、根 `package.json` |
 | ├ roadbook（主行） | 就绪自检（随包文件全在）与版本口径（唯一事实源 = 根 `package.json`） | 根 `lib/index.js` |
 | ├ roadbook-skills | 把包内 `skills/` 分发给 DSH（`roadbook` 与 `roadbook-atlas` 两个技能，一个 provider） | §13 分发 |
 | ├ roadbook-autoload | 命中触发词自动加载本流程 | §15（三层门控与关闭方式） |

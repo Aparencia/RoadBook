@@ -373,7 +373,7 @@ Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）
 
 Write-Host "== 6. 自动加载插件 plugin/roadbook-autoload =="
 $plg = Join-Path $root 'plugin\roadbook-autoload'
-foreach ($k in @('package.json','cordis.patch.yml','index.js','trigger.js','icon.svg','README.md','locale\zh.json','locale\en.json','test\trigger.test.mjs')) {
+foreach ($k in @('package.json','cordis.patch.yml','index.js','trigger.js','host-fallback.js','icon.svg','README.md','locale\zh.json','locale\en.json','test\trigger.test.mjs','test\host-fallback.test.mjs')) {
     Check (Test-Path (Join-Path $plg $k)) "插件文件存在：plugin/roadbook-autoload/$k"
 }
 $plgPkg = $null
@@ -395,6 +395,8 @@ if ($null -ne $plgPkg) {
 $plgIdx = [IO.File]::ReadAllText((Join-Path $plg 'index.js'), [Text.Encoding]::UTF8)
 Check (($plgIdx -match 'agent/pre-step') -and ($plgIdx -match 'export const inject') -and ($plgIdx -match 'skill-invocation')) '插件挂 agent/pre-step、声明 inject、注入形状同内置（skill-invocation）'
 Check (($plgIdx -match 'renderSkillContent') -and ($plgIdx -match 'dsh-skill')) '插件复用官方 renderSkillContent（不自造正文格式）'
+Check (($plgIdx -match 'loadHostPackage') -and ($plgIdx -notmatch "(?m)^import[^\n]*from '@deepseek-ai/") -and ($plgIdx -match 'hostFallbacks')) '插件的宿主包走守卫式解析（静态 import 宿主包 = 解析不到时整行静默变「未运行」，禁止回退）'
+Check (($plgIdx -match "event: 'loaded'") -and ($plgIdx -match 'host-fallback\.js')) '插件 apply() 写就绪回执 loaded（面板外的「本行跑起来了」自证）且带本地兜底实现'
 $plgBad = @('locale\zh.json','locale\en.json') | Where-Object { $t = [IO.File]::ReadAllText((Join-Path $plg $_), [Text.Encoding]::UTF8); ($t -notmatch '"title"\s*:') -or ($t -notmatch '"description"\s*:') }
 Check (-not $plgBad) "插件中英文展示元信息齐（缺：$($plgBad -join ', ')）"
 $plgRdm = [IO.File]::ReadAllText((Join-Path $plg 'README.md'), [Text.Encoding]::UTF8)
@@ -410,21 +412,21 @@ if ($null -ne $umb) {
     Check (($umb.name -eq 'roadbook') -and ($umb.type -eq 'module') -and ([bool]$umb.private)) "主插件身份：roadbook / ESM / private（实际：$($umb.name) / $($umb.type)）"
     Check ($umb.dsh.bundle.patch -eq './cordis.patch.yml') '主插件声明 dsh.bundle.patch（DSH 的 reconcile 才把它登记为组合包）'
     Check (($umb.dsh.client.platform -eq 'web') -and (@($umb.dsh.client.inject).Count -gt 0)) '主插件声明客户端半（platform: web + inject 非空）'
-    $umbSub = [ordered]@{ '.' = './lib/index.js'; './bundle' = './lib/bundle.js'; './autoload' = './plugin/roadbook-autoload/index.js'; './atlas' = './plugin/roadbook-atlas/lib/index.js'; './client' = './lib/client.js' }
+    $umbSub = [ordered]@{ '.' = './lib/index.js'; './autoload' = './plugin/roadbook-autoload/index.js'; './atlas' = './plugin/roadbook-atlas/lib/index.js'; './client' = './lib/client.js' }
     $umbMiss = @($umbSub.Keys | Where-Object { ([string]$umb.exports.$_) -ne $umbSub[$_] -or (-not (Test-Path (Join-Path $root ($umbSub[$_] -replace '^\./','')))) })
-    Check (-not $umbMiss) "伞包 exports 五个入口齐且文件存在（缺/错：$($umbMiss -join ', ')）"
+    Check (-not $umbMiss) "伞包 exports 四个入口齐且文件存在（缺/错：$($umbMiss -join ', ')）"
+    Check ((-not $umb.exports.'./bundle') -and (-not (Test-Path (Join-Path $root 'lib\bundle.js')))) 'group 容器已删（exports 无 ./bundle、lib/bundle.js 不存在）'
     $umbFiles = @($umb.files)
     Check (($umbFiles -contains 'lib') -and ($umbFiles -contains 'skills') -and ($umbFiles -contains 'plugin')) '伞包 files 白名单含 lib/ skills/ plugin/（随包分发不漏）'
 }
-foreach ($k in @('cordis.patch.yml','lib\index.js','lib\bundle.js','lib\client.js','skills\roadbook\SKILL.md','skills\roadbook-atlas\SKILL.md','test\skill-mirror.test.mjs','test\umbrella-contract.test.mjs')) {
+foreach ($k in @('cordis.patch.yml','lib\index.js','lib\client.js','skills\roadbook\SKILL.md','skills\roadbook-atlas\SKILL.md','test\skill-mirror.test.mjs','test\umbrella-contract.test.mjs')) {
     Check (Test-Path (Join-Path $root $k)) "伞包文件存在：$k"
 }
 $umbYml = [IO.File]::ReadAllText((Join-Path $root 'cordis.patch.yml'), [Text.Encoding]::UTF8)
-Check (($umbYml -match '(?m)^- insert:') -and ($umbYml -match '(?m)^\s*-\s*id:\s*roadbook-bundle\s*$') -and ($umbYml -match '(?m)^\s+name:\s*roadbook/bundle\s*$') -and ($umbYml -match '(?m)^\s+group:\s*true\s*$')) '伞包 patch：- insert: 一条 group 行 roadbook-bundle（name: roadbook/bundle）'
-Check ($umbYml -match "entry\.options\.id === 'roadbook'") 'group 行的开关读主行自身 disabled（避免经祖先门递归）'
+Check (($umbYml -match '(?m)^- insert:') -and ($umbYml -notmatch 'roadbook-bundle') -and ($umbYml -notmatch '(?m)^\s+group:\s*true\s*$')) '伞包 patch：- insert: 平铺（不再有 group 容器行 —— 容器行自己在面板上显示成「已关闭」）'
 $umbRows = [ordered]@{ 'roadbook' = 'roadbook'; 'roadbook-skills' = '@deepseek-ai/dsh-skill-filesystem'; 'roadbook-autoload' = 'roadbook/autoload'; 'roadbook-atlas' = 'roadbook/atlas' }
-$umbRowBad = @($umbRows.Keys | Where-Object { ($umbYml -notmatch ("(?m)^\s*-\s*id:\s*" + [regex]::Escape($_) + '\s*$')) -or ($umbYml -notmatch ("(?m)^\s+name:\s*'?" + [regex]::Escape($umbRows[$_]) + "'?\s*$")) })
-Check (-not $umbRowBad) "四个子行 id/模块名齐（缺：$($umbRowBad -join ', ')）"
+$umbRowBad = @($umbRows.Keys | Where-Object { ($umbYml -notmatch ("(?m)^\s{4}-\s*id:\s*" + [regex]::Escape($_) + '\s*$')) -or ($umbYml -notmatch ("(?m)^\s+name:\s*'?" + [regex]::Escape($umbRows[$_]) + "'?\s*$")) })
+Check (-not $umbRowBad) "四个子行是 - insert: 的直接子项（缩进 4 空格；id/模块名缺或缩进错：$($umbRowBad -join ', ')）"
 Check (($umbYml -match 'bundledSkillDir') -and ($umbYml -match "createRequire\(baseUrl\)\.resolve\('roadbook/package\.json'\)") -and ($umbYml -match 'includeDefaultRoots:\s*false')) '技能行按伞包 npm 身份解析 bundledSkillDir，且不与默认根重复'
 Check ((Get-FileHash (Join-Path $root 'SKILL.md') -Algorithm SHA256).Hash -eq (Get-FileHash (Join-Path $root 'skills\roadbook\SKILL.md') -Algorithm SHA256).Hash) 'skills/roadbook/SKILL.md 是根 SKILL.md 的逐字节镜像（改一份必须同步另一份）'
 $umbCli = [IO.File]::ReadAllText((Join-Path $root 'lib\client.js'), [Text.Encoding]::UTF8)
