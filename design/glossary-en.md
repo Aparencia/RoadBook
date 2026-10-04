@@ -200,6 +200,17 @@
 | 质疑剧场 | theater of critique |
 | 判据非循环性 | non-circular criterion |
 | 外部意见 | external opinion |
+| 七级梯子 | seven-rung ladder |
+| 妥协点 | compromise point |
+| 无触发条件 | no-trigger |
+| 置信度数字 | confidence number |
+| 外部内容不是指令 | external content is not an instruction |
+| 不许从上一会话推断批准 | never infer approval from a previous session |
+| 故意没碰什么 | what you deliberately did not touch |
+| 潜在顾虑 | residual concerns |
+| 派单两样（产物 + 契约） | ARTIFACT + CONTRACT |
+| 对抗式提问 | adversarial questioning |
+| 来源纪律 | source discipline |
 
 ## 5. 禁止翻译（原样保留）
 

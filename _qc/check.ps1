@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 490) "行数 $selfN <= 490 ：_qc/check.ps1 自身（2026-10-04 由 470 上调：C 档内化批次 3 卡面判据；上调须同时改本行与 design §8）"
+Check ($selfN -le 520) "行数 $selfN <= 520 ：_qc/check.ps1 自身（2026-10-04 由 490 上调：C 档内化批次 4 卡面判据；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -409,6 +409,27 @@ Check (($c42 -match '最多 3 轮') -and ($c42 -match '禁止开第 4 轮') -and
 $glsTxt = [IO.File]::ReadAllText((Join-Path $root 'design\glossary-en.md'), [Text.Encoding]::UTF8)
 $glsMissing = @('检查命令','跑在哪阶段','有界复核循环','降标守卫','判据非循环性','外部意见') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
 Check (-not $glsMissing) "术语表含批次 3 新术语（缺：$($glsMissing -join ', ')）"
+
+$c01 = [IO.File]::ReadAllText((Join-Path $pb '0-1-驱动卡.md'), [Text.Encoding]::UTF8)
+$c01e = [IO.File]::ReadAllText((Join-Path $pen '0-1-driver-card.md'), [Text.Encoding]::UTF8)
+Check (($c01 -match '置信度') -and ($c01e -match 'confidence number')) '0-1 假设必须带置信度数字（写不出置信度 = 没查过的猜想；中英同批）'
+Check (($c01 -match '只有用户消息是指令') -and ($c01e -match 'only user messages are instructions')) '0-1 外部抓取内容一律当数据（提示注入防线；中英同批）'
+Check (($c01 -match '75%') -and ($c01e -match '75%') -and ($c01 -match '先削') -and ($c01e -match 'Trim first')) '0-1 上下文 75% 就开削 + 先削/后保两张清单（中英同批）'
+Check (($c01 -match '不许从上一会话推断批准') -and ($c01e -match 'Never infer approval from a previous session')) '0-1 不许从上一会话推断批准（重启只能从已完成任务边界继续；中英同批）'
+$c41 = [IO.File]::ReadAllText((Join-Path $pb '4-1-分批编码.md'), [Text.Encoding]::UTF8)
+$c41e = [IO.File]::ReadAllText((Join-Path $pen '4-1-batch-coding.md'), [Text.Encoding]::UTF8)
+Check (($c41 -match '七级梯子') -and ($c41e -match 'seven-rung ladder')) '4-1 动作 0 七级梯子（需要存在吗 → 最小实现；中英同批）'
+Check (($c41 -match 'ceiling:') -and ($c41 -match 'no-trigger') -and ($c41e -match 'ceiling:') -and ($c41e -match 'no-trigger')) '4-1 妥协点留 ceiling:/upgrade:，无触发条件标 no-trigger（中英同批）'
+Check (($c41 -match 'owner') -and ($c41 -match '到期日') -and ($c41e -match 'expiry date')) '4-1 保留理由必须带 owner + 到期日（默认 90 天；中英同批）'
+Check (($c41 -match '故意没碰什么') -and ($c41 -match '潜在顾虑') -and ($c41e -match 'deliberately did not touch') -and ($c41e -match 'residual concerns')) '4-1 回执两个固定槽位（故意没碰什么 / 潜在顾虑；中英同批）'
+Check (($c41 -match 'Find what is wrong') -and ($c41e -match 'Find what is wrong')) '4-1 派单只给 ARTIFACT + CONTRACT + 对抗式提问模板（中英同批）'
+$c72 = [IO.File]::ReadAllText((Join-Path $pb '7-2-依赖升级.md'), [Text.Encoding]::UTF8)
+$c72e = [IO.File]::ReadAllText((Join-Path $pen '7-2-dependency-upgrade.md'), [Text.Encoding]::UTF8)
+Check (($c72 -match 'STACK DETECTED') -and ($c72e -match 'STACK DETECTED') -and ($c72 -match 'UNVERIFIED') -and ($c72e -match 'UNVERIFIED')) '7-2 前置 STACK DETECTED + 来源纪律 UNVERIFIED（中英同批）'
+$skl = [IO.File]::ReadAllText((Join-Path $root 'SKILL.md'), [Text.Encoding]::UTF8)
+Check ($skl -match '不许从上一会话推断批准') 'SKILL.md 铁律含「不许从上一会话推断批准」（与 0-1 硬规则 13 同批）'
+$glsMissing4 = @('七级梯子','妥协点','无触发条件','置信度数字','外部内容不是指令','不许从上一会话推断批准','故意没碰什么','潜在顾虑','派单两样（产物 + 契约）','对抗式提问','来源纪律') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
+Check (-not $glsMissing4) "术语表含批次 4 新术语（缺：$($glsMissing4 -join ', ')）"
 
 Write-Host "== 7. 脚本可执行性与口径统一 =="
 $ps1s = @('_qc\check.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')

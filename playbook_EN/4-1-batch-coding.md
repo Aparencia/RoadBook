@@ -31,6 +31,12 @@ $anchor = git rev-parse HEAD
 
 Write `$anchor`'s output into the `起点锚点` field of STATE.md. Losing it = 4-2 cannot review the diff and problems cannot be rolled back precisely.
 
+**Action 0: the seven-rung ladder (run it after you understand the problem; it does not replace understanding)**
+Before writing any new code, ask these rungs from top to bottom and stop at the first rung that satisfies you: ① does this thing need to exist at all (can we not do it)? ② does this repository already have something usable (search before you answer)? ③ can the standard library do it? ④ can a platform-native capability do it? ⑤ is it in a dependency already installed? ⑥ can it be written in one line? ⑦ what does the minimal implementation look like (cut everything that can be cut)?
+❌ Counter-example: pulling in a new dependency for a 3-line feature (skips ② and ⑤)
+✅ Good example: first `Select-String` for a same-named or near-named implementation in this repository and reuse it if it hits; if there really is none → write in the receipt "the seven-rung ladder stopped at rung ③ (the standard library has no such capability) + the reason"
+**Understand first, then run the ladder**: the ladder is a ruler against over-engineering, not an excuse to skip reading the code — if you do not understand the problem and cut with the ladder, what you cut is correctness.
+
 **Action 1: write code, advance batch by batch (parallel lanes in the appendix)**
 - Each batch does only one batch from the plan.
 - Landing rules: for where new files go, first check the "new code landing table" in `docs/ARCHITECTURE.md`; to create a new component/module, first check the three-part set in `docs/registry/` — **if a close equivalent already exists, reuse it; parallel creation is forbidden**.
@@ -40,6 +46,7 @@ Write `$anchor`'s output into the `起点锚点` field of STATE.md. Losing it = 
   ❌ Counter-example: write `retryOperation()` first and add the test afterwards → it passes immediately, which equals no test at all
   ✅ Good example: write `expect(attempts).toBe(3)` first → red (`retryOperation is not defined`) → then write the implementation → green
 - **After the first batch lands**: replace check.ps1's `$STEPS` zero-dependency placeholder check with the real build/test command (the placeholder is placed during onboarding and must be replaced here; leaving it means the close-out ceremony validates document format only, not code).
+- **Leave markers on compromise points (S6)**: for any "do it this way for now, revisit later" simplification, leave two lines in place — `ceiling:` (the upper bound this version can reach) and `upgrade:` (what to switch to, under what condition); **if there is no trigger condition, mark it `no-trigger`** (a compromise point with no trigger condition rots silently first). Collect the ledger with one line: `Select-String -Path <files in this batch> -Pattern 'ceiling:|upgrade:|no-trigger'`, then copy the line `<N> markers, <M> with no trigger.` verbatim at the end of the receipt; when `M > 0`, explain item by item why no trigger condition was given.
 
 **Six checks to recite every batch (after reciting them, write the results into this batch's notice)**: ① did you touch only the files SCOPE involves (`git status`, verified file by file) ｜ ② did you change anything outside SCOPE while you were at it (restore it if found; if you want it fixed, register it in `docs/TECH_DEBT.md`) ｜ ③ is there a "why an existing file could not be used" for every new file ｜ ④ did dependencies change (a changed lockfile must be explained separately; unrequested dependency upgrades are forbidden) ｜ ⑤ did you run into anything on the Won't Have list (if so, stop — that is out of scope) ｜ ⑥ has an `Expected:` line been written first for every command this batch will run (when the real output disagrees with Expected, attribute the cause first: a code error → go back to 6-2 root cause analysis; a plan error → follow the "verdict trail" and continue — **changing the output to make it pass is forbidden**).
 
@@ -95,10 +102,11 @@ Red-light criteria (inlined; explanatory exemptions are forbidden): **this-batch
 The rule in one sentence: **the batch in which the new implementation lands must delete the replaced old implementation** (old file / old function / old branch / old constant all go together).
 If that cannot be done (progressive delivery / rollback / compatibility contract) → it must be registered in the "parallel-state register" of `STATE.md`, with fixed columns:
 `并行态 | 旧实现 | 新实现 | 删除条件（可判定） | 到期 | 登记批次`
-There are only three legitimate retention reasons (there is no fourth; everything else is deleted):
+There are only three legitimate retention reasons (there is no fourth; everything else is deleted), and **each one must carry an `owner` (who is responsible for clearing it) and an `expiry date` (90 days by default, written as a real date, never "later")**:
 ① **progressive delivery / rollback** — must carry a deadline (which batch, what condition expires it)
 ② **external compatibility contract** — must carry a deprecation period
 ③ **evidence retention** — the answer is git history; the working tree must not keep a second copy; `.bak`, `旧版/`, `副本 2` are the **single example source** (other cards do not repeat the examples)
+**An ownerless exception = the rule has been deleted by fact**: a retention reason with no owner or no expiry date counts as no reason at all and is deleted.
 ❌ Counter-example: create `xxx_v2.ts` and implement it again, keeping the old `xxx.ts` around "just in case"
 ✅ Good example: delete the old one in the same batch + paste the deleted-line evidence in the receipt + no new rows in the parallel-state register
 
@@ -137,6 +145,7 @@ For batches that are "only mechanical changes" — renames, card-number changes,
 - Before merging, confirm the base branch first: paste the output of `git log --oneline <base branch>..<unit branch>` and ask "this unit branch was branched off <base branch>, right?" — **merging into the wrong base branch is very expensive to undo**; merging is forbidden until confirmation is obtained.
 - Every time a unit branch is merged, **re-run the full test suite on the merge result** (single command standard: `AGENTS.md` §10 and `$STEPS` at the top of `check.ps1`), pasting the command verbatim + the complete output. If it does not pass → stop, keep the unit branch and the workspace untouched and investigate in place (nothing has been pushed yet; the merge is local and reversible); only on a pass continue merging the next one. **"Green" only proves the one tree it ran on — an earlier green light in this session does not count.**
 - How concurrency actually happens: parallel shards must be **dispatched all at once in the same instruction** (one shard per instruction = serial). Once dispatched, wait for the receipts; do not poll, do not chase.
+- **A dispatch carries exactly two things: ARTIFACT + CONTRACT (A4)** — the artifact (file paths / the current text) and the contract (interface signatures / criterion text / expected output). **CLAIMs and reasoning are forbidden in a dispatch**: "I think…", "my own self-check conclusion", the session history, and how you located the problem must all stay out — hand over a conclusion and the reviewer only reviews your conclusion. When you want a second opinion the question template is fixed: `Find what is wrong. Do NOT validate.` ("please confirm this is fine" — a question that fishes for agreement — is forbidden); require the receipt to be written as "N problems found + an evidence line number for each"; if it can find no problem it must write "none found", not "looks fine".
 
 ---
 
@@ -150,6 +159,7 @@ Every batch notice contains: batch number / the batch completion line (fixed for
 5. The registration row for this batch's new files in `docs/registry/COMPONENTS.md` + the verbatim summary line of `powershell -NoProfile -File orphans.ps1`
 6. All current rows of the parallel-state register (write "none" if there are none) + the list of old implementations deleted in this batch (file:line or function name)
 7. The verbatim `git status --porcelain` after the close-out commit (must be empty)
+8. Two fixed slots that may be neither left blank nor waved away with "none": **what you deliberately did not touch** (adjacent items still inside scope that this batch explicitly leaves alone — for each, write "why not now") / **residual concerns** (places you are still uneasy about after the fix — write the trigger condition and what to watch). If both are genuinely empty, write "none" and give one reason for each.
 
 ---
 

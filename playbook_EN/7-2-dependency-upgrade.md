@@ -19,6 +19,13 @@
 
 ## ② Execution
 
+**Prerequisite: STACK DETECTED (receipt first, then talk about upgrading)**
+```powershell
+git ls-files -- 'package.json' 'pnpm-lock.yaml' 'package-lock.json' '.tool-versions' 'pyproject.toml' 'requirements*.txt' 'Cargo.toml' 'go.mod'
+```
+Copy one receipt line verbatim out of the command output: `STACK DETECTED: <tool> <exact version> (source: <command>)` — version numbers come only from command output and lockfiles, never from memory.
+**Source discipline (three checks)**: ① only official sources count — the official changelog / release notes / migration guide / the official repository's tags and diffs; ② blogs, Q&A sites, model memory and training data **do not count as evidence**; they may only be used to locate a lead, and you must go back to the official text to verify it; ③ for any item the official sources do not cover, **explicitly write `UNVERIFIED` + what you searched + why no conclusion can be given** — hedging is forbidden: "should be fine" and "probably compatible" do not count as conclusions.
+
 **Four upgrade checks:**
 
 **① Verify the reason**: read the official changelog / release notes / security advisory, and put a summary in the receipt (what changed / which breaking changes there are / why this project needs it).
@@ -64,10 +71,11 @@ git revert $adapterCommit    # the dependency is fine, only the adaptation is wr
 
 ## ③ Evidence receipt
 
-1. Version change: dependency name + old version → new version (specific numbers), motive classification
-2. Compatibility conclusion: breaking changes item by item "affected / not affected" + basis
-3. Lockfile commit + adaptation commit hashes (filled in after the §④ commit)
-4. `check.ps1` output + exit code
+1. The `STACK DETECTED` line verbatim (tool + exact version + source command)
+2. Version change: dependency name + old version → new version (specific numbers), motive classification
+3. Compatibility conclusion: breaking changes item by item "affected / not affected" + basis (the basis must be the official text, with its source marked; list every `UNVERIFIED` item)
+4. Lockfile commit + adaptation commit hashes (filled in after the §④ commit)
+5. `check.ps1` output + exit code
 
 ---
 
