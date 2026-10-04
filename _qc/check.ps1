@@ -158,7 +158,7 @@ Check ($extra.Count -eq 0) "playbook/ 无未注册卡（多出：$($extra.BaseNa
 $extraEn = @(Get-ChildItem $pen -Filter *.md | Where-Object { $enFiles -notcontains $_.Name })
 Check ($extraEn.Count -eq 0) "playbook_EN/ 无未注册卡（多出：$($extraEn.BaseName -join ', ')）"
 
-Write-Host "== 2b. 内化机制在位（2026-10-03 superpowers 15 个 skill → 10 张卡 + 母版层；2026-10-04 mattpocock/skills → 14 张卡 + 母版层；删句即红）=="
+Write-Host "== 2b. 内化机制在位（2026-10-03 superpowers 15 个 skill → 10 张卡 + 母版层；2026-10-04 mattpocock/skills → 14 张卡 + 母版层；2026-10-04 UI/UX 设计流程增强 → 6 张卡 + 3 份模板文档；删句即红）=="
 $intl = [ordered]@{
     'playbook/0-1-驱动卡.md'                = @('自带推荐答案', 'smart zone', '产物寿命三分类')
     'playbook_EN/0-1-driver-card.md'        = @('every question carries a recommended answer', 'smart zone', 'three lifetime classes')
@@ -168,8 +168,8 @@ $intl = [ordered]@{
     'playbook_EN/2-1-feature-research.md'   = @('Path pre-judgment', 'Decomposability pre-judgment', 'announce the upgrade', 'rejection ledger')
     'playbook/2-2-需求范围.md'              = @('范围合规九查', '自洽查', '动作 3.5', '批准不跨段查', '展示即开工查', '阻塞依赖显式登记', '用户故事给人看，验收命令给 agent 跑')
     'playbook_EN/2-2-scope-definition.md'   = @('nine scope-compliance checks', 'Self-consistency check', 'Action 3.5', 'Approval does not carry across stages', 'Presenting and starting in the same breath', 'blocking dependencies are registered explicitly', 'Stories are for humans, acceptance commands are for agents')
-    'playbook/3-1-设计.md'                  = @('难以回退', '被否方案')
-    'playbook_EN/3-1-design.md'             = @('hard to reverse', 'Rejected options')
+    'playbook/3-1-设计.md'                  = @('难以回退', '被否方案', '设计计划前置', '九节骨架', '预发六轴自评')
+    'playbook_EN/3-1-design.md'             = @('hard to reverse', 'Rejected options', 'Action 0', 'nine-section', 'six-axis')
     'playbook/3-3-测试策略.md'              = @('轮询条件', '接缝先约定', '同义反复测试', '横向切片')
     'playbook_EN/3-3-test-strategy.md'      = @('polling condition', 'agree the seam first', 'tautological test', 'horizontal slicing')
     'playbook/4-1-分批编码.md'              = @('批次接口契约', '每批必念六查', '批次完成行', 'TDD 红先行', '可开工前沿', '快进合并', '批量机械改写之后必须跑全量门禁')
@@ -197,6 +197,19 @@ $intl = [ordered]@{
     'playbook/7-8-项目重构.md'              = @('一个适配器 = 假设的接缝')
     'playbook_EN/7-8-refactoring.md'        = @('One adapter means a hypothetical seam')
     'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent', '被否方案台账', 'AI 声明', '系统临时目录')
+    'playbook/3-4-界面与交互设计.md'        = @('五态', '焦点环', '布局族', 'overflow-x: clip', 'tabular-nums')
+    'playbook_EN/3-4-ui-and-interaction-design.md' = @('five states', 'focus ring', 'layout famil', 'overflow-x: clip', 'tabular-nums')
+    'playbook/3-5-色彩与风格.md'            = @('--color-brand-ink', '--color-focus', '--z-modal', '60-30-10', 'chroma')
+    'playbook_EN/3-5-color-and-style.md'    = @('--color-brand-ink', '--color-focus', '--z-modal', '60-30-10', 'chroma')
+    'playbook/3-6-动效与微交互.md'          = @('prefers-reduced-motion: no-preference', 'transition: all', 'IntersectionObserver', 'animationend', 'grid-template-rows')
+    'playbook_EN/3-6-motion-and-microinteraction.md' = @('prefers-reduced-motion: no-preference', 'transition: all', 'IntersectionObserver', 'animationend', 'grid-template-rows')
+    'playbook/7-1-UI改动.md'                = @('合理化红旗表', '一套制式', '命中 $($hit.Count) 处')
+    'playbook_EN/7-1-ui-change.md'          = @('You may think', 'Re-run the three UI self-checks', 'var(--…)')
+    'playbook/7-6-国际化与可访问性.md'      = @('合理化红旗表', 'axe', 'pa11y', 'lhci', '未达标表')
+    'playbook_EN/7-6-i18n-and-accessibility.md' = @('You may think', 'axe', 'pa11y', 'unmet')
+    'template/docs/UI.md'                   = @('交互五态矩阵', '四宽度验证记录', 'tabular-nums', '100dvh')
+    'template/docs/DESIGN_TOKENS.md'        = @('--color-brand-ink', '--z-modal', '60-30-10', 'chroma')
+    'template/docs/MOTION.md'               = @('prefers-reduced-motion: no-preference', 'IntersectionObserver', 'grid-template-rows', 'animationend')
     'design/playbook-contract.md'           = @('违反规则的字面', '形态选择', '每个问题自带推荐答案', '写作教义', 'no-op 测试', '信息阶梯', '触发词唯一', 'leading words')
     'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies')
     'SKILL.md'                              = @('子 agent 边界', '调用轴', '分发自检', 'smart zone', '产物寿命')
@@ -216,7 +229,7 @@ Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04.md')) '内化记�
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 90; 'docs/DESIGN_TOKENS.md' = 80; 'docs/MOTION.md' = 70; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90 }
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 120; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90 }
 foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
