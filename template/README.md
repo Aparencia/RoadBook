@@ -2,14 +2,15 @@
 
 > 一句话：<这个项目做什么、给谁用>（立项结论见 docs/decisions/）
 
-> 开发流程：**Roadbook V6 母版**——动作照母版流程卡走（英文执行版 `playbook_EN/` 优先，中文判据版 `playbook/` 兜底）；`check/doctor/gate/orphans` 四个守护脚本随本项目走。
+> 开发流程：**Roadbook V6 母版**——动作照母版流程卡走（英文执行版 `playbook_EN/` 优先，中文判据版 `playbook/` 兜底）；`check/doctor/gate/orphans/security` 五个守护脚本随本项目走。
 
 ## 快速启动
 
 ```powershell
-powershell -NoProfile -File doctor.ps1   # 环境自检：每项输出版本号=通过
+powershell -NoProfile -File doctor.ps1     # 环境自检：每项输出版本号=通过
+powershell -NoProfile -File security.ps1   # 安全门禁：密钥/危险执行链/依赖与 CI 机检，退出码 0=无红 1=拦下 2=环境错
 # 启动开发服务（1-2 卡按选型填，如 pnpm dev / python -m app）
-powershell -NoProfile -File check.ps1    # 收工仪式：退出码 0 = 可以说"完成"
+powershell -NoProfile -File check.ps1      # 收工仪式：退出码 0 = 可以说"完成"
 ```
 
 ## 这个项目怎么运作

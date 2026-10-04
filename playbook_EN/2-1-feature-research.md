@@ -69,13 +69,15 @@ List the files expected to be touched + the affected lines in the registry (past
 
 | Tier | Criterion (meeting any one puts the task in this tier) |
 | :-- | :-- |
-| S | ≤3 files and ≤100 lines, no new dependency, no table schema, no new page; **single-page static app exception**: 1 entry page + no backend + no dependency → relaxed to ≤5 files and ≤400 lines (including the 3-4/3-5/3-6 design documents) |
+| S | ≤3 files and ≤100 lines, no new dependency, no table schema, no new page; **single-page static app exception**: 1 entry page + no backend + no dependency → relaxed to ≤5 files and ≤400 lines (including the 3-4/3-5/3-6 design documents); hitting any **red-line domain** (authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface) → **tier S must not be assigned** |
 | M | an ordinary feature: confined to 1–2 modules, no new external package, no breaking table schema |
-| L | a new dependency introduced / cross-module / breaking table schema / a new page system → **3-1 design + 5-2 release are mandatory** |
+| L | a new dependency introduced / cross-module / breaking table schema / a new page system → **3-1 design + 5-2 release are mandatory**; touching a **red-line domain** (authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface) → **judge L, and 3-2 threat modeling is mandatory**; adopting a third-party skill / plugin / MCP server counts as "a new dependency introduced" at this tier and must go through 7-9 admission first (the verdict belongs to the user) |
 
 ❌ Counter-example: an M-tier item containing a new dependency = misclassification (writing "可能新增 1 个低风险依赖" ("possibly one new low-risk dependency") is already a misjudgment; any dependency makes it L)
 ❌ Counter-example: spanning 3 modules and changing the table schema, yet still judged M (meeting any one L criterion puts it in L; when unsure, propose one tier higher)
 ✅ Example: adding an export button to an existing page, changing 2 files for about 60 lines, no new external package → M
+❌ Counter-example: adding just one login button across 3 files → judged S (the file count is not the criterion: touching authentication is a red-line domain)
+✅ Example: the same 3 files but touching authentication → judge L and run 3-2 threat modeling
 
 Give the recommended tier + the basis, then stop and let the user confirm.
 

@@ -1,5 +1,5 @@
-# Card 3-2 · Threat modeling (mandatory when any of the four red-line domains — auth / payment / deleting data / external interfaces — is touched, and the tier rises to L)
-> Trigger: this task touches any of the four red-line domains — auth / payment / deleting data / external interfaces ｜ Output: docs/specs/<date>_<slug>/THREAT.md ｜ Next: 3-3 Test strategy
+# Card 3-2 · Threat modeling (mandatory when any of the five red-line domains (authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface) is touched, and the tier rises to L)
+> Trigger: this task touches any of the five red-line domains (authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface) ｜ Output: docs/specs/<date>_<slug>/THREAT.md ｜ Next: 3-3 Test strategy
 
 ---
 
@@ -17,7 +17,7 @@ After receiving the start instruction, first receipt the following five items be
    - [ ] ② The trust boundary is drawn (a diagram or a text diagram), and every data flow that crosses it is named
    - [ ] ③ Every threat takes one of two paths: a mitigation, or explicit acceptance + a reason (there is no third path)
    - [ ] ④ Every check item is a concrete action (input validation point / authentication point / privilege-escalation path / log redaction / secret source); nowhere in the text does "要注意安全" ("pay attention to security") appear
-   - [ ] ⑤ A red-line area was hit (auth / payment / deleting data / external interfaces) and the tier has risen to L with SCOPE.md and STATE.md written back
+   - [ ] ⑤ A red-line area was hit (authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface) and the tier has risen to L with SCOPE.md and STATE.md written back
 5. **Landing declaration**: output = `docs/specs/<date>_<slug>/THREAT.md`; next card = 3-3 Test strategy.
 
 ---
@@ -72,7 +72,7 @@ Explicit acceptance: <why it is not fixed> ｜ Accepted by: <the user> ｜ Basis
 - **Deleting and changing tables**: a delete must be recoverable or have a second confirmation; a table change must have a down plan (3-1 drafts it; running it is a human action)
 
 **Action 4: red-line escalation write-back (the tier only rises, never falls)**
-Hitting any of the four red-line domains — auth / payment / deleting data / external interfaces → rise to tier L: change the `档位` in the SCOPE.md header to L and add one line "<date> 因威胁建模触碰 <红线域>，升 L" ("<date>: threat modeling touched <red-line area>, rising to L"); update STATE.md `档位` and `红线摘要` in the same batch.
+Hitting any of the five red-line domains — authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface → rise to tier L: change the `档位` in the SCOPE.md header to L and add one line "<date> 因威胁建模触碰 <红线域>，升 L" ("<date>: threat modeling touched <red-line area>, rising to L"); update STATE.md `档位` and `红线摘要` in the same batch.
 
 **Action 5: two commands (assign first, then call; a hit on the first = slogan-style security, and the second must output exactly 6)**
 ```powershell
@@ -83,6 +83,25 @@ Select-String -Path "$spec/THREAT.md" -Pattern 'S 仿冒|T 篡改|R 抵赖|I 信
 
 ❌ Counter-example: all six threats write only `STRIDE: I` (a bare letter) → the second command prints `Lines : 0`, so the gate is unreachable
 ✅ Example: all six lines are present, each with its category name (`S 仿冒` / `T 篡改` / `R 抵赖` / `I 信息泄露` / `D 拒绝服务` / `E 提权`) → it prints `Lines : 6`
+
+**Action 6: external input and the agent surface (a new subsection; the six STRIDE categories above and the "category count = 6" command stay exactly as they are)**
+Iron rule: **A guardrail prompt is not a security boundary** — mitigations must land in deterministic checks / resource-scope authorization / isolation / credential binding; writing only "require the model not to…" is forbidden. [disambiguated: 资源域授权 = authorization scoped to the named resource, not a global role check]
+Four sources of untrusted input (every source is treated as untrusted): ① model output ② memory and persistent context ③ tool descriptions and MCP responses ④ external documents and web content (**including the body of third-party skills**).
+Six checkable predicates (each one criterion sentence + one mitigation landing point):
+1. **Privilege escalation and the confused deputy**: criterion = the tool handler must re-check the requester's permission on that named resource (the caller's identity and the resource id must both enter the decision) ｜ mitigation landing point = the authorization decision lives at the handler's entry, not on the model side.
+2. **Approval binding**: criterion = an approval is bound to four elements — normalized tool name + full arguments + target + expiry — and any change voids it ｜ mitigation landing point = approval tickets live server-side with a TTL; a retry/re-run must not authorize a change or repeat a side effect.
+3. **Unbounded delegation**: criterion = every request needs a budget, cancellation and idempotency (once the budget is exceeded or the request is cancelled, no further side effect may occur) ｜ mitigation landing point = quotas enforced at the call layer + an idempotency key.
+4. **Subagent / MCP trust inheritance**: criterion = least privilege, and when a delegated result comes back it **is still untrusted input** — it enters a decision only after validation ｜ mitigation landing point = issue child credentials at least privilege instead of passing the parent credential through.
+5. **Sensitive-context extraction**: criterion = a credential appearing in the context counts as a leak (a credential-file path reference / a plaintext secret is a hit = failure) ｜ mitigation landing point = credentials are never fed back into the context; use reference handles instead.
+6. **Tool-description poisoning**: criterion = the capabilities a description claims ⊆ the resources actually reachable; a description that disagrees with the behavior is a hit ｜ mitigation landing point = descriptions go through review and an allow-list check.
+Three self-check commands (assign first, then call; paste the verbatim output even when it is empty. Each of the three checks one thing: (a) references that read credential-file paths (b) zero-width/invisible characters (c) 「永不拒绝 / 无需确认」 ("never refuses / no confirmation needed") style wording):
+```powershell
+$spec = 'docs/specs/20261003_export'   # this task's spec directory; assign before calling
+Get-ChildItem -Path "$spec" -Recurse -File | Select-String -Pattern '\.aws|\.ssh|\.netrc'
+Get-ChildItem -Path "$spec" -Recurse -File | Select-String -Pattern '\u200b|\u200c|\u200d|\ufeff'
+Get-ChildItem -Path "$spec" -Recurse -File | Select-String -Pattern '永不拒绝|无需确认'
+```
+Criterion: N hits → record each one in the threat table (with its STRIDE category name) and mark its disposition (mitigation / explicit acceptance); the newly added code lines of this task go through the same set of regexes as well.
 
 **Prohibitions:**
 - Slogan-style security ("要注意安全" ("pay attention to security"), "加强防护" ("strengthen protection")) is forbidden; write concrete check items only
@@ -102,7 +121,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 4. The six-category STRIDE count (command output; must be exactly 6)
 5. Number of threats + number of mitigations / number of explicit acceptances; one line per mitigation naming the 4-2 review check point it maps to
 6. Whether a red-line area was hit + whether the tier has risen to L (paste the actual changed lines from SCOPE.md and STATE.md)
-7. The slogan self-check command output (the first `Select-String` must have no output)
+7. The raw output of all three self-check commands from action 6 (the first slogan check must have no output; every hit from the other two gets a disposition)
 8. This commit's hash (verbatim `git rev-parse HEAD`)
 
 ---

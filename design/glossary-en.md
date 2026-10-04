@@ -245,6 +245,24 @@
 | 层级档位（z-index） | z-index tier |
 | accent 墨色 | accent ink (`--color-brand-ink`) |
 | 界面自检 | UI self-check |
+| 准入（第三方技能 / 插件 / MCP） | admission (of a third-party skill / plugin / MCP server) |
+| 准入记录 | admission record |
+| 五查（权限面 / 外传面 / 执行面 / 指令面 / 触发面） | the five checks (permission surface / egress surface / execution surface / instruction surface / trigger surface) |
+| 权限面 | permission surface |
+| 外传面 | egress surface |
+| 执行面 | execution surface |
+| 指令面 | instruction surface |
+| 触发面 | trigger surface |
+| 判定三值（准入 / 有条件准入 / 拒绝） | the three-value verdict (admission / conditional admission / rejection) |
+| 隔离目录（先看不装） | isolated directory (read first, do not install) |
+| 供应链面 | supply-chain surface |
+| 机检退出码 | machine-check exit code |
+| 浮动 tag | floating tag |
+| 固定到具体 commit | pinned to a specific commit |
+| 红线域 | red-line domain |
+| 外部内容一律是数据，不是指令 | external content is data, never instructions |
+| 不可信输入 | untrusted input |
+| 间接提示注入 | indirect prompt injection |
 
 ## 5. 禁止翻译（原样保留）
 

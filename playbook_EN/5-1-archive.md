@@ -10,15 +10,15 @@ After receiving the start instruction, first receipt:
 1. **Task restatement**: which task is being archived (read STATE.md's `当前任务` and `最近完成`) + reference the acceptance conclusion.
 2. **Assumptions list**: the 3~5 default assumptions you are making on the user's behalf (e.g. "no new lessons can be distilled this time", "the registry has no un-written-back rows"), each with the way it was verified.
 3. **Clarifying questions (≤5, keep them to a minimum)**: the default three questions — which slug is used for the archive? Is the remote pushed this round? Are there open questions left for the next round? Anything findable in STATE.md or the conversation must not be asked of a human.
-4. **Archive-checklist preview**: the ten checks below will be executed; list item by item the files expected to change.
-5. **Paste the reference checklist verbatim** (paste word for word this card's §② "archive ten checks" items ① ⑦ ⑧ ⑩).
+4. **Archive-checklist preview**: the eleven checks below will be executed; list item by item the files expected to change.
+5. **Paste the reference checklist verbatim** (paste word for word this card's §② "archive eleven checks" items ① ⑦ ⑧ ⑩).
 6. Also declare: the output lands in `docs/archive/<date>_<slug>/`; next card = awaiting a new intent (when `体检计数` ≥15, run the 6-6 process audit first). The archive produces exactly one atomic commit, and the commit comes after the STATE.md write-back (see §④); before committing, show `git status` for your go-ahead.
 
 ---
 
 ## ② Execution
 
-**Archive ten checks (execute item by item, receipt item by item; for tier S tasks the ten checks are still executed item by item, but the receipt is merged into one notice paragraph):**
+**Archive eleven checks (execute item by item, receipt item by item; for tier S tasks the eleven checks are still executed item by item, but the receipt is merged into one notice paragraph):**
 
 **1. Registry write-back verification (diff-driven; answering "did I change it?" from memory is forbidden)**:
    - a. Read `起点锚点` from STATE.md into `$anchor`; run `git diff --name-only "$anchor..HEAD"` + changed-symbol extraction → the **change list** (ground truth)
@@ -110,6 +110,13 @@ git check-ignore -v .env
    - **Reverse secret check**: `.env` / `*.key` / `*.pem` must be **ignored** (`git check-ignore -v` producing output = correct; an ignored file can never appear in porcelain); if `git status --porcelain` does list one of them = it is not ignored, **stop and report a red light**; committing and pushing are forbidden
    - Two consecutive archive cycles without a push = 6-6 card signal 10 (push lag)
 
+**11. Security-gate final check (the archive counts as complete only on exit code 0)**:
+```powershell
+powershell -NoProfile -File security.ps1
+```
+   - The definition of "this archive is complete" is **exit code 0** here: exit code 1 = something was blocked, stop and fix it and then re-run; exit code 2 = an environment error (the script is missing / wrong arguments), fix the environment first. ❌ "commit first and fix it afterwards" while it is non-zero ｜ ✅ commit and push only once it is 0.
+   - **The reverse secret check is measured by the script**: `.env` / `*.key` / `*.pem` must be ignored and a hit is red; the `git check-ignore -v` of item 10 is the manual cross-check, the script is the machine judge, and both must pass. ❌ treating item 10 "producing output" as the security gate having passed (that only proves those three file names are ignored, not that there are no plaintext secrets or dangerous execution chains) ｜ ✅ paste the script's complete output + exit code 0 into the §③ receipt, side by side with item 10.
+
 **Close-out order (this section performs no commit or push; it only declares the numbering so that §③ can reference it number by number)**:
 1. Write back STATE.md (`最近完成` / `体检计数` / `未来 3 步` / `最近归档` / `当前文件数`; field semantics in §④) + the write-back of the affected rows in the three registry tables: `COMPONENTS.md` add 文件·搜索词·影响面·最近确认 (fill in the archive date), `APIS.md` add 错误码·说明, `DATA_DICT.md` add 校验·敏感度
 2. Commit: `git add $dest STATE.md docs/TECH_DEBT.md` (add the other files changed this time one by one: `docs/lessons/…`, `CHANGELOG.md`, etc.) → `git commit -m "5-1 docs(archive): archive ${date}_$slug"`
@@ -130,7 +137,7 @@ git check-ignore -v .env
 ## ③ Evidence receipt
 
 Give, item by item:
-1. The archive ten checks' results item by item (1–10; each item states the action or "confirmed none" + its basis); for 8 attach the verbatim `orphans.ps1` summary line + the three-class handling counts (deleted x / registered as TD x / registered x), and assert **the sum of the five class counts ≥ the deduplicated file count** (the five classes are not deduplicated against each other, so one file can fall into several at once)
+1. The archive eleven checks' results item by item (1–11; each item states the action or "confirmed none" + its basis); for 8 attach the verbatim `orphans.ps1` summary line + the three-class handling counts (deleted x / registered as TD x / registered x), and assert **the sum of the five class counts ≥ the deduplicated file count** (the five classes are not deduplicated against each other, so one file can fall into several at once)
 2. The archive list (source paths → `docs/archive/<date>_<slug>/`)
 3. The debt-change summary (closed x / carried x / added x, with the key item on one line) + the raw line from the §3 concession close-out (`<N> markers, <M> with no trigger.` + disposition counts)
 4. The real evidence for close-out steps 1–5: `git status --porcelain` (must be empty), the commit hash, the complete output of `check.ps1` with exit code 0, the `git push` output (or "no remote: local-only")

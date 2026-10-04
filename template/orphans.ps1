@@ -10,7 +10,7 @@
 #     ∪ 同一命令 --others --exclude-standard（未跟踪文件，否则新文件在五张清单里全部隐形）
 #     ∪ 无 git 时的目录遍历兜底（显式跳过 ReparsePoint 目录，不穿透 junction）。
 #   匹配一律**大小写不敏感**（[regex] 侧用 (?i) 前缀，-inotmatch 侧本就忽略大小写），按 ASCII 词边界避免被中文粘连吞掉。
-#   排除 .git/ node_modules/ _archive/ docs/ 与四个守护脚本自身；"文件数"= 排除后纳入扫描的文件数。
+#   排除 .git/ node_modules/ _archive/ docs/ 与五个守护脚本自身；"文件数"= 排除后纳入扫描的文件数。
 #   孤儿=源码文件没被其他任何文本文件按文件名提及；零引用导出=导出名在源码全文只出现一次（即只有定义）。
 #   文档幽灵=文档反引号路径磁盘不存在（.env/node_modules/dist/build 这类不进仓库的路径不算）。
 #   反向幽灵=源码文件没被任何文档提到；未登记=不在 docs/registry/COMPONENTS.md。
@@ -19,7 +19,7 @@ chcp 65001 > $null
 $ErrorActionPreference = 'Continue'
 $root = (Get-Location).Path
 $skipDir = '(^|/)(\.git|node_modules|_archive|docs)/'
-$skipFile = @('check.ps1','doctor.ps1','gate.ps1','orphans.ps1')
+$skipFile = @('check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1')
 $srcExt = @('.ts','.tsx','.js','.jsx','.mjs','.cjs','.py','.ps1','.go','.rs','.cs','.java','.vue','.sql','.sh')
 $txtExt = $srcExt + @('.md','.json','.yml','.yaml','.toml','.txt','.html','.css','.scss','.xml','.ini','.cfg')
 $bd = '(?<![A-Za-z0-9_])'; $be = '(?![A-Za-z0-9_])'; $ci = '(?i)'

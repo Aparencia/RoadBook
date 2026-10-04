@@ -60,6 +60,17 @@ Criterion: paste that command's exit code or score verbatim into VERIFY.md and t
 ✅ Good example: `npx axe http://localhost:3000 --exit` exit code 0, or `osv-scanner -r .` with no HIGH/CRITICAL output, pasted verbatim
 Tool cannot be installed / offline / no permission → write "no external opinion this round + reason" in VERIFY.md's honest-boundaries section; silently omitting it is forbidden.
 
+**Action 2.3: security assertions and scanning (tiers M/L; the exit code is the gate)**
+- **A security assertion must be able to be driven red** (hung on the mutant falsification above): change `verify=True` to `verify=False` → the gate must turn red; if it cannot, that assertion has no teeth — write the assertion first, then talk about verification (a security assertion may never be just "already checked").
+- **The exit code is the gate**: every external scanner is required to "exit non-zero on a hit" — `trivy image --exit-code 1 --severity CRITICAL app:local`, `grype sbom:sbom.json --fail-on high`, a gitleaks baseline diff (only new hits are blocked, see below); only exit code 0 with 0 hits counts as a pass.
+- **Incomplete coverage is itself a failure**: not swept ≠ clean — paths the scanner did not cover, files it skipped, and repositories whose run timed out are all recorded as "not verified" in VERIFY.md's honest-boundaries section.
+- **A baseline only blocks new hits**: the first run may allow existing findings through; once the baseline is written, only new hits are blocked:
+```powershell
+gitleaks detect --source . --report-format json --report-path gitleaks-baseline.json
+gitleaks detect --source . --baseline-path gitleaks-baseline.json --exit-code 1
+```
+- **"I ran a scan" must never be treated as evidence**: paste all three — command + exit code + hit count; missing one is handled as unverified.
+
 **Action 2.5: scenario walkthrough (tiers M/L; every scenario must carry evidence — no output/JSON/assertion pasted = it was never walked)**
 The agent walks each scenario in the real running state; the results go into VERIFY.md. Scenario menu:
 - □ Normal path: run SCOPE's acceptance criteria item by item
@@ -95,7 +106,7 @@ The checklist is written into VERIFY.md (together with the check output, test re
 Give, item by item:
 1. check.ps1's complete output + exit code (tier A); mark each claim's evidence tier separately — a claim with only tier S is handled as not done
 2. Test output (tiers M/L) + the mutant falsification record (what was injected / which item turned red / back to green after restore)
-3. The external opinion verbatim (command + exit code/score; N/A + reason if none, never omitted)
+3. The external opinion verbatim (command + exit code/score; N/A + reason if none, never omitted); a security scan likewise pastes command + exit code + hit count (including the baseline-diff result)
 4. Scenario walkthrough result table (tiers M/L): scenario → evidence (JSON/output/assertion) matched item by item
 5. VERIFY.md path
 6. The behavior acceptance checklist text (the copy the user will click through)

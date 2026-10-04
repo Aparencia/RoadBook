@@ -74,12 +74,18 @@ npm ls --depth=0            # Node projects; for Python projects use pip list in
 - ❌ Counter-example: "依赖挺多的，应该都是 MIT" ("there are quite a few dependencies, they should all be MIT")
 - ✅ Good example: "逐个列出 37 个依赖的 license；发现 xxx@2.1.0 是 AGPL-3.0 → 停下问用户，登记替换候选 TD-012" ("list the license of all 37 dependencies one by one; found that xxx@2.1.0 is AGPL-3.0 → stop and ask the user, register replacement candidate TD-012")
 
-**Action 5: privacy policy highlights (the plain-language version for users)**
+**Action 5: compliance check on external sources (third-party skills / plugins / MCP servers / external CLIs)**
+- This card judges only the **compliance face** (licence obligations, data flow, attribution and endorsement); the **admission face** (source trustworthiness, permission boundary, revocability) is not judged here — this card gives the compliance verdict and the admission gate gives its own verdict separately, and neither replaces the other.
+- ① Licence type and obligations: record the licence name item by item (MIT / Apache-2.0 / GPL-3.0 / commercial licence / no licence) and answer three questions: must a NOTICE or copyright notice be kept, must modified files be marked "modified", and is commercial use allowed. ❌ waving it through because "it runs" ｜ ✅ write the licence name and the three answers into the §③ receipt; no licence or no commercial use = red.
+- ② Data flow: where does it send project data? ❌ assuming "it probably sends nothing" ｜ ✅ read its config and docs and list the fields sent, the destination (domain/vendor), whether it leaves the country, and whether third-party SDK terms apply; sending to an uncontrolled external service = red.
+- ③ Attribution and endorsement: ❌ writing "officially recommended" or "official partner" in docs ｜ ✅ write only "uses a certain open-source project", and never imply that this project or the user has an official endorsement relationship with the other party.
+
+**Action 6: privacy policy highlights (the plain-language version for users)**
 Write it into the "one page for users" section of `docs/PRIVACY.md`, six sentences: what is collected / why it is collected / how long it is kept / who it goes to / how to delete / how to get in touch.
 - ❌ Counter-example: "基于合法利益处理个人数据" ("personal data is processed on the basis of legitimate interest") — users cannot understand it
 - ✅ Good example: "我们用你的邮箱给你发订单通知；不想收可以在设置里关掉。" ("we use your email to send you order notifications; if you do not want them, you can turn them off in settings.")
 
-**Action 6: secret and log masking check**
+**Action 7: secret and log masking check**
 ```powershell
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'api[_-]?key|secret|password\s*='
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'console\.log|logger|print' | Select-String -Pattern 'email|phone|token|password'
@@ -87,7 +93,7 @@ Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'console\.log|lo
 - A real secret hit by the first command = red line: stop, have a human revoke and rotate that secret (git history is readable forever), and re-run after the fix to get zero hits.
 - A D3/D4 field hit by the second command = fix the logging (print a masked value or drop it), then re-run to get zero hits.
 
-**Action 7: not-applicable verdict**
+**Action 8: not-applicable verdict**
 If the project collects no personal data, is not published publicly and adds no third-party SDK → write `N/A（理由：…）` in `docs/PRIVACY.md` and end this card. An empty file is forbidden, and skipping the verdict is forbidden ("not done" and "judged not applicable" are two different things).
 
 **Prohibitions (violating any one of them = this round's output is void):**
@@ -106,6 +112,7 @@ Give, item by item:
 2. The real output of the secret and personal-information scan commands (zero hits, or the handling after a hit plus the re-run result)
 3. Root `LICENSE` path and type; the list of incompatible items (write "无" if there are none)
 4. The user's verdict on the "compliance definitions", quoted (data retention period, sharing recipients, deletion time limit, item by item)
+5. The external-source compliance verdict: licence name + the three answers + the data-flow destination + the exact attribution wording
 
 ---
 

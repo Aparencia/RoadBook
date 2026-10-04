@@ -59,13 +59,14 @@ If an existing file is older than the template version and you want to upgrade i
 | CHANGELOG.md | the first version number (e.g. 0.1.0) and the "未发布" ("unreleased") section note |
 | .tool-versions | asdf/mise syntax: one `<工具名> <版本>` per line, where the tool name is the asdf plugin name (nodejs/python/postgres…); doctor.ps1 compares item by item and a wrong name = missing-tool red light |
 | .env.example | fill in the real key names for the stack (key names + comments only; real values are forbidden) |
-| check.ps1 / doctor.ps1 / orphans.ps1 / gate.ps1 (the four guard scripts, no placeholders) | check.ps1: fill `$STEPS` per Action 4; doctor.ps1: reads `.tool-versions` and compares item by item (missing tool / version mismatch / leftover placeholder = red light); orphans.ps1: five lists of orphans and ghosts (reports only, never blocks, but an **untracked file** or a read failure = exit code 1 — the list is incomplete, so `git add` first); gate.ps1: pre-commit gate (blocks, never fixes; exit code 1 = blocked), `-Anchor`/`-ScopeFiles` are **required** |
+| check.ps1 / doctor.ps1 / orphans.ps1 / gate.ps1 / security.ps1 (the five guard scripts, no placeholders) | check.ps1: fill `$STEPS` per Action 4; doctor.ps1: reads `.tool-versions` and compares item by item (missing tool / version mismatch / leftover placeholder = red light); orphans.ps1: five lists of orphans and ghosts (reports only, never blocks, but an **untracked file** or a read failure = exit code 1 — the list is incomplete, so `git add` first); gate.ps1: pre-commit gate (blocks, never fixes; exit code 1 = blocked), `-Anchor`/`-ScopeFiles` are **required**; security.ps1: machine check for plaintext secrets / `.env` leaks / dangerous execution chains / `.ps1` without BOM (= red) and unlocked dependencies / unpinned CI / plaintext HTTP (= amber), exit code 0 = no red, 1 = red light, blocked, 2 = environment or parameter error |
 | docs/ARCHITECTURE.md / docs/registry/ (the three-piece set) | all three blocks of ARCHITECTURE (module diagram / layered directories / new-code placement table) need real content — leaving placeholders = this card is not complete; the registry three-piece set only needs its empty headers, add rows the first time you touch it |
 | any .ps1 (especially check.ps1) | after editing you must verify the byte header `head -c 3 check.ps1 \| od -An -tx1` = `ef bb bf`; if it is gone, restore it with `printf '\xef\xbb\xbf' > t && cat check.ps1 >> t && mv t check.ps1` — PS 5.1 reports "字符串缺少终止符" ("string is missing the terminator") when it reads a script without BOM |
 **Action 4: fill check.ps1's STEPS with a one-line zero-dependency placeholder check first** (this card fills the placeholder; card 4-1 swaps in the real commands)
 ```powershell
-$STEPS = @('git status --porcelain')   # zero-dependency placeholder: it exists only so 1-2 can wrap up; any project runs it through
+$STEPS = @('git status --porcelain','powershell -NoProfile -File security.ps1')   # zero-dependency placeholder: it exists only so 1-2 can wrap up; any project runs it through
 # once card 4-1 lands its first batch of files this must become this project's real build/test commands (card 4-1 owns that); an empty array = "done" can never hold
+# the security.ps1 entry is **never swapped out**: the security gate (secrets / dangerous execution chains / dependencies and CI) enters the DoD from the very first commit
 # Node/TS: @('pnpm typecheck','pnpm lint','pnpm test')   Python: @('python -m mypy .','python -m pytest -q')
 # faking the check with always-true commands (exit 0, Write-Host) is forbidden — they stay green forever, i.e. the gate is welded shut
 ```
@@ -75,19 +76,20 @@ $STEPS = @('git status --porcelain')   # zero-dependency placeholder: it exists 
 ```powershell
 pnpm install          # or pip install -r requirements.txt (by stack)
 git init
-git add README.md AGENTS.md STATE.md CHANGELOG.md .tool-versions .env.example .gitignore .gitattributes check.ps1 doctor.ps1 gate.ps1 orphans.ps1 docs
+git add README.md AGENTS.md STATE.md CHANGELOG.md .tool-versions .env.example .gitignore .gitattributes check.ps1 doctor.ps1 gate.ps1 orphans.ps1 security.ps1 docs
 $n = (git ls-files).Count    # write into STATE.md's "file-count baseline" and "current file count" (the baseline is written only this once)
 git commit -m "1-2 chore(init): init project from V6 template"
 $anchor = git rev-parse HEAD
 ```
-The list = every managed file at the root (including gate.ps1, orphans.ps1, CHANGELOG.md, .gitattributes); after committing, `git status --porcelain` must be empty (non-empty = some file was never added to the repo). Record `$anchor` as the first entry of STATE.md "recently completed".
-**Action 7: first run of check / gate / orphans (guardrail green)**
+The list = every managed file at the root (including gate.ps1, orphans.ps1, security.ps1, CHANGELOG.md, .gitattributes); after committing, `git status --porcelain` must be empty (non-empty = some file was never added to the repo). Record `$anchor` as the first entry of STATE.md "recently completed".
+**Action 7: first run of check / gate / orphans / security (guardrail green)**
 ```powershell
 powershell -NoProfile -File check.ps1
-powershell -NoProfile -File gate.ps1 -Anchor HEAD -ScopeFiles "README.md,AGENTS.md,STATE.md,CHANGELOG.md,.tool-versions,.env.example,.gitignore,.gitattributes,check.ps1,doctor.ps1,gate.ps1,orphans.ps1,docs/" -RepoRoot .
+powershell -NoProfile -File gate.ps1 -Anchor HEAD -ScopeFiles "README.md,AGENTS.md,STATE.md,CHANGELOG.md,.tool-versions,.env.example,.gitignore,.gitattributes,check.ps1,doctor.ps1,gate.ps1,orphans.ps1,security.ps1,docs/" -RepoRoot .
 powershell -NoProfile -File orphans.ps1
+powershell -NoProfile -File security.ps1
 ```
-This card's hard gate = doctor.ps1 exit code 0 + all three commands above returning 0 (**they must return 0 even while STEPS holds the placeholder**; at this moment gate can only be green or amber: `-Anchor HEAD` draws an empty list, amber but still exit 0). **It must run after `git init` and after the baseline is written**: check.ps1 goes red when there is no git or the baseline is 0, so running it before `git init` (the old version) = guaranteed failure. "Skip it for now and run it later" is forbidden; three non-zero codes = the guard scripts are misinstalled — fix them before continuing.
+This card's hard gate = doctor.ps1 exit code 0 + all four commands above returning 0 (**they must return 0 even while STEPS holds the placeholder**; at this moment gate can only be green or amber: `-Anchor HEAD` draws an empty list, amber but still exit 0). **It must run after `git init` and after the baseline is written**: check.ps1 goes red when there is no git or the baseline is 0, so running it before `git init` (the old version) = guaranteed failure. "Skip it for now and run it later" is forbidden; four non-zero codes = the guard scripts are misinstalled — fix them before continuing.
 **Action 8: remote repository (choose one of the three; private/public is the human's verdict)**
 1. Create a remote and push for the first time: assign `$owner = 'aparencia'; $name = 'my-app'` first (change these to your own account/repo name), then call `gh repo create "$owner/$name" --private --source . --push` (for public change to `--public` — **the agent must not decide visibility itself**)
 2. A remote already exists: assign `$url = 'https://github.com/aparencia/my-app.git'` first (change it to your own repository URL), then call `git remote add origin $url; $branch = git rev-parse --abbrev-ref HEAD; git push -u origin $branch`
@@ -119,7 +121,7 @@ At wrap-up, give item by item:
 1. the four-dimension scoring table + a source link for every cost figure (or "未查到公开数据" ("no public data found"))
 2. the full path of the STACK decision card
 3. the complete output of `powershell -NoProfile -File doctor.ps1` (exit code)
-4. the `文件数基线`/`当前文件数` written in Action 6 (`$n` verbatim) + the complete output and exit codes of the three Action 7 commands (the check.ps1 / gate.ps1 / orphans.ps1 summary lines; a missing or 0 file-count baseline → check.ps1 reports red FAIL; `[--]` only appears when the starting anchor is empty and skips this batch's commit-count assertion; gate.ps1 without `-ScopeFiles` is an immediate red light)
+4. the `文件数基线`/`当前文件数` written in Action 6 (`$n` verbatim) + the complete output and exit codes of the four Action 7 commands (the check.ps1 / gate.ps1 / orphans.ps1 / security.ps1 summary lines; a missing or 0 file-count baseline → check.ps1 reports red FAIL; `[--]` only appears when the starting anchor is empty and skips this batch's commit-count assertion; gate.ps1 without `-ScopeFiles` is an immediate red light)
 5. the first commit hash (`$anchor` verbatim) + the remote verdict (`git remote -v` verbatim, or "local-only + the trim record verbatim")
 6. the complete output of `git status --porcelain` after the commit (**must be empty**; non-empty = some managed file was never added to the repo)
 7. the placeholder checklist: every angle-bracket marker in template → replaced with (paste the resulting line) / the reason for keeping it (requires user confirmation)

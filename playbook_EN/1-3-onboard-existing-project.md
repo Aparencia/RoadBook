@@ -51,11 +51,11 @@ Write only the header plus one hint line in each of the three registry files, an
 - `docs/registry/DATA_DICT.md`: `| 表 | 字段 | 类型 | 校验 | 敏感度 D1~D4 |`
 - `docs/registry/APIS.md`: `| 路径 | 方法 | 用途 | 错误码 | 鉴权 |`
 
-**Action 5.5: install the four guard scripts (copy from the master's template directory into the project root)**
+**Action 5.5: install the five guard scripts (copy from the master's template directory into the project root)**
 ```powershell
 $master = 'D:/path/to/roadbook'   # absolute path to the master root (first ask the user where the master lives; copying this line verbatim is forbidden); assign before calling
 $proj = 'C:/code/myapp'           # absolute path to the target project root
-foreach ($f in @('check.ps1','doctor.ps1','gate.ps1','orphans.ps1')) {
+foreach ($f in @('check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1')) {
   $dst = Join-Path $proj $f
   if (Test-Path $dst) { "已有同名脚本，本次不覆盖：$f（把差异给用户看，由他决定合并还是保留原有）" }
   else { Copy-Item "$master/template/$f" $dst }
@@ -65,7 +65,7 @@ Get-ChildItem "$proj/*.ps1" | Select-Object Name, Length
 - Replace `$STEPS` at the top of `check.ps1` with this project's real commands (the script counts as installed only once they run through, i.e. exit code 0) [disambiguated] — **only for the files newly installed this time**; write the real tool names and versions for this project's stack into `.tool-versions` (doctor.ps1 reads it and compares item by item; a wrong name = missing-tool red light).
 - If the project already has a same-named script → **do not overwrite**: the loop above prints the skipped entry as `已有同名脚本，本次不覆盖：check.ps1` ("a same-named script already exists; not overwriting this time: check.ps1"); to upgrade or merge you must compare each file by hand and replace it manually — show the user the differences and let them decide between merging and keeping theirs.
 - In this step run only `powershell -NoProfile -File orphans.ps1`: at this moment all new files are uncommitted, so it prints `[FAIL] 未跟踪 N 个文件` ("N untracked files") with exit code 1 — that means "the list is incomplete" (run `git add` first), **not orphans**; `check.ps1` will inevitably print `[FAIL] 工作树不干净` ("working tree is dirty") — **also expected**; leave it and re-run in ④ after the Action 8 commit to get 0.
-- The `file-count baseline` = `@(git ls-files).Count` (including `docs/` and the four guard scripts), **sampled only after the Action 8 first commit**, then written into STATE.md; orphans.ps1's summary "file count" excludes `docs/` and the guard scripts (= 8 under the template) and **must not** be written into the baseline — after the commit `@(git ls-files).Count` = 36, i.e. +28 at once, above the 20 check.ps1 allows, so it prints FAIL.
+- The `file-count baseline` = `@(git ls-files).Count` (including `docs/` and the five guard scripts), **sampled only after the Action 8 first commit**, then written into STATE.md; orphans.ps1's summary "file count" excludes `docs/` and the guard scripts and **must not** be written into the baseline. Onboarding the whole template raises the file count far beyond the 20 check.ps1 allows, so sampling before the commit always prints FAIL — the only legal timing is after the onboarding commit, using the measured value, **never** the pre-onboarding one.
 - If the user trims this mechanism away → write in the STATE.md "trim record": "孤儿五张清单与文件数预算不适用 + 原因" ("the orphan five-list and the file-count budget do not apply + reason").
 
 **Action 6: reverse-engineer a first version of ARCHITECTURE.md (≤120 lines)**
@@ -117,7 +117,7 @@ Before the first push, confirm `git status --porcelain` is empty and that no tra
 At wrap-up, give item by item:
 1. A summary of the file count/directory count from the directory-tree scan + the extension statistics table
 2. Stack probing evidence: the file path used as evidence + the verbatim key line
-3. Generated-file list: AGENTS.md (line count ≤240) / STATE.md (line count ≤45) / ARCHITECTURE.md (line count ≤120) / the registry three-piece set / the four guard scripts (check·doctor·gate·orphans, with the verbatim orphans output + the check.ps1 output re-run after committing)
+3. Generated-file list: AGENTS.md (line count ≤240) / STATE.md (line count ≤45) / ARCHITECTURE.md (line count ≤120) / the registry three-piece set / the five guard scripts (check·doctor·gate·orphans·security, with the verbatim orphans output + the check.ps1 output re-run after committing + the security.ps1 exit code)
 4. The user's verbatim answers to the five trimming questions + the current content of the STATE "trim record"
 5. The start anchor commit hash (or "git already existed, anchor = hash") + the remote determination (verbatim `git remote -v`, or "local-only + verbatim trim record") + the complete `git status --porcelain` output (**must be empty**)
 

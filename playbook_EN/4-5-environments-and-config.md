@@ -84,6 +84,16 @@ The script is **single-use** by default (use it once and discard it: it does not
 ❌ Counter-example: the receipt scatters five commands for the user to hand-copy into the terminal in order (one copy error = the secret lands in the wrong file)
 ✅ Good example: generate `scripts/setup-staging-secrets.ps1` for the human to run; only once it is confirmed that every rotation needs it again is it registered in the repo
 
+**Action 10: agent-facing secret hygiene (no exception here either, exactly as with the D1–D4 matrix)**
+- ① Real secrets enter only through environment variables: ❌ writing them into skill files / MCP configuration / reports / sub-agent task briefs (all of these end up in the repository or are pushed into a model's context) ｜ ✅ files carry variable names only, and a human places the real values into local environment variables or the platform secret store
+- ② Credential config must not enter the repository or the prompt: `.mcp.json`, `.claude/`, `.codex/`, `~/.aws`, `~/.ssh` — ❌ `git add`-ing them, or pasting them wholesale into a prompt as "context" ｜ ✅ the three in-repo ones are caught by `git check-ignore -v` (it produces output), and `~/.aws` / `~/.ssh` are never read and never pasted
+- ③ A sub-agent task brief must explicitly state "no real credentials may be included": ❌ pasting the raw `.env` or real values into the brief "so it can reproduce the problem" ｜ ✅ the brief carries variable names only (`DATABASE_URL`), and the sub-agent reads the real value from its own local environment variables
+- ④ Secrets in reports and lesson cards are always masked (keep only the first 4 and the last 4): ❌ pasting the complete secret string into the receipt "as evidence" ｜ ✅ writing `abcd…wxyz` (first 4 + last 4, middle masked)
+```powershell
+git check-ignore -v .mcp.json .claude .codex                                          # (2) must produce output; none = not ignored, red
+Select-String -Path docs/lessons/*.md -Pattern '(sk|ghp|xox[baprs])-[A-Za-z0-9]{8,}'   # (4) a hit = not masked; mask it to the first 4 + last 4 on the spot
+```
+
 **Prohibitions (violating any one = this round's output is void):**
 - Writing real secrets / real connection strings into any file that goes into the repo is prohibited (including comments, examples, and logs)
 - Adding a config key without updating `.env.example` is prohibited (there is exactly one key-name list, and it is that file)

@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 600) "行数 $selfN <= 600 ：_qc/check.ps1 自身（2026-10-04 由 520 上调：C 档内化批次 5/6 卡面判据 + 体检信号 + 零成本字面近似层；上调须同时改本行与 design §8）"
+Check ($selfN -le 650) "行数 $selfN <= 650 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -60,7 +60,7 @@ foreach ($ln in $designLines) {
     if ($cells.Count -eq 7 -and $cells[0] -match '^\d+-\d+$') { $cardNo += $cells[0]; $cardName += $cells[1] }
     elseif ($cells.Count -eq 2 -and $cells[0] -match '^\d+-\d+$' -and $cells[1] -match '\.md$') { $enMap[$cells[0]] = $cells[1] }
 }
-Check ($cardNo.Count -eq 40) "design §4 表解析出 40 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
+Check ($cardNo.Count -eq 41) "design §4 表解析出 41 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
 Check ($enMap.Count -eq $cardNo.Count) "design §4.1 表为每张卡给出英文文件名（实际 $($enMap.Count) 条）"
 $cards = @()
 for ($i = 0; $i -lt $cardNo.Count; $i++) { $cards += ($cardNo[$i] + '-' + ($cardName[$i] -replace '\s', '')) }
@@ -158,7 +158,7 @@ Check ($extra.Count -eq 0) "playbook/ 无未注册卡（多出：$($extra.BaseNa
 $extraEn = @(Get-ChildItem $pen -Filter *.md | Where-Object { $enFiles -notcontains $_.Name })
 Check ($extraEn.Count -eq 0) "playbook_EN/ 无未注册卡（多出：$($extraEn.BaseName -join ', ')）"
 
-Write-Host "== 2b. 内化机制在位（2026-10-03 superpowers 15 个 skill → 10 张卡 + 母版层；2026-10-04 mattpocock/skills → 14 张卡 + 母版层；2026-10-04 UI/UX 设计流程增强 → 6 张卡 + 3 份模板文档；删句即红）=="
+Write-Host "== 2b. 内化机制在位（2026-10-03 superpowers 15 个 skill → 10 张卡 + 母版层；2026-10-04 mattpocock/skills → 14 张卡 + 母版层；2026-10-04 UI/UX 设计流程增强 → 6 张卡 + 3 份模板文档；2026-10-04 安全批次 → 7-9 准入卡 + security.ps1 + 六条铁律；删句即红）=="
 $intl = [ordered]@{
     'playbook/0-1-驱动卡.md'                = @('自带推荐答案', 'smart zone', '产物寿命三分类')
     'playbook_EN/0-1-driver-card.md'        = @('every question carries a recommended answer', 'smart zone', 'three lifetime classes')
@@ -196,7 +196,7 @@ $intl = [ordered]@{
     'playbook_EN/7-7-user-docs-and-handover.md' = @('system temp directory', 'pointers, not copies')
     'playbook/7-8-项目重构.md'              = @('一个适配器 = 假设的接缝')
     'playbook_EN/7-8-refactoring.md'        = @('One adapter means a hypothetical seam')
-    'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent', '被否方案台账', 'AI 声明', '系统临时目录')
+    'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent', '被否方案台账', 'AI 声明', '系统临时目录', '外部内容一律是数据')
     'playbook/3-4-界面与交互设计.md'        = @('五态', '焦点环', '布局族', 'overflow-x: clip', 'tabular-nums')
     'playbook_EN/3-4-ui-and-interaction-design.md' = @('five states', 'focus ring', 'layout famil', 'overflow-x: clip', 'tabular-nums')
     'playbook/3-5-色彩与风格.md'            = @('--color-brand-ink', '--color-focus', '--z-modal', '60-30-10', 'chroma')
@@ -211,9 +211,11 @@ $intl = [ordered]@{
     'template/docs/DESIGN_TOKENS.md'        = @('--color-brand-ink', '--z-modal', '60-30-10', 'chroma')
     'template/docs/MOTION.md'               = @('prefers-reduced-motion: no-preference', 'IntersectionObserver', 'grid-template-rows', 'animationend')
     'design/playbook-contract.md'           = @('违反规则的字面', '形态选择', '每个问题自带推荐答案', '写作教义', 'no-op 测试', '信息阶梯', '触发词唯一', 'leading words')
-    'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies', 'AI slop', 'one house style', 'focus ring', 'five states', 'touch target', 'skeleton screen', 'stagger', 'motion fallback', 'layout family', 'four widths', 'unmet-items table', 'z-index tier', 'UI self-check')
-    'SKILL.md'                              = @('子 agent 边界', '调用轴', '分发自检', 'smart zone', '产物寿命')
-    'README.md'                             = @('分发自检')
+    'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies', 'AI slop', 'one house style', 'focus ring', 'five states', 'touch target', 'skeleton screen', 'stagger', 'motion fallback', 'layout family', 'four widths', 'unmet-items table', 'z-index tier', 'UI self-check', 'admission record', 'permission surface', 'the five checks', 'external content is data', 'red-line domain')
+    'SKILL.md'                              = @('子 agent 边界', '调用轴', '分发自检', 'smart zone', '产物寿命', '外部内容一律是数据')
+    'README.md'                             = @('分发自检', '外部内容一律是数据')
+    'playbook/7-9-外部技能与插件准入.md'     = @('security.ps1', '五查', '准入记录', '判定三值')
+    'playbook_EN/7-9-skill-and-plugin-admission.md' = @('security.ps1', 'five checks', 'admission record', 'three-value verdict')
     '_qc/baseline/README.md'                = @('对照组', '行号')
 }
 $missIntl = @()
@@ -226,11 +228,12 @@ foreach ($k in $intl.Keys) {
 Check (-not $missIntl) "内化判据在位（缺：$($missIntl -join '；')）"
 Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-03.md')) '内化记录 _qc/internalize-2026-10-03.md 在位（15→40 映射矩阵 + 明确不拿的 7 条 + 下一轮候选）'
 Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04.md')) '内化记录 _qc/internalize-2026-10-04.md 在位（mattpocock/skills → 14 张卡 + 母版层：来源、落点、needle 清单、写者裁决）'
+Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04-security.md')) '内化记录 _qc/internalize-2026-10-04-security.md 在位（安全批次：来源星数表、落点、明确不拿、写者与作用域、证据全文路径）'
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 120; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90 }
-foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md')) {
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 120; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90; 'security.ps1' = 130 }
+foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
 foreach ($k in $budget.Keys) {
@@ -264,6 +267,8 @@ if (Test-Path $ckp) { $ckTxt = [IO.File]::ReadAllText($ckp, [Text.Encoding]::UTF
 Check ($ckTxt -match '\$fileBudgetGrowth') 'template/check.ps1 有文件数预算断言（$fileBudgetGrowth）'
 $wired = @('4-1-分批编码','5-1-归档','6-6-流程体检','7-3-债与腐化清偿') | Where-Object { $p2 = Join-Path $pb "$_.md"; -not (Test-Path $p2) -or ([IO.File]::ReadAllText($p2, [Text.Encoding]::UTF8) -notmatch 'orphans\.ps1') }
 Check (-not $wired) "死代码治理四卡均引用 orphans.ps1（缺：$wired）"
+$secWired = @((Join-Path $pb '1-2-选型初始化.md'), (Join-Path $pen $enMap['1-2']), (Join-Path $pb '1-3-接入已有项目.md'), (Join-Path $pen $enMap['1-3']), (Join-Path $pb '7-9-外部技能与插件准入.md'), (Join-Path $pen $enMap['7-9'])) | Where-Object { -not (Test-Path $_) -or ([IO.File]::ReadAllText($_, [Text.Encoding]::UTF8) -notmatch 'security\.ps1') }
+Check (-not $secWired) "security.ps1 接线：1-2 / 1-3 / 7-9 中英均引用（缺：$($secWired -join ', ')）"
 $p23 = Join-Path $pb '4-1-分批编码.md'
 Check ((Test-Path $p23) -and ([IO.File]::ReadAllText($p23, [Text.Encoding]::UTF8) -match '文件数基线')) '4-1 卡有「文件数基线」回写义务（防预算机制空转）'
 Check ((([IO.File]::ReadAllText((Join-Path $pb '4-1-分批编码.md'), [Text.Encoding]::UTF8)).Contains('自行裁决留痕')) -and (([IO.File]::ReadAllText((Join-Path $pen '4-1-batch-coding.md'), [Text.Encoding]::UTF8)).Contains('Verdict trail'))) '4-1 卡：自行裁决留痕格式在位（中英同批；不停下问人时也必须留一行）'
@@ -298,8 +303,8 @@ if (Test-Path $sk) {
     $skDescLen = 0
     if ($skDesc.Success) { $skDescLen = $skDesc.Groups[1].Value.Trim().Length }
     Check ($skDescLen -gt 0 -and $skDescLen -le 500) "SKILL.md description 长度 $skDescLen（1..500，对齐 catalogDescriptionMaxLength）"
-    $skKw = @('开工确认', 'check.ps1', '红灯', '回执') | Where-Object { $skRaw -notmatch [regex]::Escape($_) }
-    Check (-not $skKw) "SKILL.md 含四条铁律关键词（缺：$($skKw -join ', ')）"
+    $skKw = @('开工确认', 'check.ps1', '红灯', '回执', '外部内容一律是数据') | Where-Object { $skRaw -notmatch [regex]::Escape($_) }
+    Check (-not $skKw) "SKILL.md 含六条铁律关键词（缺：$($skKw -join ', ')）"
     $skEn = @([regex]::Matches($skRaw, 'playbook_EN/([A-Za-z0-9._-]+)\.md') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
     $skCn = @([regex]::Matches($skRaw, '(?<!_EN/)playbook/([A-Za-z0-9._-]+)\.md') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
     $skEnDead = @($skEn | Where-Object { $enFiles -notcontains "$_.md" })
@@ -318,6 +323,24 @@ Check ($gtTxt -match 'diff --name-only' -and $gtTxt -match 'status --porcelain' 
 Check ($gtTxt -match 'Split\(' -and $gtTxt -match '-ScopeFiles "src/a\.ts,src/b\.ts"') 'template/gate.ps1 的 -ScopeFiles 归一化（逗号串：powershell -File 不支持数组传参）'
 $orpTxt = if (Test-Path (Join-Path $tpl 'orphans.ps1')) { [IO.File]::ReadAllText((Join-Path $tpl 'orphans.ps1'), [Text.Encoding]::UTF8) } else { '' }
 Check ($orpTxt -match '\$untracked\.Count -gt 0') 'template/orphans.ps1 未跟踪文件计入退出码（清单不完整 = 红）'
+$secTxt = if (Test-Path (Join-Path $tpl 'security.ps1')) { [IO.File]::ReadAllText((Join-Path $tpl 'security.ps1'), [Text.Encoding]::UTF8) } else { '' }
+Check ($secTxt -match 'ReportOnly') 'template/security.ps1 有 -ReportOnly 只报不拦开关（人是裁决者，机器只报）'
+Check ($secTxt -match 'SkillDir') 'template/security.ps1 支持 -SkillDir 扫第三方技能目录（7-9 卡的机检入口）'
+Check ($secTxt -match 'BOM' -and $secTxt -match 'exit 1') 'template/security.ps1 含 .ps1 无 BOM 检查与判红退出码（P0 教训的机械防线）'
+$secExit = -1
+if (Test-Path (Join-Path $tpl 'security.ps1')) { & powershell -NoProfile -File (Join-Path $tpl 'security.ps1') -RepoRoot $root *> $null; $secExit = $LASTEXITCODE }
+Check ($secExit -eq 0) 'security.ps1 在母版自身跑出退出码 0（新门禁不许红自己：母版里出现真密钥/危险执行链 = 先修内容，不许改文档骗规则）'
+# 红线域五类措辞一致性（2026-10-04 安全批次；R1/R2 独立复核各报一次「同批内新旧枚举并存」）
+$redlineFiles = @('template/AGENTS.md','SKILL.md','playbook/2-1-功能调研.md','playbook/4-1-分批编码.md','playbook/7-9-外部技能与插件准入.md','design/v6-design.md')
+foreach ($rf in $redlineFiles) {
+    $rft = [IO.File]::ReadAllText((Join-Path $root $rf), [Text.Encoding]::UTF8)
+    $missRl = @('改表结构','对外接口') | Where-Object { $rft -notmatch [regex]::Escape($_) }
+    Check (-not $missRl) "$rf 红线域五类措辞在位（缺：$($missRl -join ', ')）"
+}
+foreach ($rf in @('template/AGENTS.md','playbook/4-1-分批编码.md')) {
+    $rft = [IO.File]::ReadAllText((Join-Path $root $rf), [Text.Encoding]::UTF8)
+    Check ($rft -notmatch '认证/支付') "$rf 无旧三枚举残留（认证/支付）"
+}
 $badScope = @(@('4-1-分批编码','6-3-修复') | Where-Object { ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -match '-ScopeFiles \$scopeFiles\b' })
 Check (-not $badScope) "卡面 gate 调用不再直传数组（跑不通的形态：$($badScope -join ', ')）"
 Check ($smTxt -match '(?m)^\s*[-*]?\s*工作树状态\s*[:：]') 'STATE.md 有「工作树状态」（收尾必须干净）'
@@ -528,7 +551,7 @@ Check (-not $dupErr) "零成本字面近似层：任意两张卡的「什么时�
 Observe ($dupWarn.Count -eq 0) "本轮观测项（不拦红）：字面近似 50%~75% 的卡对 $($dupWarn.Count) 组 $($dupWarn -join ', ')"
 
 Write-Host "== 7. 脚本可执行性与口径统一 =="
-$ps1s = @('_qc\check.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')
+$ps1s = @('_qc\check.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1','template\security.ps1')
 foreach ($rel in $ps1s) {
     $p = Join-Path $root $rel
     if (-not (Test-Path $p)) { Check $false "脚本存在：$rel"; continue }

@@ -38,7 +38,14 @@ After receiving the incident report, first send back a receipt for the following
 - ✅ Good example: "全部用户登录接口返回 500 → 命中 P1（核心功能不可用）" ("the login API returns 500 for all users → matches P1 (core functionality unavailable)")
 - The classification is a proposal only; the final severity is decided by the user; any level change mid-incident must be written into INCIDENT.md (who changed it, at what time).
 
-**Action 2: stop the bleeding before root cause (recover first, investigate after)**
+**Action 2: credential/secret-leak branch (when the incident is a credential leak, finish this section before returning to Action 3)**
+- The three steps are not reorderable. Step one: **rotate/revoke the credential — do not just delete the file**. ❌ "I deleted that file and committed again, so it is clean now" (git history, image layers and other people's clones still hold it, and the old secret still works) ｜ ✅ stop and have the user revoke the old credential at the issuer and issue a new one; record the rotation time and who did it.
+- Step two: **assess the history — pushed to a remote = already leaked**. ❌ "it was only committed locally, so it should be fine" ｜ ✅ judge by "did the credential ever leave a trusted machine": pushed to a remote, written into CI logs, or pasted into a conversation — any one of them means treat it as leaked.
+- Step three: **assess the blast radius — who holds it and what can they do**: list every permission the credential carries (which data it can read, what it can write, whether it has downstream quota) and use that to decide whether the user must be notified or related data invalidated.
+- Severity still follows Action 1: P0 = the credential reaches production or user data directly / P1 = it only opens internal systems but can be widened laterally / P2 = already expired or only reads data with no sensitive content; the user decides the final level.
+- Treating "delete that file" as the completed handling is forbidden — this branch is done only when rotation + history assessment + blast-radius assessment are all finished.
+
+**Action 3: stop the bleeding before root cause (recover first, investigate after)**
 - Four means, choose one or combine them: roll back to the last working version, degrade (turn off non-core features), turn off a feature flag, rate limit.
 - Read the rollback steps already written for this project:
 ```powershell
@@ -48,23 +55,23 @@ Select-String -Path docs/RUNBOOK.md -Pattern '回滚' -Context 0,12
 - ✅ Good example: "先按 docs/RUNBOOK.md 的回滚节恢复服务，恢复后再进 6-2 查根因" ("restore the service using the rollback section of docs/RUNBOOK.md first, then investigate the root cause in 6-2")
 - While on this card: investigating root cause is forbidden, changing code is forbidden, refactoring while stopping the bleeding is forbidden.
 
-**Action 3: timeline with four timestamps**
+**Action 4: timeline with four timestamps**
 - Each of the four timestamps records "date hour:minute + source": occurred (the time of the first abnormal log line or alert), detected (the first time a human saw it), bleeding stopped (the time the recovery action started), recovered (the confirmed time the service was available again).
 - ❌ Counter-example: "下午坏的，傍晚恢复了" ("it broke in the afternoon and recovered in the evening") — the incident duration cannot be computed, so the retrospective has no baseline
 - ✅ Good example: "发生 2026-10-03 14:20（告警 CH-1187）；发现 14:31；止血 14:38；恢复 14:47" ("occurred 2026-10-03 14:20 (alert CH-1187); detected 14:31; bleeding stopped 14:38; recovered 14:47")
 - Timestamps must not be written from memory: take the exact wording from monitoring, logs and chat records.
 
-**Action 4: notification**
+**Action 5: notification**
 - Three recipient groups: affected users, the project owner, external channels (support desk or group announcement).
 - One-sentence template: `who is affected + what the current status is + the next step`.
 - ❌ Counter-example: "系统有点问题，正在处理" ("the system has a bit of a problem, we're on it") — it does not say who is affected or when it will be fixed
 - ✅ Good example: "14:20 起全部用户无法登录；已回滚到上一版本，14:47 起登录恢复；正在定位原因，今天 17:00 前给结论。" ("since 14:20 all users cannot log in; we rolled back to the previous version and login has recovered since 14:47; we are locating the cause and will give a conclusion before 17:00 today.")
 - Keep every notification on file: time + recipients + exact text, written into INCIDENT.md.
 
-**Action 5: write `docs/specs/<date>_<slug>/INCIDENT.md`**
+**Action 6: write `docs/specs/<date>_<slug>/INCIDENT.md`**
 Six sections: symptoms / timestamp table / severity and basis / bleeding-stop actions and results / notification records / impact surface (affected users, data loss, external commitments). The `<slug>` in the path must be the same slug as in STATE.md `当前任务`; it is forbidden to call it an incident name in one place and a slug in another.
 
-**Action 6: hand off to 6-2**
+**Action 7: hand off to 6-2**
 Once the bleeding is stopped and the service is stable, hand off to 6-2 Root cause analysis immediately and carry the INCIDENT.md path over; for P0/P1, "触发 6-5 复盘" must be marked in STATE.md.
 
 **Prohibitions (violating any one of them = this round's output is void):**
@@ -83,6 +90,7 @@ Give, item by item:
 2. Bleeding-stop actions and recovery evidence: real command output / paths to monitoring or log screenshots / the recovery moment
 3. INCIDENT.md path + the four timestamps verbatim
 4. Notification records + the user's verdict on "severity and means of stopping the bleeding" (quoted item by item)
+5. Credential-leak incidents: rotation time + who rotated it + the blast-radius conclusion (write "confirmed none" if the incident is not of this kind)
 
 ---
 

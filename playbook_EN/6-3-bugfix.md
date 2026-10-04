@@ -63,7 +63,12 @@ powershell -NoProfile -File gate.ps1 -Anchor $anchor -ScopeFiles ($scopeFiles -j
 
 Verdict wording: **red = exit 1** (not a git working tree / invalid anchor / missing -Anchor / missing -ScopeFiles / out-of-scope change / line count over limit / lockfile change) → stop and fix; committing is forbidden; **amber = exit 0 but with items requiring attention** (renamed entries, empty change list) → relay them to the user along with the receipt; green = exit 0. The "passed" that the gate prints itself does not count as evidence; you must paste the original command + the complete output.
 
-**Action 4: leave the changes in the working tree; do not commit yet** — this card's commit is done in ④ together with the state write-back (iron order: write back state → commit → re-run the closing ritual and get 0), to avoid STATE.md dangling uncommitted.
+**Action 4: credential-class fix (rotate + record the rotation time)**
+- On a credential/secret hit (a plaintext secret, `.env`, `*.pem`/`*.key`, a token string): **rotate first, then change code** — have the user revoke the old credential at the issuer and issue a new value, and write the rotation time into the §③ receipt.
+- ❌ treating "the file is deleted" as fixed (git history, remote branches and CI logs still carry it, and the old value still works) ｜ ✅ revoke the old value + issue a new one + record the rotation time.
+- After fixing, re-run `powershell -NoProfile -File security.ps1` and confirm it is back to zero (exit code 0), in the same batch as Action 3; paste the script's raw output + exit code into §③ (the gate's own printed "pass" is not evidence).
+
+**Action 5: leave the changes in the working tree; do not commit yet** — this card's commit is done in ④ together with the state write-back (iron order: write back state → commit → re-run the closing ritual and get 0), to avoid STATE.md dangling uncommitted.
 
 **Prohibitions:**
 - Skipping the Action 3 gate before committing is forbidden
@@ -81,6 +86,7 @@ Give, item by item:
 3. The original mechanical gate command + the complete output + exit code (red/amber/green mapped item by item)
 4. The TECH_DEBT entry numbers registered during this process
 5. When bisection was used: the raw `is the first bad commit` line from the end of the `git bisect` output + the raw `git show --stat <hash>` + proof that `git bisect reset` was run; if bisection was not needed (the fix target is already known), write "no bisection needed this round, reason: …"
+6. Credential repair (only when action 4 fired): the issuer's revocation / reissue receipt + the rotation timestamp (no rotation timestamp = the fix is not complete)
 
 ---
 
