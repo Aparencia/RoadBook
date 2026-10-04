@@ -196,10 +196,11 @@ $intl = [ordered]@{
     'playbook_EN/7-7-user-docs-and-handover.md' = @('system temp directory', 'pointers, not copies')
     'playbook/7-8-项目重构.md'              = @('一个适配器 = 假设的接缝')
     'playbook_EN/7-8-refactoring.md'        = @('One adapter means a hypothetical seam')
-    'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent')
+    'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent', '被否方案台账', 'AI 声明', '系统临时目录')
     'design/playbook-contract.md'           = @('违反规则的字面', '形态选择', '每个问题自带推荐答案', '写作教义', 'no-op 测试', '信息阶梯', '触发词唯一', 'leading words')
     'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies')
-    'SKILL.md'                              = @('子 agent 边界')
+    'SKILL.md'                              = @('子 agent 边界', '调用轴', '分发自检', 'smart zone', '产物寿命')
+    'README.md'                             = @('分发自检')
     '_qc/baseline/README.md'                = @('对照组', '行号')
 }
 $missIntl = @()

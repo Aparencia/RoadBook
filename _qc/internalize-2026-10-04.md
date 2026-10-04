@@ -29,6 +29,9 @@
 | 7-7 用户文档与交接 | 交接条三件：写系统临时目录、**指针不复述**、脱敏后删文件 | `handoff` |
 | 7-8 项目重构 | **一个适配器 = 假设的接缝；两个适配器 = 真接缝**（只有一个实现时抽出的抽象层登记为技术债） | `codebase-design` |
 | 母版层 `design/playbook-contract.md` | ② 段「每个问题自带推荐答案」；新增**写作教义**（正说优先 / no-op 测试 / 信息阶梯与就近放置 / 触发词唯一 / 禁用 leading words） | `writing-for-agents`、`writing-docs` |
+| 母版层 `SKILL.md` | 新增「路由点火与上下文预算」小节：**调用轴**（常驻入口只放触发词 + 路由，卡号/卡名/文件名变更同批改路由表）｜smart zone 与交接条｜**产物寿命三分类**｜**分发自检**（装成 skill 的 clone 与母版 `git log --oneline -1` 比对，不一致 `pull --ff-only`） | `.agents/invocation.md`、`ask-matt`、`handoff` |
+| 母版层 根 `README.md` | 「装成 DSH skill」一节补**分发自检**（一分钟：两边短哈希比对；症状 = skill 描述里的卡数与母版对不上） | `.agents/invocation.md` |
+| 母版层 `template/AGENTS.md` | §7 回写义务表 +3 行：**被否方案台账**（日期 / 提案 / 否决理由 / 既往请求编号）｜**AI 声明**（AI 生成的审查或分析开头一行：谁生成、依据什么、只看哪一轴）｜**交接条**（系统临时目录、只放指针不复述、脱敏） | `.out-of-scope/`、`code-review`、`handoff` |
 
 - 术语同批入表：`design/glossary-en.md` 新增 27 行（rejection ledger、route drift、no-op rule、two-axis parallel review、smell baseline、evidence tiers、one-way door、two-way door、blast radius、Merge Danger annotation、ready frontier、fast-forward merge、rejected options、seam、agree the seam first、tautological test、horizontal slicing、three lifetime classes、blocking-dependency register、pointers, not copies、smart zone、writing doctrine、state the positive first、information ladder and proximity、one trigger phrase per behavior、no leading words、every question carries a recommended answer；172 → 199 行，上限 200）。
 - `design/v6-design.md`：§8 新增 8 条（编号 16–23，2026-10-04 批；14/15 是 brainstorming 深内化，编号冲突已在提交前修掉），§4 卡表 6-6 行改「扫十四类信号」并补两项，§8 自身上限 400 → 440，§10 记 item 26。
@@ -55,6 +58,7 @@
 - 扩展 8 组既有行：2-1、2-2、3-3、4-1、4-2、4-3、6-2、6-6、`design/playbook-contract.md`。
 - 本轮共 66 条 needle 全部用 shell `grep -F` 逐条核验在位；`_qc/check.ps1` 自身上限 400 → 440（本文件 + 断言增长），已同步 `design/v6-design.md` §8。
 - 新增断言：`_qc/internalize-2026-10-04.md` 存在性（本文件）。
+- 收口轮追加 3 组 needle：`SKILL.md` 扩为 5 针（子 agent 边界 / 调用轴 / 分发自检 / smart zone / 产物寿命）、新增 `README.md` 一行（分发自检）、`template/AGENTS.md` 扩为 5 针（原 2 针 + 被否方案台账 / AI 声明 / 系统临时目录）——把上面三处母版层落点也钉成删句即红。
 
 ## 5. 明确不拿（带理由）
 

@@ -43,7 +43,7 @@
 git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE/.dsh/skills/roadbook"
 ```
 
-之后新会话的 skill 目录里就有 `roadbook`（说「按流程来」会自动加载），也可以直接打 `/roadbook` 主动加载；更新用 `git -C "$env:USERPROFILE/.dsh/skills/roadbook" pull --ff-only`。
+之后新会话的 skill 目录里就有 `roadbook`（说「按流程来」会自动加载），也可以直接打 `/roadbook` 主动加载；更新用 `git -C "$env:USERPROFILE/.dsh/skills/roadbook" pull --ff-only`。**分发自检（升级后一分钟）**：装好的那份是 clone，不会自己变新——`git -C "$env:USERPROFILE/.dsh/skills/roadbook" log --oneline -1` 与母版 `git log --oneline -1` 不一致，就说明本机跑的还是旧流程（症状：skill 描述里的卡数、`_qc/check.ps1` 的断言数与母版对不上），pull 一次即修。
 
 ## 自动加载插件（可选，让流程不靠模型自觉）
 
