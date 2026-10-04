@@ -9,19 +9,32 @@
 - **skill**（`skills/roadbook-atlas/`）：`SKILL.md` + `bin/atlas.mjs` CLI + `vendor/archify/` 渲染器。
 - **契约**：规格是唯一事实源，图纸和回执都是它的派生物；CLI 非 0 退出永远不许被描述成成功。
 
-## 安装（本机 profile）
+## 安装
 
-```bash
-# 1) 让 profile 认识这个包（link 到本仓库，不复制）
-cd ~/.dsh/profiles/desktop
-pnpm add link:"D:/Program own/aicode/dpharness/dialogue/V5/plugin/roadbook-atlas"
+插件本身不含任何本机路径（`files` 白名单只收 `lib/ skills/ cordis.patch.yml README.md CHANGELOG.md`），克隆或装包之后即可运行。三条路任选：
 
-# 2) 列进 profile 的 bundle 列表（~/.dsh/profiles/desktop/package.json 的 dsh.profile.bundles 增加 "roadbook-atlas"）
+**A. 本地克隆 + 指向目录**（最稳，不需要发布）
 
-# 3) 重启 DSH（宿主半只在新会话启动时加载）
+```powershell
+git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE/RoadBook"
+cd "$env:USERPROFILE/.dsh/profiles/desktop"
+pnpm add "link:$env:USERPROFILE/RoadBook/plugin/roadbook-atlas"
 ```
 
-依赖 better-sidebar **≥ 0.24.0**（`ctx.betterSidebar` 服务）。没有它时插件不报错、只是不注册标签页。
+不想碰命令行也行：DSH 侧栏「插件」→「添加插件」→ 本地绝对路径 → 指向你克隆下来的 `plugin/roadbook-atlas` 目录。
+
+**B. 直接按 git 子目录装**（pnpm 支持 `#path:`，实测可用）
+
+```powershell
+cd "$env:USERPROFILE/.dsh/profiles/desktop"
+pnpm add "git+https://github.com/Aparencia/RoadBook.git#path:plugin/roadbook-atlas"
+```
+
+**C. 按包名装**：需要先发布——本包目前 `private: true` 且未上 npm（`roadbook-atlas` 这个名字在 npm 上还没被占用）。发版与打 tag 由人执行，agent 不做。
+
+装完只差两步：把 `"roadbook-atlas"` 加进 `~/.dsh/profiles/desktop/package.json` 的 `dsh.profile.bundles`，再重启 DSH（宿主半只在新会话启动时加载）。
+
+**前置**：DSH ≥ 0.2.0-rc.1、Node ≥ 22.19（DSH 自带运行时满足）；better-sidebar ≥ 0.24.0 用于标签页——没有它时插件不报错、只是不注册标签页，skill 与 CLI 照常能用。
 
 ## 三处独立开关
 
