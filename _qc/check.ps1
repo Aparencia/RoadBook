@@ -211,7 +211,7 @@ $intl = [ordered]@{
     'template/docs/DESIGN_TOKENS.md'        = @('--color-brand-ink', '--z-modal', '60-30-10', 'chroma')
     'template/docs/MOTION.md'               = @('prefers-reduced-motion: no-preference', 'IntersectionObserver', 'grid-template-rows', 'animationend')
     'design/playbook-contract.md'           = @('违反规则的字面', '形态选择', '每个问题自带推荐答案', '写作教义', 'no-op 测试', '信息阶梯', '触发词唯一', 'leading words')
-    'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies')
+    'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies', 'AI slop', 'one house style', 'focus ring', 'five states', 'touch target', 'skeleton screen', 'stagger', 'motion fallback', 'layout family', 'four widths', 'unmet-items table', 'z-index tier', 'UI self-check')
     'SKILL.md'                              = @('子 agent 边界', '调用轴', '分发自检', 'smart zone', '产物寿命')
     'README.md'                             = @('分发自检')
     '_qc/baseline/README.md'                = @('对照组', '行号')
@@ -494,6 +494,11 @@ if (Test-Path $cTierPath) { $cTier = [IO.File]::ReadAllText($cTierPath, [Text.En
 Check (($cTier -match '批次 1') -and ($cTier -match '批次 6') -and ($cTier -match '不拿')) 'C 档内化记录含六批落点与「明确不拿」清单（可审计：每条给落点文件或否决理由）'
 $glsMissing6 = @('切斯特顿栅栏','渐进披露','常设 DoD','单任务验收','字面近似层','rank-1') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
 Check (-not $glsMissing6) "术语表含批次 6 新术语（缺：$($glsMissing6 -join ', ')）"
+Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04-uiux.md')) '内化记录 _qc/internalize-2026-10-04-uiux.md 在位（UI/UX 设计流程增强四来源 → 六批落点 + 明确不拿清单）'
+$uiux = ''
+$uiuxPath = Join-Path $root '_qc/internalize-2026-10-04-uiux.md'
+if (Test-Path $uiuxPath) { $uiux = [IO.File]::ReadAllText($uiuxPath, [Text.Encoding]::UTF8) }
+Check (($uiux -match '批次 1') -and (($uiux -match '批次 6') -or ($uiux -match '批次 4')) -and ($uiux -match '不拿')) 'UI/UX 增强记录含分批落点与「明确不拿」清单（可审计：每条给源路径或否决理由）'
 
 # —— 零成本字面近似层（T1）：两张卡的"什么时候用"撞车 = 路由必指错卡。纯字符串，零 token ——
 function Get-BigramDice([string]$a, [string]$b) {

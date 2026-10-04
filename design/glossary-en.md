@@ -229,6 +229,22 @@
 | 单任务验收 | per-task acceptance |
 | 字面近似层 | literal-similarity layer |
 | 路由 rank-1 命中率 | routing rank-1 hit rate |
+| AI 味 / 反 AI 味 | AI slop / anti-slop |
+| 一套制式 | one house style |
+| 焦点环 | focus ring |
+| 焦点可见性 | `:focus-visible` |
+| 交互五态 | five states |
+| 触控目标 | touch target |
+| 骨架屏 | skeleton screen |
+| 错峰 | stagger |
+| 动效降级 | motion fallback |
+| 布局族 | layout family |
+| 四宽度 | four widths |
+| 页面纪律 | page discipline |
+| 未达标表 | unmet-items table |
+| 层级档位（z-index） | z-index tier |
+| accent 墨色 | accent ink (`--color-brand-ink`) |
+| 界面自检 | UI self-check |
 
 ## 5. 禁止翻译（原样保留）
 
