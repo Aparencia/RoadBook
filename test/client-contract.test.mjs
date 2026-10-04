@@ -20,8 +20,8 @@ import vm from 'node:vm';
 
 const CLIENT_URL = new URL('../lib/client.js', import.meta.url);
 const SOURCE = readFileSync(CLIENT_URL, 'utf8');
-const PACKAGE_NAME = 'roadbook-atlas';
-const TAB_ID = 'roadbook-atlas:gallery';
+const PACKAGE_NAME = 'roadbook';
+const TAB_ID = 'roadbook:gallery';
 
 /** 假 React：只要够组件首帧渲染一次。 */
 function fakeReact() {

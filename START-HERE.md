@@ -45,7 +45,7 @@ L 档 = M 线 + 3-1 设计 + [3-2] + [2-5] + 5-2 发布 + [5-3] + 5-4 ｜ 方括
 | `./check.ps1`（项目根） | **项目自检**：1-2 号卡生成在项目根，跑 `powershell -NoProfile -File check.ps1`（先 `Set-Location` 到项目根）；「完成」只看它的退出码 |
 | `_qc/check.ps1`（母版仓库） | **母版体检**：跑 `powershell -NoProfile -File _qc/check.ps1` 校验 41 张卡与模板完整性（路径用正斜杠，反斜杠在 Git Bash 下会报错） |
 | `SKILL.md` | DSH skill 入口（装法见 `README.md`）；装了之后可直接打 `/roadbook` 主动加载这套流程 |
-| `plugin/` | DSH 自动加载插件（装不装都行，装了能在开发会话里自动带上流程） |
+| `plugin/` | 主插件 `roadbook` 的子插件宿主半（自动加载 / 图纸工作台）；装主插件 = 装本仓库根，四个子行可各自开关 |
 | `LICENSE` | MIT 许可（可自由复用/改造） |
 
 ## 六条铁律（记住前三条就够；第 4、5 条约束 agent，第 5 条只管子 agent，第 6 条是安全默认——原文在 `SKILL.md`，你不用背）

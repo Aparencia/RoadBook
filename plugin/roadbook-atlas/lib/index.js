@@ -1,98 +1,62 @@
 /**
- * Roadbook Atlas —— 宿主半（host half）。
+ * roadbook-atlas —— 图纸子插件的宿主半（Loader 行 `roadbook/atlas`，模块名 `roadbook/atlas`）。
  *
- * 这一半只做两件事：
- *   1) 提供 `resolveSkillRoot()`：按安装在 DSH profile 上的 npm 身份解析本插件自带的
- *      skill 根目录（cordis.patch.yml 里的 skill provider 用它同一套算法，保证一致）。
- *   2) 在 apply() 里做一次就绪自检：确认 skills/roadbook-atlas/SKILL.md 与 vendored 渲染器
- *      真的在磁盘上，缺任何一项就打一条明确的警告 —— 缺文件时要看得见，而不是静默降级。
+ * 定位：这是主插件 roadbook 的一个**子插件**，不是独立可装的包 ——
+ *   技能与 CLI 在伞包 `skills/roadbook-atlas/`，客户端半（侧栏「图册」标签页）在伞包 `lib/client.js`，
+ *   本文件只负责这一个 Loader 行的就绪日志与「技能根在哪」这一个算法。
  *
- * 图纸的生成、校验、回执全部在 skill + CLI（skills/roadbook-atlas/）里完成；
- * 侧边栏「图册」标签页在客户端半（./client）。宿主半不注册任何工具，也不碰用户数据。
+ * 为什么不在这里做自检：随包文件的完整性由主行的 `lib/index.js` 一次查全（一处事实源），
+ * 子行再查一遍只会多出两份会漂移的清单。
  */
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Loader 行 id / 包名（profile bundles 列表里就是这个字符串）。 */
+/** Loader 行 id（profile patch 用 id 开关本行：`- id: roadbook-atlas`）。 */
 export const name = 'roadbook-atlas';
-/** 本插件的 npm 身份：解析自身资源一律走它，不写相对 baseUrl 的路径拼接。 */
-export const PACKAGE_NAME = 'roadbook-atlas';
-/** 随包分发的 skill 名（= skills/ 下的目录名）。 */
+/** 随包分发的 skill 名（= 伞包 skills/ 下的目录名）。 */
 export const SKILL_NAME = 'roadbook-atlas';
 /** 图纸默认落点（相对项目根），与 skill 文档、侧边栏默认值三处一致。 */
 export const DEFAULT_DIAGRAM_DIR = 'docs/diagrams';
+/** 伞包（主插件）的 npm 身份：解析随包资源一律走它，不拼相对路径。 */
+export const UMBRELLA_PACKAGE = 'roadbook';
 
 /**
- * 本插件目录（lib/index.js 的上一级）。安装方式（link: / npm / 聚合包）不影响它：
- * ESM 会解析到真实文件路径。
+ * 伞包根目录：本文件在 `<伞包根>/plugin/roadbook-atlas/lib/` 下，从 lib 上溯三级即伞包根。
+ * 为什么用文件位置而不是 createRequire：`link:` 安装时 Node 解析到真实路径（仓库内），
+ * 从那里往上找不到 profile 的 node_modules —— 只有文件位置在 link: / npm / git 子目录三种安装下都稳定。
  */
-export function packageRoot() {
-  return dirname(dirname(fileURLToPath(import.meta.url)));
+export function umbrellaRoot() {
+  return resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 }
 
 /**
- * 本插件版本：直接读 package.json —— 版本号只有一处事实源，不在代码里留副本。
- * 读不到就报 unknown 而不是抛错：一条就绪日志不该因为版本号让整个 profile 加载失败。
- */
-export function pluginVersion(root = packageRoot()) {
-  try {
-    const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-    return typeof manifest.version === 'string' && manifest.version ? manifest.version : 'unknown';
-  } catch (error) {
-    return `unknown（package.json 读不到：${error && error.message ? error.message : '未知原因'}）`;
-  }
-}
-
-/**
- * 解析随包分发的 skill 根目录（即 skills/）。
+ * 解析随包分发的 skill 根目录（伞包的 `skills/`）。
  *
  * @param {string | URL | undefined} profileBaseUrl DSH profile 的 Loader baseUrl。
  * @returns {string} skills 目录的绝对路径。
  */
 export function resolveSkillRoot(profileBaseUrl) {
-  if (!profileBaseUrl) {
-    throw new Error('roadbook-atlas: missing DSH profile baseUrl for package resolution');
+  if (profileBaseUrl) {
+    try {
+      const manifestPath = createRequire(profileBaseUrl).resolve(`${UMBRELLA_PACKAGE}/package.json`);
+      return join(dirname(manifestPath), 'skills');
+    } catch {
+      // 解析不到是 link: 安装的常态（profile 的 node_modules 不在本文件的祖先链上），退到文件位置推断。
+    }
   }
-  let manifestPath;
-  try {
-    manifestPath = createRequire(profileBaseUrl).resolve(`${PACKAGE_NAME}/package.json`);
-  } catch (error) {
-    throw new Error(
-      `roadbook-atlas: cannot resolve ${PACKAGE_NAME}/package.json from the DSH profile`,
-      { cause: error },
-    );
-  }
-  return join(dirname(manifestPath), 'skills');
-}
-
-/**
- * 就绪自检：列出缺失的关键文件。空数组 = 一切就位。
- * 不抛错 —— 插件半途抛错会连带整个 profile 的加载，缺文件只该是一条警告。
- */
-export function missingBundledFiles(root = packageRoot()) {
-  const required = [
-    join('skills', SKILL_NAME, 'SKILL.md'),
-    join('skills', SKILL_NAME, 'bin', 'atlas.mjs'),
-    join('skills', SKILL_NAME, 'vendor', 'archify', 'bin', 'archify.mjs'),
-    join('lib', 'client.js'),
-  ];
-  return required.filter((relative) => !existsSync(join(root, relative)));
+  return join(umbrellaRoot(), 'skills');
 }
 
 /**
  * @param {{ logger?: { info?: Function, warn?: Function } }} ctx
+ * @param {{ diagrams?: string }} [config] 本行 config（`roadbook-atlas` 行），默认 docs/diagrams。
  */
-export function apply(ctx) {
-  const missing = missingBundledFiles();
+export function apply(ctx, config = {}) {
   const line = (level, text) => {
     const sink = ctx && ctx.logger && typeof ctx.logger[level] === 'function' ? ctx.logger[level] : null;
     if (sink) sink.call(ctx.logger, text);
   };
-  if (missing.length > 0) {
-    line('warn', `roadbook-atlas v${pluginVersion()}: 缺少随包文件（图册会不可用）：${missing.join(', ')}`);
-    return;
-  }
-  line('info', `roadbook-atlas v${pluginVersion()}: ready（skill=${SKILL_NAME}, diagrams=${DEFAULT_DIAGRAM_DIR}）`);
+  const diagrams = typeof config?.diagrams === 'string' && config.diagrams ? config.diagrams : DEFAULT_DIAGRAM_DIR;
+  line('info', `roadbook-atlas: ready（skill=${SKILL_NAME}, diagrams=${diagrams}）`);
 }

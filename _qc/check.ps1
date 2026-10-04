@@ -401,6 +401,38 @@ $plgRdm = [IO.File]::ReadAllText((Join-Path $plg 'README.md'), [Text.Encoding]::
 Check ($plgRdm -match 'trigger\.test\.mjs') '插件 README 写了离线单测命令'
 Check ($plgIdx -match 'surfaceInjectionState') '插件：压缩后重注入的可见面判据在位（禁止静默退回「只认日志去重」）'
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match 'plugin/roadbook-autoload') '根 README 指向自动加载插件（可发现）'
+Write-Host "== 6b. 主插件伞包（仓库根 = roadbook）=="
+$umbPkgPath = Join-Path $root 'package.json'
+$umb = $null
+try { $umb = [IO.File]::ReadAllText($umbPkgPath, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $umb = $null }
+Check ($null -ne $umb) '主插件 package.json 可解析（JSON 合法）'
+if ($null -ne $umb) {
+    Check (($umb.name -eq 'roadbook') -and ($umb.type -eq 'module') -and ([bool]$umb.private)) "主插件身份：roadbook / ESM / private（实际：$($umb.name) / $($umb.type)）"
+    Check ($umb.dsh.bundle.patch -eq './cordis.patch.yml') '主插件声明 dsh.bundle.patch（DSH 的 reconcile 才把它登记为组合包）'
+    Check (($umb.dsh.client.platform -eq 'web') -and (@($umb.dsh.client.inject).Count -gt 0)) '主插件声明客户端半（platform: web + inject 非空）'
+    $umbSub = [ordered]@{ '.' = './lib/index.js'; './bundle' = './lib/bundle.js'; './autoload' = './plugin/roadbook-autoload/index.js'; './atlas' = './plugin/roadbook-atlas/lib/index.js'; './client' = './lib/client.js' }
+    $umbMiss = @($umbSub.Keys | Where-Object { ([string]$umb.exports.$_) -ne $umbSub[$_] -or (-not (Test-Path (Join-Path $root ($umbSub[$_] -replace '^\./','')))) })
+    Check (-not $umbMiss) "伞包 exports 五个入口齐且文件存在（缺/错：$($umbMiss -join ', ')）"
+    $umbFiles = @($umb.files)
+    Check (($umbFiles -contains 'lib') -and ($umbFiles -contains 'skills') -and ($umbFiles -contains 'plugin')) '伞包 files 白名单含 lib/ skills/ plugin/（随包分发不漏）'
+}
+foreach ($k in @('cordis.patch.yml','lib\index.js','lib\bundle.js','lib\client.js','skills\roadbook\SKILL.md','skills\roadbook-atlas\SKILL.md','test\skill-mirror.test.mjs','test\umbrella-contract.test.mjs')) {
+    Check (Test-Path (Join-Path $root $k)) "伞包文件存在：$k"
+}
+$umbYml = [IO.File]::ReadAllText((Join-Path $root 'cordis.patch.yml'), [Text.Encoding]::UTF8)
+Check (($umbYml -match '(?m)^- insert:') -and ($umbYml -match '(?m)^\s*-\s*id:\s*roadbook-bundle\s*$') -and ($umbYml -match '(?m)^\s+name:\s*roadbook/bundle\s*$') -and ($umbYml -match '(?m)^\s+group:\s*true\s*$')) '伞包 patch：- insert: 一条 group 行 roadbook-bundle（name: roadbook/bundle）'
+Check ($umbYml -match "entry\.options\.id === 'roadbook'") 'group 行的开关读主行自身 disabled（避免经祖先门递归）'
+$umbRows = [ordered]@{ 'roadbook' = 'roadbook'; 'roadbook-skills' = '@deepseek-ai/dsh-skill-filesystem'; 'roadbook-autoload' = 'roadbook/autoload'; 'roadbook-atlas' = 'roadbook/atlas' }
+$umbRowBad = @($umbRows.Keys | Where-Object { ($umbYml -notmatch ("(?m)^\s*-\s*id:\s*" + [regex]::Escape($_) + '\s*$')) -or ($umbYml -notmatch ("(?m)^\s+name:\s*'?" + [regex]::Escape($umbRows[$_]) + "'?\s*$")) })
+Check (-not $umbRowBad) "四个子行 id/模块名齐（缺：$($umbRowBad -join ', ')）"
+Check (($umbYml -match 'bundledSkillDir') -and ($umbYml -match "createRequire\(baseUrl\)\.resolve\('roadbook/package\.json'\)") -and ($umbYml -match 'includeDefaultRoots:\s*false')) '技能行按伞包 npm 身份解析 bundledSkillDir，且不与默认根重复'
+Check ((Get-FileHash (Join-Path $root 'SKILL.md') -Algorithm SHA256).Hash -eq (Get-FileHash (Join-Path $root 'skills\roadbook\SKILL.md') -Algorithm SHA256).Hash) 'skills/roadbook/SKILL.md 是根 SKILL.md 的逐字节镜像（改一份必须同步另一份）'
+$umbCli = [IO.File]::ReadAllText((Join-Path $root 'lib\client.js'), [Text.Encoding]::UTF8)
+Check (($umbCli -match 'id:\s*"roadbook"') -and ($umbCli -match 'roadbook:gallery') -and ($umbCli -notmatch 'roadbook-atlas:gallery')) '客户端半 id = 包名、标签页 id = roadbook:gallery（旧 id 不许残留）'
+$umbAtlas = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-atlas\package.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
+Check (((-not $umbAtlas.dsh.bundle) -and (-not $umbAtlas.dsh.client)) -and (@($umbAtlas.exports.PSObject.Properties.Name) -contains './package.json')) 'atlas 子插件已降级：无 dsh.bundle / dsh.client（不单独安装，避免第二个状态源）'
+$umbRd = [IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)
+Check (($umbRd -match '主插件') -and ($umbRd -match 'roadbook-skills') -and ($umbRd -match '不单独安装')) '根 README 写明「一个主插件 + 可独立开关的子行、子插件不单独安装」'
 $blDir = Join-Path $root '_qc/baseline'
 $blPrompts = @(Get-ChildItem (Join-Path $blDir 'prompts') -Filter '*.txt' -File -ErrorAction SilentlyContinue)
 $blFiles = @('run.ps1', 'README.md') | Where-Object { Test-Path (Join-Path $blDir $_) }
