@@ -28,6 +28,12 @@ After receiving the start instruction, first receipt:
 **2. Lesson distillation**: did you step on a mine this time? If yes → write `docs/lessons/<日期>_<主题>.md` (≤12 lines: symptom → root cause → fix → how to locate it next time). **Check for duplicates first**: update the old card for the same symptom, do not create a new one.
 
 **3. Debt rolling**: new debt / rejected options → register in `docs/TECH_DEBT.md` (open); what was paid off this time → change to closed with evidence (commit hash / file path).
+- **Concession close-out (the last pass before archiving, S6)**: every concession still left in the files this task touched must be accounted for at archive time — run
+```powershell
+Select-String -Path <files this task touched> -Pattern 'ceiling:|upgrade:|no-trigger'
+```
+  Each hit must either land in `docs/TECH_DEBT.md` this batch or be written into the `open questions` field of STATE.md; **`no-trigger` (the ones with no upgrade trigger written) come first** — a concession without a trigger never resurfaces on its own and is the first to rot silently. Copy the script's final `<N> markers, <M> with no trigger.` line into the receipt + the disposition counts (registered TD x / into open questions y / closed this batch z).
+  ❌ Counter-example: at archive time just say "there are some TODOs in the code" without a count or an account (next round nobody can find them) ｜ ✅ Good example: `7 markers, 3 with no trigger.` → all 3 no-trigger ones registered as TD-021~023, the other 4 into STATE.md open questions.
 
 **4. Version record**: append one line to the "unreleased" section at the top of the root `CHANGELOG.md` (one of the four kinds: added / changed / deprecated / fixed; one line per item).
 
@@ -126,7 +132,7 @@ git check-ignore -v .env
 Give, item by item:
 1. The archive ten checks' results item by item (1–10; each item states the action or "confirmed none" + its basis); for 8 attach the verbatim `orphans.ps1` summary line + the three-class handling counts (deleted x / registered as TD x / registered x), and assert **the sum of the five class counts ≥ the deduplicated file count** (the five classes are not deduplicated against each other, so one file can fall into several at once)
 2. The archive list (source paths → `docs/archive/<date>_<slug>/`)
-3. The debt-change summary (closed x / carried x / added x, with the key item on one line)
+3. The debt-change summary (closed x / carried x / added x, with the key item on one line) + the raw line from the §3 concession close-out (`<N> markers, <M> with no trigger.` + disposition counts)
 4. The real evidence for close-out steps 1–5: `git status --porcelain` (must be empty), the commit hash, the complete output of `check.ps1` with exit code 0, the `git push` output (or "no remote: local-only")
 
 ---

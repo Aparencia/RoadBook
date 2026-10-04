@@ -211,6 +211,17 @@
 | 派单两样（产物 + 契约） | ARTIFACT + CONTRACT |
 | 对抗式提问 | adversarial questioning |
 | 来源纪律 | source discipline |
+| 证据臂污染 | evidence-arm contamination |
+| 审查可行动率 | actionable-finding rate |
+| 质疑剧场 | theater of doubt |
+| 改规则四条件 | four conditions for changing a rule |
+| 三臂数字 | three-arm numbers |
+| 读数纪律（陈旧读数） | reading discipline (stale readings) |
+| 二分定位 | bisect localization |
+| 复发次数 | recurrence count |
+| 作用域（项目｜全局） | scope (project ｜ global) |
+| 最近复发 | last recurrence |
+| 妥协点收口 | concession close-out |
 
 ## 5. 禁止翻译（原样保留）
 

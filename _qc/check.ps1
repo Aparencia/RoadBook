@@ -180,16 +180,16 @@ $intl = [ordered]@{
     'playbook_EN/4-3-verification.md'       = @('Mutant points must cover at least three classes', 'before the evidence appears', 'Evidence tiers', 'No red-capable command')
     'playbook/4-5-环境与配置.md'            = @('只有人能做的步骤')
     'playbook_EN/4-5-environments-and-config.md' = @('human-only steps')
-    'playbook/5-1-归档.md'                  = @('--force')
-    'playbook_EN/5-1-archive.md'            = @('`--force` is forbidden')
+    'playbook/5-1-归档.md'                  = @('--force', '妥协点收口', 'no-trigger', 'with no trigger')
+    'playbook_EN/5-1-archive.md'            = @('`--force` is forbidden', 'Concession close-out', 'no-trigger', 'with no trigger')
     'playbook/5-2-发布.md'                  = @('单向门', '双向门', '爆炸半径')
     'playbook_EN/5-2-release.md'            = @('one-way door', 'two-way door', 'blast radius')
     'playbook/6-2-根因分析.md'              = @('反向追链', '没有能变红的命令')
     'playbook_EN/6-2-root-cause-analysis.md' = @('Reverse chain tracing', 'no red-capable command')
-    'playbook/6-3-修复.md'                  = @('修复尝试计数')
-    'playbook_EN/6-3-bugfix.md'             = @('Fix-attempt count')
-    'playbook/6-6-流程体检.md'              = @('十四类信号', '信号 13', '信号 14', '改卡前三问')
-    'playbook_EN/6-6-process-audit.md'      = @('fourteen classes of signals', 'Signal 13', 'Signal 14', 'Three questions before changing a card')
+    'playbook/6-3-修复.md'                  = @('修复尝试计数', 'git bisect run', 'is the first bad commit')
+    'playbook_EN/6-3-bugfix.md'             = @('Fix-attempt count', 'git bisect run', 'is the first bad commit')
+    'playbook/6-6-流程体检.md'              = @('十六类信号', '信号 13', '信号 14', '信号 15', '信号 16', '改卡前三问', '改规则四条件', '三臂数字', '读数纪律')
+    'playbook_EN/6-6-process-audit.md'      = @('sixteen classes of signals', 'Signal 13', 'Signal 14', 'Signal 15', 'Signal 16', 'Three questions before changing a card', 'Four conditions for changing a rule', 'three-arm numbers', 'Reading discipline')
     'playbook/7-3-债与腐化清偿.md'          = @('每批必念六查')
     'playbook_EN/7-3-tech-debt-repayment.md' = @('six checks to recite every batch')
     'playbook/7-7-用户文档与交接.md'        = @('系统临时目录', '指针不复述')
@@ -262,8 +262,13 @@ $seed = @(Get-ChildItem (Join-Path $tpl 'docs\lessons') -Filter '*.md' -File -Er
 Check ($seed.Count -eq 6) "模板种子教训卡 6 张（实际 $($seed.Count) 张；增删须同步 design §5 目录树 / §10 记录 / 5-1 卡豁免句）"
 foreach ($s in $seed) {
     $sl = [System.IO.File]::ReadAllLines($s.FullName, [Text.Encoding]::UTF8)
+    $slTxt = [string]::Join("`n", $sl)
     Check ($sl.Count -le 12) "行数 $($sl.Count) <= 12 ：docs/lessons/$($s.Name)"
-    Check ([string]::Join("`n", $sl) -match '最近确认') "种子卡含「最近确认」字段（6-2 卡动作 / 6-6 卡信号 3 的落点）：$($s.Name)"
+    Check ($slTxt -match '最近确认') "种子卡含「最近确认」字段（6-2 卡动作 / 6-6 卡信号 3 的落点）：$($s.Name)"
+    # 6-6 信号 3 的三行机器可读字段（S13）：缺字段 = 教训聚类与淘汰都不可判定
+    Check ($slTxt -match '复发次数\s*[:：]\s*\d+') "种子卡含「复发次数: N」（6-6 信号 3 聚类用）：$($s.Name)"
+    Check ($slTxt -match '作用域\s*[:：]\s*(项目|全局)') "种子卡含「作用域: 项目|全局」（升格/淘汰判据）：$($s.Name)"
+    Check ($slTxt -match '最近复发\s*[:：]\s*\d{4}-\d{2}-\d{2}') "种子卡含「最近复发: YYYY-MM-DD」：$($s.Name)"
 }
 
 Write-Host "== 4. Skill 分发（SKILL.md）=="
@@ -311,7 +316,21 @@ $t12 = [IO.File]::ReadAllText((Join-Path $pb '1-3-接入已有项目.md'), [Text
 Check ($t12 -match 'git remote -v') '1-3 卡接入时查远端（防老项目无远端）'
 Check (([IO.File]::ReadAllText((Join-Path $pb '5-1-归档.md'), [Text.Encoding]::UTF8)) -match 'git push') '5-1 卡归档收尾有远端同步（push）'
 $t43 = [IO.File]::ReadAllText((Join-Path $pb '6-6-流程体检.md'), [Text.Encoding]::UTF8)
-Check ($t43 -match '提交节奏' -and $t43 -match '推送滞后' -and $t43 -match '十四类' -and $t43 -match '信号 13' -and $t43 -match '信号 14') '6-6 卡有提交节奏与推送滞后信号 + 十四类信号（新增信号 13 路由漂移 / 信号 14 no-op 规则）'
+Check ($t43 -match '提交节奏' -and $t43 -match '推送滞后' -and $t43 -match '十六类' -and $t43 -match '信号 13' -and $t43 -match '信号 14' -and $t43 -match '信号 15' -and $t43 -match '信号 16') '6-6 卡有提交节奏与推送滞后信号 + 十六类信号（信号 13 路由漂移 / 14 no-op 规则 / 15 证据臂污染 / 16 审查可行动率）'
+$t43e = [IO.File]::ReadAllText((Join-Path $pen '6-6-process-audit.md'), [Text.Encoding]::UTF8)
+Check ($t43e -match 'sixteen classes' -and $t43e -match 'Signal 15' -and $t43e -match 'Signal 16') '6-6 英文卡同步十六类信号（Signal 15/16）'
+Check ($t43 -match 'inject_events') '6-6 信号 15 读真实字段 inject_events（证据臂污染可判定，不靠印象）'
+Check ($t43 -match '三臂数字' -and $t43 -match '副作用声明' -and $t43 -match '复现门槛' -and $t43 -match '陈旧读数') '6-6 改规则四条件齐（三臂数字 / 副作用声明 / 复现门槛 / 读数纪律）'
+Check ($t43e -match 'three-arm numbers' -and $t43e -match 'Side-effect statement' -and $t43e -match 'Recurrence threshold' -and $t43e -match 'stale reading') '6-6 英文卡改规则四条件齐'
+Check ($t43 -match '可行动' -and $t43e -match 'actionable') '6-6 信号 16 审查可行动率中英在位（N>0 且可行动=0 连续两轮 = 质疑剧场）'
+$t63 = [IO.File]::ReadAllText((Join-Path $pb '6-3-修复.md'), [Text.Encoding]::UTF8)
+$t63e = [IO.File]::ReadAllText((Join-Path $pen '6-3-bugfix.md'), [Text.Encoding]::UTF8)
+Check ($t63 -match 'git bisect run' -and $t63 -match 'git bisect reset') '6-3 卡有二分定位（F1）：bisect run + 收尾 reset'
+Check ($t63e -match 'git bisect run' -and $t63e -match 'is the first bad commit') '6-3 英文卡同步二分定位'
+$t51 = [IO.File]::ReadAllText((Join-Path $pb '5-1-归档.md'), [Text.Encoding]::UTF8)
+$t51e = [IO.File]::ReadAllText((Join-Path $pen '5-1-archive.md'), [Text.Encoding]::UTF8)
+Check ($t51 -match '妥协点收口' -and $t51 -match 'no-trigger' -and $t51 -match 'with no trigger') '5-1 卡归档前做妥协点收口（S6）：未闭合的必须落 TD 或未决问题'
+Check ($t51e -match 'Concession close-out' -and $t51e -match 'with no trigger') '5-1 英文卡同步妥协点收口'
 $commitCards = [ordered]@{ '1-2-选型初始化' = '1-2'; '1-3-接入已有项目' = '1-3'; '4-1-分批编码' = '4-1'; '6-3-修复' = '6-3'; '5-1-归档' = '5-1'; '6-5-复盘' = '6-5'; '7-1-UI改动' = '7-1'; '7-2-依赖升级' = '7-2'; '7-4-功能下线' = '7-4' }
 $noNum = @($commitCards.Keys | Where-Object { ([IO.File]::ReadAllText((Join-Path $pb "$_.md"), [Text.Encoding]::UTF8)) -notmatch ('git commit -m "' + $commitCards[$_] + ' ') })
 Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）"
@@ -409,6 +428,8 @@ Check (($c42 -match '最多 3 轮') -and ($c42 -match '禁止开第 4 轮') -and
 $glsTxt = [IO.File]::ReadAllText((Join-Path $root 'design\glossary-en.md'), [Text.Encoding]::UTF8)
 $glsMissing = @('检查命令','跑在哪阶段','有界复核循环','降标守卫','判据非循环性','外部意见') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
 Check (-not $glsMissing) "术语表含批次 3 新术语（缺：$($glsMissing -join ', ')）"
+$glsMissing5 = @('证据臂污染','审查可行动率','改规则四条件','三臂数字','读数纪律','二分定位','复发次数','最近复发','妥协点收口') | Where-Object { $glsTxt -notmatch [regex]::Escape($_) }
+Check (-not $glsMissing5) "术语表含批次 5 新术语（缺：$($glsMissing5 -join ', ')）"
 
 $c01 = [IO.File]::ReadAllText((Join-Path $pb '0-1-驱动卡.md'), [Text.Encoding]::UTF8)
 $c01e = [IO.File]::ReadAllText((Join-Path $pen '0-1-driver-card.md'), [Text.Encoding]::UTF8)
@@ -464,7 +485,9 @@ foreach ($f in $scanUni) {
 }
 $badVar = @($fenceScan | Where-Object { $_.Line -match '\$[^\x00-\x7F]' })
 Check (-not $badVar) "命令代码块内无中文变量名（PS 5.1 无 BOM 会 ParserError：$(($badVar | ForEach-Object { "$($_.File):$($_.Line)" }) -join ' | ')）"
-$badSlash = @($fenceScan | Where-Object { $_.Line -match '[A-Za-z]:\\' })
+# 盘符判定必须要求「单个字母 + 冒号 + 反斜杠」出现在记号开头（前一字符不是字母/数字/下划线）：
+# 旧写法 [A-Za-z]:\\ 会把 PowerShell 正则串当路径——例 'height:\s*100vh' 里的 t:\s 命中，属假红（2026-10-04 实测）。
+$badSlash = @($fenceScan | Where-Object { $_.Line -match '(?<![A-Za-z0-9_])[A-Za-z]:\\' })
 Check (-not $badSlash) "命令代码块内无盘符反斜杠路径（契约 §2② 要求正斜杠：$(($badSlash | ForEach-Object { "$($_.File):$($_.Line)" }) -join ' | ')）"
 $uiTpl = Join-Path $tpl 'docs\UI.md'
 if (Test-Path $uiTpl) {

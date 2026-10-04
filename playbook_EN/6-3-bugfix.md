@@ -35,6 +35,17 @@ After receiving the start instruction, first send back a receipt for the followi
   ✅ Good example: change only the 2 files the root cause points to (12 added lines + 6 deleted lines = 18 lines) → ✅ normal
 - **Fix-attempt count**: this is attempt N at fixing this bug (N counts from 1). At N = 3, changing code directly is forbidden; first answer the three questions and write the conclusion as one line for the user's verdict: ① does the symptom keep surfacing in a different place each time? ② would fixing it require large-scale refactoring? ③ does fixing it break something else every time? — any single "yes" = an architecture problem, not a failed hypothesis; stop and discuss; the 4th fix requires the user's approval.
 - When there are multiple fix options, list the candidates first (A/B + trade-offs) and then recommend one; the human picks.
+- **Regression localization: if you do not know which commit broke it, bisect (F1)** — never guess from "what changed recently". Precondition: one command that reproduces reliably (a test/script/one-liner that also runs red on old commits).
+```powershell
+git bisect start
+git bisect bad                     # the current HEAD is bad
+git bisect good <a known-good commit>    # the start anchor or an earlier green commit
+git bisect run <reproduction command>    # e.g. git bisect run npm test -- --grep "failing test"
+# after it prints "is the first bad commit":
+git bisect reset
+```
+  ① The reproduction command must produce an exit code **automatically** (0 = good / non-zero = bad); a command that needs human eyes must not be fed to `bisect run` directly; ② every `good`/`bad` verdict must be explainable (no "it looks like that one"); ③ you must finish with `git bisect reset` (forget it and you keep coding on a detached HEAD); ④ write the conclusion into the RCA: the hash of the commit that introduced the problem + what that commit changed (raw `git show --stat <hash>`) + why it was not caught at the time.
+  ❌ Counter-example: roll back the last two commits on a hunch, the red disappears and you declare "root cause found" (it might be a third commit, or the red was merely masked) ｜ ✅ Good example: bisect converges on `abc1234`; paste the raw `git show --stat abc1234` + a retrospective on why the tests did not stop it
 
 **Action 2: while-you-are-at-it issue registration rule**
 When fixing A you find B has a problem → register it in `docs/TECH_DEBT.md` (TD-<序号> + source = the BUG-xxx fix process); **fixing it on the side is forbidden**.
@@ -69,6 +80,7 @@ Give, item by item:
 2. Change scope: the complete output of `git diff --stat "$anchor..HEAD"` + the two-dimension lock self-assessment red/amber/green using "lines = added lines + deleted lines"
 3. The original mechanical gate command + the complete output + exit code (red/amber/green mapped item by item)
 4. The TECH_DEBT entry numbers registered during this process
+5. When bisection was used: the raw `is the first bad commit` line from the end of the `git bisect` output + the raw `git show --stat <hash>` + proof that `git bisect reset` was run; if bisection was not needed (the fix target is already known), write "no bisection needed this round, reason: …"
 
 ---
 

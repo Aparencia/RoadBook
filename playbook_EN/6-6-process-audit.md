@@ -10,9 +10,9 @@ After receiving the start instruction, first send back a receipt:
 1. **Trigger confirmation**: read STATE.md `体检计数` (continue only if ≥15; if the number does not match, check with the user first).
 2. **Assumptions list**: the 3~5 default assumptions you made on the user's behalf (e.g. "all proposals from the previous round have landed or been rejected", "the summary lines of the most recent 2 archives are readable"), each noting how it will be verified.
 3. **Clarifying questions (≤5, save any that can be saved)**: the default three questions — should the constitution be touched this round? What to do with the previous round's undecided proposals? Who decides on landing the proposals? Anything findable in STATE.md and the reports must not be asked of the human.
-4. **Scan scope declaration**: fourteen classes of signals will be scanned (gate green rate / stop-and-ask hot spots / lesson recurrence / silent constitutional items / doc orphan line rate / expired parallel state / orphan list convergence / file count inflation / commit cadence / remote and push lag / expired drill record / card-behavior baseline artifacts unconsumed / route drift / no-op rule), data sources = docs/reviews/, docs/TECH_DEBT.md, docs/lessons/, docs/archive/, docs/registry/ + STATE.md (parallel-state register / file-count baseline / recent archives / start anchor) + the summary line of `orphans.ps1` + `git log --oneline`, `git status -sb`, `git remote -v`.
+4. **Scan scope declaration**: sixteen classes of signals will be scanned (gate green rate / stop-and-ask hot spots / lesson recurrence / silent constitutional items / doc orphan line rate / expired parallel state / orphan list convergence / file count inflation / commit cadence / remote and push lag / expired drill record / card-behavior baseline artifacts unconsumed / route drift / no-op rule / evidence-arm contamination / review actionable-finding rate), data sources = docs/reviews/, docs/TECH_DEBT.md, docs/lessons/, docs/archive/, docs/registry/ + STATE.md (parallel-state register / file-count baseline / recent archives / start anchor) + the summary line of `orphans.ps1` + `git log --oneline`, `git status -sb`, `git remote -v`.
 5. **Observation window declaration**: the window for signals 9 and 10 = **the most recent 2 archives / the most recent 2 tasks**, **decoupled** from this card's trigger period (every 15 archives) — only a short window can catch "whether the last two closings both failed to land in history".
-6. **Proposal discipline declaration** (paste the "three proposal disciplines" from §② of this card word for word).
+6. **Proposal discipline declaration** (paste the "three proposal disciplines" and the "four conditions for changing a rule" from §② of this card word for word).
 7. **Boundary declaration**: this card can only **draft proposals**; every revision of the constitution and the process is decided by the human; the agent is forbidden to modify the constitution on its own. The output landing point is `docs/decisions/PROCESS_<date>_体检.md` + proposals landed; the next card is 5-1 (Archive).
 
 ---
@@ -33,11 +33,12 @@ The criteria look only at **data rows**: numbered rows start with `| TD-`; after
 - ❌ Counter-example: `Select-String -Pattern "来源"` (it hits only the header, so the same source can never be counted ≥2 times)
 - ✅ Good example: the column-grouping command above (output the list of sources with Count ≥2 and attach it to the report)
 **Signal 3: lesson recurrence (knowledge should be upgraded)**
+Every lesson card must carry three machine-readable fields in its header: `复发次数: N` (recurrence count) / `作用域: 项目 | 全局` (scope: project | global) / `最近复发: YYYY-MM-DD` (most recent recurrence) — **a lesson card missing these fields is treated as "the count cannot be trusted"** (fill the fields in first; that card does not take part in clustering this round).
 ```powershell
 $kw = '备份'          # swap the keyword topic by topic
 Select-String -Path "docs/lessons/*.md" -Pattern $kw | Select-Object Filename, Line
 ```
-Cluster topic by topic with keywords: ≥2 cards hit on the same topic, or some card's "most recent confirmation" updated ≥2 times → proposal: "upgrade it to a constitutional prohibition / a check item on the corresponding card" (the same exit as the recurrence upgrade in card 6-2).
+Cluster topic by topic with keywords: ≥2 cards hit on the same topic, or some card's "most recent confirmation" updated ≥2 times → proposal: "upgrade it to a constitutional prohibition / a check item on the corresponding card" (the same exit as the recurrence upgrade in card 6-2). Two additional criteria: **recurrence across ≥2 projects (`作用域: 全局`) → upgrade first** (it is no longer just this project's problem); **`复发次数` unchanged for 30 days and `作用域: 项目` → candidate for retirement** (even this project no longer hits it; keeping it only adds resident volume).
 **Signal 4: silent constitutional items (rules that should be deleted)**: ask of every prohibition and check item in the constitution — in archive/reviews/lessons, **not a single record can be cited of it blocking or being used** → candidate for repeal.
 **Signal 5: doc orphan line rate (observation item)**
 The sampling rule is fixed: take the **last 10 lines each** of `docs/registry/APIS.md` and `docs/registry/DATA_DICT.md` (the newest registered entries are at the end of the file; the same rule is reproducible every round):
@@ -90,11 +91,27 @@ Get-Content $entry | Select-String -Pattern '\d+-\d+'
 Criteria: the card number / file name / command written in an entry-point item makes `Test-Path` false on disk, or the card number actually points to a different card → record one "route drift"; ≥2 → proposal: "fix the entry point and the cards in the same batch" (landing point: the entry file + the card pointed at wrongly, in one and the same commit; fixing only one side is forbidden). ❌ the card was renamed while the entry point still writes the old name, yet the report says "entry point normal" ｜ ✅ all 14 entry items make `Test-Path` true → no proposal
 **Signal 14: no-op rule** — a rule whose deletion leaves behavior completely unchanged (relative to the model's default it changed nothing) = it should be deleted, or rewritten as an executable criterion. "It reads sensible" does not count; the criterion is to delete it and run one comparison — no change in behavior means it is a no-op. Audit action: pick a candidate rule, delete it temporarily and run one task of the same class, comparing against the run with the rule kept.
 Criteria: that task's behavior after deleting the rule is **completely identical** to the behavior with the rule kept → record one "no-op rule"; the same rule recorded in ≥2 rounds → proposal: "repeal it, or rewrite it as an executable criterion (command + expected output)" (landing point: the specific item in the file where that rule lives). ❌ "this one reads sensible, keep it for now" (no deletion comparison run) ｜ ✅ delete it, run once, the two behaviors are identical → record the no-op with both raw outputs attached
+**Signal 15: evidence-arm contamination (that round's conclusion is void)** — read the most recent baseline run's `_qc/baseline/runs/<timestamp>/manifest.txt`: if an arm declared as the control group has `inject_events > 0` (the plugin injected a roadbook card at `agent/pre-step`), or its declared `plugin_mode` does not match reality → **mark that round's conclusion "unusable" outright, not "a point of attention"** (the control group was also running the thing under test = the gap gets flattened, structurally the same accident as ponytail flattening 80–94% into 4% on 2026-06-17).
+```powershell
+Get-ChildItem "_qc/baseline/runs/*/manifest.txt" -ErrorAction SilentlyContinue | Select-String -Pattern 'arm|plugin_mode|inject_events'
+```
+No run directory → write "no baseline artifacts this round" and raise no proposal (that belongs to signal 12's observation surface).
+**Signal 16: actionable-finding rate (theater of critique)** — count the findings in the last ≥2 rounds of review reports and how many of them are **actionable** (an `actionable finding` = has a file:line plus can be landed as an action):
+```powershell
+Select-String -Path "docs/reviews/*.md" -Pattern '本轮发现|可行动'
+```
+Two consecutive rounds with "findings N > 0 and actionable M = 0" → proposal: "the review is going through the motions (theater of critique)": first ask the agent that was reviewed "how should the card be written so that you could not have chosen wrong", then change only the card surface or the review question template without touching the conclusion; **closing it with "be more careful from now on" is forbidden**.
 
 **Three proposal disciplines (every proposal must pass them):**
 1. **A signal must occur ≥2 times to qualify for a proposal** — changing a rule on a single red light = overfitting to a single incident, and the rules will explode
 2. **At least 1 repeal-type proposal** — additions and deletions must be symmetric; if not one can be raised → explicitly write "no repeal candidates this round" and explain what was scanned
 3. **Land on a specific file + a specific item** — ❌ "coding should be more careful from now on" ✅ "constitution §2 adds: writing an API must first register its error codes in APIS.md"
+
+**Four conditions for changing a rule (S5; all must hold before a card change may be proposed — any one missing makes the proposal invalid):**
+1. **Three-arm numbers**: no rule / current rule / changed rule, **same task and same model, ≥6 runs per arm** — "it got much better after the change" without the raw three-arm numbers = invalid; when this machine cannot run the baseline (no headless), substitute the two rows already in `_qc/baseline/ledger.json` and explicitly write "no three-arm numbers this round"
+2. **Side-effect statement**: name at least one **existing task that could be broken**, and give the evidence that it was not broken (failing to name one = you only looked where you wanted to look)
+3. **Recurrence threshold**: the same failure type reproduced ≥2 times (two rows can be cited from `_qc/baseline/ledger.json` or review reports; if you cannot cite them the threshold has not been met)
+4. **Reading discipline (T7)**: every number cited must come from this round or be re-verifiable in this round — **a stale reading must never be presented as current fact** (last audit's summary line or last round's green rate may only be cited as a "baseline", never stated as "the current state"; numbers from a cache or from memory must be re-run before they go into the report)
 
 Produce `docs/decisions/PROCESS_<date>_体检.md`: raw signal statistics + proposal table (signal / evidence / proposal / landing point / type).
 **Landing falls into two classes**:
@@ -114,7 +131,7 @@ Produce `docs/decisions/PROCESS_<date>_体检.md`: raw signal statistics + propo
 
 Give, item by item:
 1. Audit report path
-2. Raw signal statistics (excerpts of command output): **signals 1–14 item by item** (signal 7 with the comparison of this round's and the previous round's `orphans.ps1` summary lines; signal 8 with the baseline and the current file count; signal 9 with the raw `git status --short` and `git rev-list --count`; signal 10 with `git remote -v` and the ahead count; signal 11 with the raw `下次到期` text and the number of overdue days; signal 13 with the item-by-item entry-point reconciliation result; signal 14 with the two comparison outputs, before and after deleting the rule)
+2. Raw signal statistics (excerpts of command output): **signals 1–16 item by item** (signal 7 with the comparison of this round's and the previous round's `orphans.ps1` summary lines; signal 8 with the baseline and the current file count; signal 9 with the raw `git status --short` and `git rev-list --count`; signal 10 with `git remote -v` and the ahead count; signal 11 with the raw `下次到期` text and the number of overdue days; signal 13 with the item-by-item entry-point reconciliation result; signal 14 with the two comparison outputs, before and after deleting the rule; signal 15 with the raw `inject_events` from `manifest.txt`; signal 16 with the raw "findings N / actionable M" from two consecutive rounds)
 3. Proposal list: each with type (add / modify / repeal) / landing point / signal evidence
 4. The raw text of the user's verdict (item by item: adopted / rejected / deferred)
 
