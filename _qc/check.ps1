@@ -350,10 +350,37 @@ $blDir = Join-Path $root '_qc/baseline'
 $blPrompts = @(Get-ChildItem (Join-Path $blDir 'prompts') -Filter '*.txt' -File -ErrorAction SilentlyContinue)
 $blFiles = @('run.ps1', 'README.md') | Where-Object { Test-Path (Join-Path $blDir $_) }
 $blTxt = ($blFiles | ForEach-Object { [IO.File]::ReadAllText((Join-Path $blDir $_), [Text.Encoding]::UTF8) }) -join "`n"
-Check (($blPrompts.Count -ge 4) -and ($blFiles.Count -eq 2) -and ($blTxt -match 'exit 2') -and ($blTxt -match '不改卡') -and ($blTxt -match '-HarnessCmd') -and ($blTxt -match '证据不足')) '卡行为 baseline 脚手架在位（≥4 条压力提示词 + run.ps1 未接线即 exit 2 + README 写明 -HarnessCmd 契约、判定口径与「只记证据不改卡」）'
+Check (($blPrompts.Count -ge 8) -and ($blFiles.Count -eq 2) -and ($blTxt -match 'exit 2') -and ($blTxt -match '不改卡') -and ($blTxt -match '-HarnessCmd') -and ($blTxt -match '证据不足')) '卡行为 baseline 脚手架在位（≥8 条压力提示词 + run.ps1 未接线即 exit 2 + README 写明 -HarnessCmd 契约、判定口径与「只记证据不改卡」）'
+$blRd = [IO.File]::ReadAllText((Join-Path $blDir 'README.md'), [Text.Encoding]::UTF8)
+Check (($blRd -match '臂隔离') -and ($blRd -match '区分度') -and ($blRd -match '桩文件') -and ($blRd -match '量表先填') -and ($blRd -match 'ledger\.json')) 'baseline README 写明四条硬口径（臂隔离 / 断言区分度与观察分离 / 桩文件 / 量表先填 + 台账）'
+$blRun = [IO.File]::ReadAllText((Join-Path $blDir 'run.ps1'), [Text.Encoding]::UTF8)
+Check (($blRun -match '-Declare') -and ($blRun -match '-IsolationProof') -and ($blRun -match '-TriggerSet') -and ($blRun -match 'ledger\.json') -and ($blRun -match 'summary\.md') -and ($blRun -match '不含结论')) 'run.ps1 接线：-Declare / -IsolationProof / -TriggerSet / ledger.json / summary.md 且在位（缺任一即 exit 2；汇总不含结论）'
+$trigDir = Join-Path $blDir 'triggers'
+$trigObj = $null
+if (Test-Path (Join-Path $trigDir 'queries.json')) { $trigObj = ([IO.File]::ReadAllText((Join-Path $trigDir 'queries.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json) }
+$trigQ = @()
+if ($null -ne $trigObj) { $trigQ = @($trigObj.queries) }
+$trigY = @($trigQ | Where-Object { $_.should_route -eq $true })
+$trigN = @($trigQ | Where-Object { $_.should_route -eq $false })
+$trigBad = @($trigQ | Where-Object { ([string]::IsNullOrWhiteSpace($_.id)) -or ([string]::IsNullOrWhiteSpace($_.query)) -or ([string]::IsNullOrWhiteSpace($_.split)) -or (($_.should_route -eq $true) -and ([string]::IsNullOrWhiteSpace($_.expect_card))) })
+Check (($trigQ.Count -ge 20) -and ($trigY.Count -ge 12) -and ($trigN.Count -ge 6) -and ($trigBad.Count -eq 0) -and ((@($trigQ | ForEach-Object { $_.id }) | Select-Object -Unique).Count -eq $trigQ.Count)) "触发布线题目在位：≥20 条（true ≥12 / false ≥6）、id 唯一、true 必给 expect_card（实际 $($trigQ.Count) 条）"
+$trigRd = ''
+if (Test-Path (Join-Path $trigDir 'README.md')) { $trigRd = [IO.File]::ReadAllText((Join-Path $trigDir 'README.md'), [Text.Encoding]::UTF8) }
+Check (($trigRd -match '3 次') -and ($trigRd -match '指错卡') -and ($trigRd -match 'split="test"')) '触发布线判据在位（每条 3 次、指错卡与未触发分开记、只按 test 选优）'
+$lgObj = $null
+if (Test-Path (Join-Path $blDir 'ledger.json')) { $lgObj = ([IO.File]::ReadAllText((Join-Path $blDir 'ledger.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json) }
+Check (($null -ne $lgObj) -and ($lgObj.schema -match 'ledger') -and ($lgObj.comparability_rule -match '换代') -and ($null -ne $lgObj.entries)) 'baseline 台账 ledger.json 在位（同代可比、换代即新条目、旧条目不覆盖）'
+$selfTest = Join-Path $root '_qc\selftest.ps1'
+Check (Test-Path $selfTest) '仪器自检 _qc/selftest.ps1 在位（好的必过、坏的必被抓住）'
+if (Test-Path $selfTest) {
+    $stLines = [IO.File]::ReadAllLines($selfTest, [Text.Encoding]::UTF8)
+    $stTxt = $stLines -join "`n"
+    Check ($stLines.Count -le 110) "行数 $($stLines.Count) <= 110 ：_qc/selftest.ps1"
+    Check (($stTxt -match 'good：') -and ($stTxt -match 'bad：') -and ($stTxt -match 'finally') -and ($stTxt -match 'Compare-Object')) 'selftest.ps1 含 good/bad 参照实现 + finally 复原 + porcelain 前后比对'
+}
 
 Write-Host "== 7. 脚本可执行性与口径统一 =="
-$ps1s = @('_qc\check.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')
+$ps1s = @('_qc\check.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1')
 foreach ($rel in $ps1s) {
     $p = Join-Path $root $rel
     if (-not (Test-Path $p)) { Check $false "脚本存在：$rel"; continue }

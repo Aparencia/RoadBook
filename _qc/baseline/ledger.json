@@ -1,0 +1,9 @@
+{
+  "schema": "roadbook-baseline-ledger/1",
+  "updated": "2026-10-04",
+  "comparability_rule": "同一代 = harness 命令 + 模型 + 仓库 HEAD 三者一致。换代即新增条目，旧条目只改 status，不许覆盖、不许合并计数。",
+  "status_values": ["open", "verified", "downgraded", "fixed"],
+  "downgrade_rule": "被用户明确纠正、或被后续同代 run 打翻的结论，status 置 downgraded 并在 note 写一行反证（ECC continuous-learning-v2：被纠正即降置信）。",
+  "revalidate_rule": "改卡后必须复跑对应 case（T7 缓存复验）：同一 case 在新 HEAD 上不再复现，才把 status 置 fixed 并在 revalidated 写 <HEAD短哈希>；没复跑过不许写 fixed。",
+  "entries": []
+}
