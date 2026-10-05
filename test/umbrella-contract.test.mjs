@@ -143,9 +143,11 @@ test('注释里的 import 例子不算依赖 —— 假红比不检查更坏', a
   const main = await import('../lib/index.js');
   assert.equal(main.stripComments("import a from './x.js' // 例子\n"), "import a from './x.js' \n");
   assert.equal(main.stripComments("/* import b from './y.js' */\nreal()"), '\nreal()');
-  // lib/index.js 自己的注释里就写着 `import x from './a.js'` 这种例子：
-  // 它没有任何相对依赖，闭包必须只有它自己，否则自检会报一个不存在的文件
-  assert.deepEqual(main.relativeImportClosure(ROOT, 'lib/index.js'), ['lib/index.js']);
+  // lib/index.js 自己的注释里就写着 `import x from './a.js'` 这种例子：那些例子不许进闭包。
+  // 2026-10-05 起它**真的有一个**相对依赖：./update.js（自动更新的纯逻辑层）。
+  // 所以这条断言的形状从「只有自己」改成「自己 + 那一个真依赖」—— 注释里的 `./a.js` 仍然不在闭包里，
+  // 这正是它要防的假红（自检报一个并不存在的文件）。
+  assert.deepEqual(main.relativeImportClosure(ROOT, 'lib/index.js'), ['lib/index.js', 'lib/update.js']);
 });
 
 // ── 2026-10-05：stripComments 从「两条正则」换成单趟状态机 ──────────────────────

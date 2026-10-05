@@ -472,3 +472,153 @@ test('非安全上下文（没有 crypto.subtle）：判不了过期必须回 un
     assert.equal(await specChangedAfterRender({ spec: { bytes, sha256: sha } }, { text, bytes }), 'unknown', '算不出哈希 = 判不了；静默回「没变」正是漏报过期图纸的方向');
     assert.equal(await specChangedAfterRender({ spec: { bytes: bytes + 1, sha256: sha } }, { text, bytes }), 'changed', '没有 WebCrypto 时字节数这条判据仍要工作（这正是它存在的理由）');
 });
+
+// ── 2026-10-05：更新条（宿主半判定 → 这一半只显示与发指令） ─────────────────────
+// 这些口径同样只能靠真机肉眼验，所以在 Node 里先钉死：三态文案、宿主路由不在时整条不渲染、
+// 变更请求打到哪条路由、以及「读不到 ≠ 已是最新」。
+
+test('更新条判定：有新版 / 已最新 / 更新中 / 成功 / 失败 各有明确形状', () => {
+    const { updateStripState } = loadBundle().exports.__internals;
+    assert.equal(updateStripState(null).key, 'update.checking', '首帧在等状态');
+    assert.equal(updateStripState({ ok: false, unavailable: true }), null, '宿主路由不在 = 整条不渲染（不留死按钮）');
+    assert.equal(updateStripState({ ok: true, mode: 'off' }), null, '能力关闭 = 整条不渲染');
+    assert.equal(updateStripState({ ok: false, reason: 'network' }).key, 'update.unknown');
+    assert.equal(updateStripState({ ok: false, reason: 'network' }).canCheck, true, '检查失败要给重试入口');
+
+    const available = updateStripState({
+        ok: true,
+        mode: 'notify',
+        state: 'update-available',
+        installed: '0.3.0',
+        latest: '0.4.0',
+        applier: { available: true },
+    });
+    assert.equal(available.key, 'update.available');
+    assert.equal(available.canApply, true);
+    // 跨 realm 的对象原型不同（bundle 跑在 vm 里），逐字段比而不是 deepEqual
+    assert.equal(available.values.installed, '0.3.0');
+    assert.equal(available.values.latest, '0.4.0');
+
+    const noApplier = updateStripState({ ok: true, mode: 'notify', state: 'update-available', installed: '0.3.0', latest: '0.4.0', applier: { available: false, reason: 'no-installer' } });
+    assert.equal(noApplier.canApply, false, '找不到安装命令时不许给一个点了必然失败的按钮');
+    assert.equal(noApplier.detail, 'update.noApplier');
+
+    assert.equal(updateStripState({ ok: true, mode: 'notify', state: 'up-to-date', installed: '0.4.0' }).key, 'update.upToDate');
+    assert.equal(updateStripState({ ok: true, mode: 'notify', state: 'dev' }).key, 'update.dev');
+    assert.equal(updateStripState({ ok: true, mode: 'notify', state: 'ahead', installed: '0.5.0' }).key, 'update.ahead');
+    assert.equal(updateStripState({ ok: true, mode: 'notify', state: 'unknown', reason: 'http-500' }).key, 'update.unknown');
+
+    const running = updateStripState({ ok: true, mode: 'notify', state: 'update-available', operation: { state: 'running', label: 'runtime:rt' }, applier: { available: true } });
+    assert.equal(running.key, 'update.applying');
+    assert.equal(running.busy, true);
+    assert.equal(running.canApply, false, '跑着的时候按钮必须收起（宿主半也会拒第二次）');
+
+    const done = updateStripState({ ok: true, mode: 'notify', operation: { state: 'succeeded', before: '0.3.0', after: '0.4.0' } });
+    assert.equal(done.key, 'update.applied');
+    assert.equal(done.restart, true, '替换完必须提示重启（桌面宿主持有重启权，插件不自己重启）');
+    assert.equal(done.values.before, '0.3.0');
+    assert.equal(done.values.after, '0.4.0');
+
+    const failed = updateStripState({ ok: true, mode: 'notify', operation: { state: 'failed', exitCode: 1, outputTail: 'ERR_PNPM_FETCH_404' }, applier: { available: true } });
+    assert.equal(failed.key, 'update.failed');
+    assert.equal(failed.detail, 'ERR_PNPM_FETCH_404', '失败原因必须看得见，不许只留一句「失败」');
+});
+
+test('更新条判定：宿主真实的 idle 不是失败；空 reason 不许把 {reason} 占位符漏到界面上', () => {
+    const { updateStripState } = loadBundle().exports.__internals;
+    // 冷却期内宿主的真实形状（force=false 跳过一次检查）：state=idle、reason 为空串。
+    // 这条以前会掉进 unknown 兜底，界面上顶着 warn 显示「检查失败：{reason}」，而且一挂就是 24h。
+    const idle = updateStripState({ ok: true, mode: 'notify', state: 'idle', reason: '', installed: '0.4.0' });
+    assert.equal(idle.key, 'update.idle');
+    assert.equal(idle.tone, 'muted', '跳过检查不是失败，不许用警告色');
+    assert.equal(idle.canCheck, true, '仍然要给一个「检查」入口');
+
+    const unknown = updateStripState({ ok: true, mode: 'notify', state: 'unknown', reason: '' });
+    assert.equal(unknown.values.reason, '', '空 reason 交给渲染层兜底，判定层不编词');
+    assert.notEqual(unknown.key, 'update.upToDate', '读不到不许说成「已是最新」');
+
+    // 空转的安装：exit 0 但版本没变（pnpm「Already up to date」）——不许写「已更新 vX → vX」+ 重启提示
+    const noChange = updateStripState({ ok: true, mode: 'notify', operation: { state: 'succeeded', before: '0.4.0', after: '0.4.0' } });
+    assert.equal(noChange.key, 'update.noChange');
+    assert.equal(noChange.restart, false, '版本没变还叫人重启就是假话');
+
+    // 发起更新失败（409/424）不许顶着「检查失败」的标题，reason 码也不许直接当句子
+    const refused = updateStripState({ ok: false, unavailable: false, applyFailed: true, reason: '已有一次更新在进行，等它结束' });
+    assert.equal(refused.key, 'update.applyFailed');
+    assert.equal(refused.values.reason, '已有一次更新在进行，等它结束');
+});
+
+test('更新请求：状态走 GET /roadbook/update/status（force 才带 ?force=1），更新走 POST /roadbook/update/apply', async () => {
+    const requests = [];
+    const { exports } = loadBundle({
+        fetch: async (url, init) => {
+            requests.push({ url, method: init && init.method, body: init && init.body });
+            return { ok: true, status: 200, json: async () => ({ ok: true, mode: 'notify', state: 'up-to-date', installed: '0.4.0' }) };
+        },
+    });
+    const { fetchUpdateStatus, applyUpdate, UPDATE_STATUS_PATH, UPDATE_APPLY_PATH } = exports.__internals;
+    assert.equal(UPDATE_STATUS_PATH, '/roadbook/update/status');
+    assert.equal(UPDATE_APPLY_PATH, '/roadbook/update/apply');
+
+    const status = await fetchUpdateStatus(false);
+    assert.equal(status.state, 'up-to-date');
+    await fetchUpdateStatus(true);
+    await applyUpdate();
+    assert.deepEqual(requests.map((row) => `${row.method} ${row.url}`), [
+        'GET /roadbook/update/status',
+        'GET /roadbook/update/status?force=1',
+        'POST /roadbook/update/apply',
+    ]);
+    assert.equal(requests[2].body, '{}', '变更请求不改状态：宿主半自己读 profile 与配置');
+});
+
+test('宿主路由不在（404）或宿主连不上时：如实报「不可用」，不是「已是最新」', async () => {
+    const missing = loadBundle({
+        fetch: async () => ({ ok: false, status: 404, json: async () => ({ error: 'not found' }) }),
+    });
+    const gone = await missing.exports.__internals.fetchUpdateStatus(false);
+    assert.equal(gone.ok, false);
+    assert.equal(gone.unavailable, true);
+    assert.equal(missing.exports.__internals.updateStripState(gone), null, '路由不在 = 不渲染');
+
+    const offline = loadBundle({
+        fetch: async () => {
+            throw new Error('Failed to fetch');
+        },
+    });
+    const down = await offline.exports.__internals.fetchUpdateStatus(false);
+    assert.equal(down.unavailable, true);
+
+    const refused = loadBundle({
+        fetch: async () => ({ ok: false, status: 403, json: async () => ({ error: 'untrusted-origin' }) }),
+    });
+    const denied = await refused.exports.__internals.fetchUpdateStatus(false);
+    assert.equal(denied.unavailable, false, '403 是「路由在但拒绝了」：要显示原因，不能静默');
+    assert.equal(denied.reason, 'untrusted-origin');
+});
+
+test('更新条首帧：等状态时渲染「检查中」，且图册标签页真的把它挂进了树', () => {
+    const { exports } = loadBundle();
+    // 假 React 不会调用嵌套的函数组件，所以这里直接调用一次取首帧（真 React 里由 AtlasGallery 渲染）。
+    const tree = exports.__internals.UpdateStrip({ t: (key) => key });
+    assert.ok(tree && tree.props, '首帧必须返回元素（不是 null、也不是抛错）');
+    const labels = collectLabels(tree);
+    assert.ok(labels.includes('update.checking'), `首帧应显示检查中，实际：${labels.join(' | ')}`);
+
+    // 接线断言：图册标签页的树里必须有一个 type === UpdateStrip 的元素（漏挂 = 更新条永远不出现）
+    const tabTree = renderTab(exports, { locale: 'zh-CN', betterSidebar: { features: [] } });
+    let found = false;
+    const walkTypes = (node) => {
+        if (node === null || node === undefined || typeof node === 'boolean') return;
+        if (Array.isArray(node)) {
+            node.forEach(walkTypes);
+            return;
+        }
+        if (typeof node === 'object') {
+            if (node.type === exports.__internals.UpdateStrip) found = true;
+            (node.children || []).forEach(walkTypes);
+        }
+    };
+    walkTypes(tabTree);
+    assert.equal(found, true, '图册标签页必须挂上更新条');
+});

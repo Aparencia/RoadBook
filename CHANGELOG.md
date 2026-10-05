@@ -18,6 +18,64 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
 
+## [0.4.0] - 2026-10-05
+
+**一个静默失效的事实**：组合包此前**不会自动更新**（文档原话：卸载 + 重装），而升级路径上还有一层假绿——本机实测 `GET /dsh-market/api/v1/updates?name=roadbook` 返回 `updateAvailable:false`、`installedVersion:"0.2.3"`（回落到版本号 ⇒ 它的 `current` commit 是 null），**而同一时刻环境里装的确实是 0.2.3、远端 main 已经是 0.3.0**。根因在市场的 `lib/updates.js`：github 分支只从 spec 的 `#sha` 或 `readLockCommits()` 取当前 commit，而后者只认 codeload 压缩包形状；pnpm 对 `github:` 简写写的是 `resolution: {commit:…, repo:…, type: git}`。所以本轮**不转发任何人的结论**，自己判定。
+
+### 新增能力
+
+- **主行自动更新（`lib/update.js` + `lib/index.js`）**：开机查一次上游版本（`repository` 推导清单地址，默认 `main` 分支），五态判定 `up-to-date / update-available / ahead / dev / unknown`；**读不到一律 `unknown`**，绝不显示成「已是最新」。默认 `update: notify` 只提示；`update: auto` 才自动替换；`update: off` 整体关闭。
+- **命令探测阶梯（有证据、不猜）**：`updateCommand` 配置 → 本进程 CLI 入口（`process.argv[1]` 命中 `bin.js`/`cli.js`，用 `process.execPath` 重调，env 补 `ELECTRON_RUN_AS_NODE=1`）→ `$DSH_HOME/dsh-runtimes/*` 自带运行时的 node + `pnpm.mjs`（本机实测 `dsh` 与 `pnpm` **都不在 PATH**，而 `…/dependencies/node/bin/node.exe` + `…/pnpm/bin/pnpm.mjs --version` = `11.7.0` 可用）→ PATH 上的 `dsh`。全部不可用 ⇒ 拒绝执行（424）并逐条给出跳过理由，绝不随便挑一条把 profile 装坏。
+- **三道闸**：单飞锁文件 `<profile>/.roadbook-update.lock`（30 分钟视为陈旧可接管）+ 有 agent 在跑就拒绝（`agents.list()` 里 `status === 'running'`，判据与 dshmarket 一致）+ 超时 300s（先 SIGTERM，宽限 10s 再 SIGKILL），输出保留尾巴。
+- **同源守卫**：`POST /roadbook/update/apply` 会真的执行安装命令，所以 `Host` 必须 loopback（`127.0.0.1` / `localhost` / `[::1]`）、`sec-fetch-site: cross-site` 一律拒、`Origin` 出现时必须与 `Host` 同 authority——这正是 DNS rebinding 页面伪造不了的那一个头。
+- **客户端更新条（`lib/client.js`）**：图册标签页里显示「v当前 → v上游」+［更新］，跑一次安装并轮询到终态，成功提示「重启 DSH 后生效」；宿主路由不在（旧版本 / `webServer` 服务没起来）时**整条不渲染**，不留死按钮。
+- **观测**：`<os.tmpdir()>/roadbook-update.jsonl`（超 2 MiB 轮转 `.1`），事件 `loaded` / `check` / `skip` / `apply-start` / `apply-refused` / `apply-finish` / `route`；只写版本号、commit、命令标签、退出码与输出尾巴，不写用户消息、不写环境变量。
+- **两条本机路由**：`GET /roadbook/update/status[?force=1]`、`POST /roadbook/update/apply`（走可选服务 `ctx.inject(['webServer'])`，服务缺席只让路由不出现）。
+
+### 配置（主行 `roadbook`）
+
+| 键 | 默认 | 说明 |
+| :--- | :--- | :--- |
+| `update` | `notify` | `off` / `notify`（只提示）/ `auto`（自动替换） |
+| `updateIntervalHours` | `24` | 两次自动检查的最小间隔（跨重启靠观测文件里的上一条 `check` 计时） |
+| `updateTimeoutMs` | `8000` | 单次远端清单读取超时 |
+| `updateApplyTimeoutMs` | `300000` | 安装命令超时 |
+| `updateUrl` | `""` | 空 = 从本包 `repository` 推导 `raw.githubusercontent.com/<owner>/<repo>/main/package.json` |
+| `updateCommand` | `""` | 空 = 走探测阶梯；填了就按模板跑（支持 `{target}` / `{package}` / `{profile}`，也是端到端演练的打桩入口） |
+| `updateReport` / `updateReportPath` / `updateReportMaxBytes` | `true` / `""` / `2 MiB` | 观测开关、路径与轮转上限 |
+
+### 代价与脆弱面（明说）
+
+自己跑安装命令**没有** dshmarket 的并发锁、兼容性验证与自动回滚；失败时的兜底是「保留命令输出 + 提示按原来源重装」，不承诺回滚。默认 `notify` 意味着每次开机有一次对 `raw.githubusercontent.com` 的 GET（除 URL 外不外发任何信息），断网时如实退化 `unknown`。替换后**必须重启 DSH**（桌面宿主持有重启权，插件不自己重启）。
+
+**本机实测的 TLS 坑（已按证据处理）**：这台机器上有做 TLS 拦截的中间盒，它的根 CA 在 Windows 系统信任库里、**不在 Node 自带的 CA 清单里** —— `fetch('https://raw.githubusercontent.com/…')` 报 `fetch failed / unable to verify the first certificate`，`curl.exe` 同样 000，而 `node --use-system-ca` 实测 200。插件跑在宿主进程里、改不了启动参数，所以清单读取做成**两级传输**：先 `fetch`，只有证书类错误才用 `node:https` + `tls.getCACertificates('system')` 重试一次（DNS 不通、超时、代理拒连都不白跑第二次）。实测：`transport = system-ca`、142 ms、`installed 0.2.3 → latest 0.3.0` = `update-available`，同版本则 `up-to-date`。**安装命令那一侧不需要同样处理**（实测 `pnpm view dsh-context version` → `0.64.0`、exit 0，注册表与 git 通道都正常）。
+
+### 提交前独立对抗式复核（四路，只读；确认后由写者落地）
+
+复核不是走过场：这一轮**自己写的东西被自己人打穿了**，共修掉 2 个 P1 与 8 处 P2。修完每一条都补了会红的用例（变异测试：把修法还原，只有新加的那几条变红）。
+
+**P1①：超时根本不终结安装器，而且会把更新永久挂住。** Windows 上 `child.kill()` 只是 `TerminateProcess` 直接子进程 —— 带 shell 的候选（模板命令、`dsh.cmd`）的直接子进程是 `cmd.exe`，真安装器是它的**孙进程**，继续改 `node_modules`；更要命的是孙进程握着继承来的 stdout 管道，`close` 事件**永远不来**，而 `state.applying` 只在 `settle()` 里清。实测（真实 spawn，`applyTimeoutMs=5000`）：SIGTERM 后 8s、SIGKILL 后 3s 安装器与孙进程都活着、`operation.state` 还是 `running`、`timedOut=false`、观测里只有 `apply-start` 没有 `apply-finish`、锁还在，之后每一次更新都 409（删锁文件也没用，因为 `applying` 闸在 `acquireLock` 之前），只有重启宿主才能恢复。修法：Windows 上改走 `taskkill /PID <pid> /T /F` 收整棵树；**杀完进程树再等一小段就按超时结账**，不再把闸与锁挂在 `close` 上；另加两道自愈（`applying` 超预算按陈旧放行、`dispose()` 复位闸）。
+
+**P1②：宿主真实的 `idle` 被渲染成「检查失败：{reason}」。** 冷却期内跳过一次检查时宿主如实报 `state:"idle"`、`reason:""`，而客户端 `updateStripState` 只认五态，`idle` 掉进 unknown 兜底 ⇒ 警告色 + 把 `{reason}` 占位符原样丢到界面上，而且一挂就是 24 小时（直到用户手动检查）。这正是本模块口口声声拒绝的「假红」。修法：`idle` 单列一档（muted + 仍给「检查」入口），空 reason 由渲染层兜底成「未知原因」。
+
+**P2 批次**：① 观测文件轮转失败时把字节计数清零 ⇒ 上限形同虚设（把 `.1` 做成目录让轮转必失败，实测涨到上限的 25.9 倍），改为「轮转不了就放弃这一行」；② 第二级传输 `httpsGetText` 没有总时限（`timeout` 只是 socket 空闲超时：慢速滴答的服务器实测 500ms 配置跑成 3094ms）、不跟 3xx（`fetch` 跟，于是「专为 TLS 拦截机器准备的那一级」反而更弱）、响应体无上限 —— 三条全部补齐；③ 冷却时间只认观测文件，`updateReport:false` 时等于关掉冷却（实测 5 次轮询打 5 次远端，而客户端在更新进行中就是每秒轮询），改为内存与文件取较大者；④ 锁没有所有权标记，`dispose()` 会删掉别人的锁 ⇒ 单飞失效，改为只删自己的；⑤ 陈旧锁阈值固定 30 分钟，而安装超时可配到 60 分钟 ⇒ 长安装会被接管，改为「超时 + 两段宽限 + 1 分钟」取大；⑥ `whichInPath` 只判存在 ⇒ PATH 里一个同名**目录**会盖掉真正的 `dsh.cmd`，改为必须是文件；⑦ shell 模板里 target 未过滤 ⇒ profile 依赖串里一个 `"` 就能撑破引号并用 `&` 执行任意命令（实测能落地文件；输入面仅限本机 profile 的 `package.json`，属本地输入，但仍是命令注入面），改为 target 过字符 allowlist，不过就跳过该候选；⑧ 观测文件把整行命令与安装器输出原样落盘 ⇒ 配置里嵌的注册表 token 会明文留档，改为落盘前脱敏（`--token=***`）并按 0600 创建。
+
+**同时修掉两处「文档说有、实际不触发」**：① 判定第 ④ 步（版本号相同、提交不同也算有更新）在生产里**永远不触发** —— `runCheck` 传了 `installedCommit` 却没人给 `latestCommit`（变异测试：删掉 `installedCommit` 那一行，33 条用例全绿）。现在版本号相同时才去问一次上游 HEAD 提交（`api.github.com/repos/<repo>/commits/<branch>`），`commitCheck` 三态 `skipped/unknown/same/differ` 写进状态与观测，问不到就如实记 `unknown` 而不假装对过账；② 两个比较器的边角：预发布标识符原来按整串比（`1.0.0-rc.10 < 1.0.0-rc.9`，与 semver 相反，实测 147456 对里 1260 对不一致）改为逐标识符比；`installKindOf('C:\\repo')` 原来判成 registry（会被 `roadbook@latest` 盖掉开发副本）改为 local，`workspace:` 同理。
+
+另外清掉两处测试卫生问题：`主行 apply()` 用例不传 `updateReportPath` ⇒ 跑一次测试就往机器全局观测文件追加假记录（真机文件里能看见）；一处 `assert.ok(reportDir)` 恒真。
+
+### 提交前自查挖出的一处 P1（假绿：候选表看着全，有一条恒死）
+
+**PATH 候选在 Windows 上是死候选**：探测阶梯的 ④ 原本写成 `dsh.cmd` + `shell:false`。Node ≥18.20（CVE-2024-27980 之后）**拒绝对 `.cmd`/`.bat` 用 `shell:false`** —— 本机实测三种口径一致：① 临时 `.cmd` 探针 `spawn(x.cmd, [], {shell:false})` → `THREW EINVAL`，`shell:true` → `exit=0 stdout="PROBE-OK"`；② 新用例走真实 spawn 的 `spawn EINVAL`；③ 变异测试（把候选还原成旧形状）后新加的两条用例**只有它们变红**，其余 31 条照旧全绿。后果：`dsh` 只出现在 PATH 的机器上，点「更新」永远得到一条 `spawn EINVAL`，而候选表与 424 文案都写着「有可用安装命令」——正是本仓库定义的那类假绿。修法：Windows 上这条候选改为**整行模板 + `shell:true` + 空 args**（带 shell 就不能再传 args，那是 DEP0190 不转义；路径带引号，因为本机 DSH 就装在 `D:\AISI\Deepseek harness\…` 这种含空格目录里），非 Windows 保持 argv + `shell:false`。同批把查找名从 `dsh.cmd` 改回 `dsh`——PATHEXT 后缀表本来就负责补 `.cmd`/`.exe`，写死扩展名会去试 `dsh.cmd.cmd` 这类不存在的名字。
+
+**同一轮实测到的桌面宿主事实（写进注释，免得下一个人再猜）**：GUI 宿主的 `process.argv[1]` 是 `…\@deepseek-ai\dsh-desktop-host\lib\index.js`（`Win32_Process.CommandLine` 读到的原话），而真 CLI 入口是同目录的 `cli.js`（`dsh.cmd` 里写死的那个）⇒ 阶梯的 ② 在桌面上**永远命中不了**，桌面由 ③ 承担。③ 已按真实形状端到端跑通：`<内置 node> <内置 pnpm.mjs> add github:Aparencia/RoadBook` 在一次性空 profile 里 `+ roadbook 0.3.0`、20.4s、exit 0（同一时刻工作树里的 0.4.0 尚未推送，所以拉到的是远端 main 的 0.3.0 —— 这条同时证明「安装路径真的能从上游取到新版本」）。
+
+### 测试与验收
+
+- `node --test "test/*.test.mjs"`：**83/83**（原 40；`test/update.test.mjs` 38 例 + `client-contract` 增 5 例，`umbrella-contract` 的 import 闭包断言与 `packaging` 的运行时清单同步到 `lib/update.js`）。其中一条是**真实 spawn** 的端到端用例（起真的 `cmd.exe` 跑一个临时 `dsh.cmd`，断言退出码 0 且 stdout 被接住）——打桩的用例会把这个 P1 原样放过去，所以这条刻意不注入 `spawn`；另有一条专测「子进程永远不发 `close`」的看门狗（宽限期用注入的毫秒值跑，不然一条用例要 20 秒）。
+- `node --test "plugin/roadbook-autoload/test/*.test.mjs"` 与 `powershell -NoProfile -File _qc/check.ps1` 见本次提交的粘贴输出。
+- 版本口径：根 `package.json` = `0.4.0` = `lib/client.js` 的 `PLUGIN_VERSION`（`client-contract` 逐字核对）。本次升版按「加能力 → 次版本」规则；`git tag` 由人打。
+
 ## [0.3.0] - 2026-10-05
 
 **一个 P0 级事实**：插件按文档推荐的方式（Git 地址装仓库根）装出来的是**空壳**。`files` 白名单只有 `lib/skills/plugin/...`，而注入给模型的 `skills/roadbook/SKILL.md` 第一条就要求读 `playbook_EN/0-1-driver-card.md` —— 实测 `npm pack` 出来的 tarball 88 项里 `playbook/`、`playbook_EN/`、`template/` 各 0 项，本机 github 安装副本 `…/profiles/desktop/node_modules/roadbook` 里这三个目录也全缺（版本 0.2.3，就是最新形态），而本机 `~/.dsh/skills/` 下没有 roadbook clone 兜底。本轮把这个洞连同同源的三个缺陷一起修掉。

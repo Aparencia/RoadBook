@@ -113,6 +113,7 @@ const REQUIRED_RUNTIME_PATHS = [
   'plugin/roadbook-atlas/lib/index.js',
   // 宿主半与客户端半
   'lib/index.js',
+  'lib/update.js',
   'lib/client.js',
   'cordis.patch.yml',
 ];

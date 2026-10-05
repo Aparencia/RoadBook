@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 670) "行数 $selfN <= 670 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；上调须同时改本行与 design §8）"
+Check ($selfN -le 700) "行数 $selfN <= 700 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -434,6 +434,20 @@ $umbRowBad = @($umbRows.Keys | Where-Object { ($umbYml -notmatch ("(?m)^\s{4}-\s
 Check (-not $umbRowBad) "四个子行是 - insert: 的直接子项（缩进 4 空格；id/模块名缺或缩进错：$($umbRowBad -join ', ')）"
 Check (($umbYml -match 'bundledSkillDir') -and ($umbYml -match "createRequire\(baseUrl\)\.resolve\('roadbook/package\.json'\)") -and ($umbYml -match 'includeDefaultRoots:\s*false')) '技能行按伞包 npm 身份解析 bundledSkillDir，且不与默认根重复'
 Check ((Get-FileHash (Join-Path $root 'SKILL.md') -Algorithm SHA256).Hash -eq (Get-FileHash (Join-Path $root 'skills\roadbook\SKILL.md') -Algorithm SHA256).Hash) 'skills/roadbook/SKILL.md 是根 SKILL.md 的逐字节镜像（改一份必须同步另一份）'
+# ── 2026-10-05：主插件自动更新（判定 / 取证 / 执行 / 两条本机路由） ──────────────
+# 为什么每条都要有断言：这套能力有三个「静默失效」方向，光靠人眼看不出来 ——
+#   ① 判定退化成真假两值（读不到就显示「已是最新」= 假绿）；② 变更路由少了同源守卫（本机页面可触发安装命令）；
+#   ③ 模块被漏进发布白名单（装出来的副本没有 lib/update.js，整条链路在真机上不存在）。
+$umbUpd = Join-Path $root 'lib\update.js'
+Check (Test-Path $umbUpd) '更新能力模块存在：lib/update.js（纯逻辑层，主行静态 import 它）'
+if (Test-Path $umbUpd) {
+    $umbUpdTxt = [IO.File]::ReadAllText($umbUpd, [Text.Encoding]::UTF8)
+    Check (($umbUpdTxt -match "state:\s*'unknown'") -and ($umbUpdTxt -match "'no-upstream'") -and ($umbUpdTxt -match 'update-available')) '更新判定是三态以上（读不到 = unknown，不许退化成「已是最新」）'
+    Check (($umbUpdTxt -match 'trustedLocalRequest') -and ($umbUpdTxt -match 'sec-fetch-site') -and ($umbUpdTxt -match 'loopbackAuthority')) '本机请求守卫在位（DNS rebinding：Host 必须是 loopback、跨站与不同源 Origin 一律拒）'
+}
+$umbLineTxt = [IO.File]::ReadAllText((Join-Path $root 'lib\index.js'), [Text.Encoding]::UTF8)
+Check (($umbLineTxt -match '/roadbook/update/status') -and ($umbLineTxt -match '/roadbook/update/apply') -and ($umbLineTxt -match 'candidateInstallers')) '主行注册两条更新路由并走命令探测（找不到可用命令就拒绝，不许随便挑一条）'
+Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match '自动更新') '根 README 写明主插件自带自动更新（可发现）'
 $umbCli = [IO.File]::ReadAllText((Join-Path $root 'lib\client.js'), [Text.Encoding]::UTF8)
 Check (($umbCli -match 'id:\s*"roadbook"') -and ($umbCli -match 'roadbook:gallery') -and ($umbCli -notmatch 'roadbook-atlas:gallery')) '客户端半 id = 包名、标签页 id = roadbook:gallery（旧 id 不许残留）'
 $umbAtlas = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-atlas\package.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json

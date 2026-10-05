@@ -85,7 +85,17 @@ git+https://github.com/Aparencia/RoadBook.git#path:plugin/roadbook-autoload
 
 ## 升级与卸载
 
-组合包**不会自动更新**：`git pull` 更新本仓库后，在插件页卸载再装一次即可（配置写在 `cordis.patch.yml`，重装后按需重填）。卸载即在插件页移除本组合包。
+**主插件自带自动更新（2026-10-05 起，0.4.0）**：主行 `roadbook` 每次开机向本包 `package.json` 的 `repository` 指向的上游清单查一次版本（默认**只提示**，不自动替换），判定与证据落在 `<os.tmpdir()>/roadbook-update.jsonl`；在侧栏「图册」标签页页脚点「更新」，由插件自己跑安装命令（`dsh plugin add` → 退到 `$DSH_HOME/dsh-runtimes/*` 自带的 node + pnpm）替换磁盘文件，**重启 DSH 生效**。本子行是随包的一部分，跟着主插件一起更新，不需要单独动。
+
+- 关掉：主行配置写 `update: off`；改成发现新版本自动替换写 `update: auto`（默认 `notify` 只提示）。其余键（`updateIntervalHours` / `updateUrl` / `updateCommand` / `updateReportPath` …）见 `lib/update.js` 顶部注释。
+- 上游判定为什么不由别人代劳：本机实测 dshmarket 对本条 `github:` 来源**恒报「无更新」**（它的 `current` commit 读不出来 ⇒ `updateAvailable:false`），而同一时刻装的确实是 0.2.3、远端 main 已是 0.3.0。转发这种结论就是把假绿当判据，所以版本判定由 `lib/update.js` 自己做：**读不到一律 `unknown`**，绝不显示成「已是最新」。
+- 兜底路径没删：`git pull` 更新本仓库后，在插件页卸载再装一次仍然有效（配置写在 `cordis.patch.yml`，重装后按需重填）。卸载即在插件页移除本组合包。
+
+### 自动更新的三条验证
+
+1. 重启 DSH 后看宿主日志与观测文件：`Get-Content "$env:TEMP\roadbook-update.jsonl" -Tail 3` —— 应出现一行 `{"event":"check","state":"…"}`（`update-available` / `up-to-date` / `unknown`）。
+2. 打开侧栏「图册」标签页：更新条显示当前版本与上游判定；`update-available` 时才出现［更新］按钮（找不到可用安装命令时按钮收起并写明原因）。
+3. 点一次「更新」：观测文件出现 `apply-start` 与 `apply-finish`（含退出码与输出尾巴），界面显示「已更新 v… → v…」并提示重启；**别在 agent 跑任务时点**（运行中的 agent 会读到新旧混合的文件，宿主半会直接拒绝并说明理由）。
 
 ### 依赖：由宿主提供，运行时不下载
 
