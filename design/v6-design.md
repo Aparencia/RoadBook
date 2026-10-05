@@ -548,7 +548,7 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 | code-review / auto-review | 4-2 卡的人审替代车道 | 4-2 卡 |
 | better-sidebar / `present` | 证据展示（截图、报告） | 3-4 卡验收、5-1 卡回执 |
 | roadbook（主插件 = 本仓库根） | 伞形组合包：`- insert:` 下**平铺**五条**可独立开关**的子行（无 group 容器行 —— 容器行在面板上显示成「已关闭」）；装它一次 = 技能分发 + 自动加载 + 图纸工作台 + 自进化信号表 | 根 `README.md` 插件一节、根 `package.json` |
-| ├ roadbook（主行） | 就绪自检（随包文件全在）与版本口径（唯一事实源 = 根 `package.json`）；**自动更新**（0.4.0）：开机查上游版本（默认只提示）→ 自己跑安装命令替换 → 重启生效。**入口两处**（0.7.0）：侧栏「插件」→ roadbook 组合包详情页的页头控件 + 徽标 + 区块（走 DSH 内置插件页声明的 `plugins.detail.actions/badge/section`，作用域注入 `slots`，`inject` 不动），与「图册」页脚更新条；**升级是否生效**由 `bootVersion` ↔ 观测文件里最后一次 `apply-finish` 的目标版本对账（四态 applied / pending / newer / unknown） | 根 `lib/index.js`、`lib/update.js`、`lib/client.js` |
+| ├ roadbook（主行） | 就绪自检（随包文件全在）与版本口径（唯一事实源 = 根 `package.json`）；**自动更新**（0.4.0）：开机查上游版本（默认只提示）→ 自己跑安装命令替换 → 重启生效。**入口两处**（0.7.0）：侧栏「插件」→ roadbook 组合包详情页的页头控件 + 徽标 + 区块（走 DSH 内置插件页声明的 `plugins.detail.actions/badge/section`；`slots` 与 `betterSidebar` **都走作用域注入**，顶层 `inject` 为空 —— 0.7.1 修正：顶层 inject 里只要留着服务，服务缺席/迟到就让本行 PENDING/无 fiber，而 DSH 的 web boot 把任一未激活条目判成「应用无法启动」），与「图册」页脚更新条；**升级是否生效**由 `bootVersion` ↔ 观测文件里最后一次 `apply-finish` 的目标版本对账（四态 applied / pending / newer / unknown） | 根 `lib/index.js`、`lib/update.js`、`lib/client.js` |
 | ├ roadbook-skills | 把包内 `skills/` 分发给 DSH（`roadbook` 与 `roadbook-atlas` 两个技能，一个 provider） | §13 分发 |
 | ├ roadbook-autoload | 命中触发词自动加载本流程 | §15（三层门控与关闭方式） |
 | ├ roadbook-atlas | 图纸工作台：typed JSON 规格 → 自包含交互式 HTML，成品进 better-sidebar「图册」标签页（渲染器随包 vendored） | `plugin/roadbook-atlas/README.md`（回执契约、退出码口径、三种关闭粒度） |

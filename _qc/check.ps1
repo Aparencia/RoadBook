@@ -470,11 +470,11 @@ Check (($umbLineTxt -match 'upgrade: upgradeInfo\(\)') -and ($umbLineTxt -match 
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match '自动更新') '根 README 写明主插件自带自动更新（可发现）'
 $umbCli = [IO.File]::ReadAllText((Join-Path $root 'lib\client.js'), [Text.Encoding]::UTF8)
 Check (($umbCli -match 'id:\s*"roadbook"') -and ($umbCli -match 'roadbook:gallery') -and ($umbCli -match 'roadbook:evolve') -and ($umbCli -notmatch 'roadbook-atlas:gallery')) '客户端半 id = 包名、标签页 id = roadbook:gallery + roadbook:evolve（旧 id 不许残留）'
-# 0.7.0：插件详情页（DSH 侧栏「插件」→ roadbook 组合包详情）的检查更新入口。三条断言各挡一个方向：
-#   ① slot 名/注册行写错 = 静默不出现；② 把 slots 写进 inject = 服务缺席时本行「未激活」（0.4.1 那类事故）；
-#   ③ 不按 subject 认领 = 跑到别人的插件详情页上说话（三个 slot 在每个插件的详情页上都会渲染）。
+# 0.7.1：插件详情页（DSH 侧栏「插件」→ roadbook 组合包详情）的检查更新入口。三条断言各挡一个方向：
+#   ① slot 名/注册行写错 = 静默不出现；② 顶层 inject 里放服务 = 服务缺席/迟到时本行 PENDING 或根本没
+#      有 fiber，DSH 把任一未激活条目判死（0.7.0「应用无法启动」的成因）；③ 不按 subject 认领 = 跑到别人的详情页上说话。
 Check (($umbCli -match '\[DETAIL_ACTION_SLOT, "roadbook-update-action"') -and ($umbCli -match '\[DETAIL_BADGE_SLOT, "roadbook-update-badge"') -and ($umbCli -match '\[DETAIL_SECTION_SLOT, "roadbook-update-section"')) '客户端半把三处贡献注册进插件详情页三个 slot（锚到注册表那一行；只 match slot 名会被注释满足 = 恒真）'
-Check (($umbCli -match 'var inject = \["betterSidebar"\];') -and ($umbCli -match "ctx\.inject\(\[.slots.\]") -and ($umbCli -match 'detailIsOurs\(props\.subject\)')) '详情页贡献走作用域注入且 inject 未被污染、按 subject 认领（inject 被写进 slots = 服务缺席即「未激活」）'
+Check (($umbCli -match '(?m)^\t\tvar inject = \[\];\s*$') -and ($umbCli -match "ctx\.inject\(\[.slots.\]") -and ($umbCli -match '(?m)^\t+ctx\.inject\(\["betterSidebar"\], function \(scope\) \{') -and ($umbCli -match 'detailIsOurs\(props\.subject\)')) '客户端半顶层 inject 必须是空数组、slots 与 betterSidebar 都走作用域注入、且按 subject 认领（顶层 inject 缺服务 ⇒ 本行 PENDING / 没有 fiber ⇒ DSH 判死整个应用）'
 $umbAtlas = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-atlas\package.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
 Check (((-not $umbAtlas.dsh.bundle) -and (-not $umbAtlas.dsh.client)) -and (@($umbAtlas.exports.PSObject.Properties.Name) -contains './package.json')) 'atlas 子插件已降级：无 dsh.bundle / dsh.client（不单独安装，避免第二个状态源）'
 # ── 2026-10-05：自进化行 roadbook-evolve ────────────────────────────────────────

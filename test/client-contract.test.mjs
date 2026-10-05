@@ -6,7 +6,8 @@
  * DSH 的加载契约（factory(require) → { apply, inject }）跑一遍，把能提前发现的东西全钉住：
  *   1) 全文件只有一次 load，id 等于包名；
  *   2) require 只取基线模块（react），不 import 任何宿主内部路径；
- *   3) 导出 apply/inject，inject 声明 betterSidebar 服务依赖；
+ *   3) 导出 apply/inject，且顶层 inject **必须是空数组**（写进它的服务缺席/迟到 ⇒ 本行
+ *      PENDING 或没有 fiber ⇒ DSH 的 web boot 判死整个应用；0.7.0 真机事故的成因）；
  *   4) better-sidebar 缺席时静默跳过（不抛错）；
  *   5) 注册的是一个 single tab，且注册动作包在 ctx.effect 里（卸载能撤销）；
  *   6) 标签页根节点满足原生 tab 的高度契约（flex:1 / height:100% / min-height:0）；
@@ -90,7 +91,11 @@ test('bundle 形状：id 等于包名、只 require 基线模块、导出 apply/
     assert.deepEqual(requested, ['react'], '只允许 require("react")');
     assert.equal(typeof exports.apply, 'function', '客户端半必须导出 apply');
     assert.ok(Array.isArray(exports.inject), '客户端半必须导出 inject 数组');
-    assert.ok(exports.inject.includes('betterSidebar'), 'inject 必须声明 betterSidebar 服务依赖');
+    assert.deepEqual(
+        Array.from(exports.inject),
+        [],
+        '顶层 inject 必须为空 —— 写进它的服务缺席/迟到时本行是 PENDING 或没有 fiber，而 DSH 把任一未激活条目判成致命错误（应用打不开）。slots / betterSidebar 都走作用域注入'
+    );
     assert.equal(exports.TAB_ID, TAB_ID);
     assert.ok(!/<\/[a-zA-Z]/.test(SOURCE), '手写 bundle 不许出现 JSX 闭合标签');
 });
@@ -106,8 +111,7 @@ test('apply 通过 ctx.effect 注册两个 single tab（图册 45 / 自进化 46
     const { exports } = loadBundle();
     const registered = [];
     const disposer = () => {};
-    const ctx = {
-        locale: 'zh-CN',
+    const ctx = sidebarCtx({
         betterSidebar: {
             features: ['openFile', 'pluginSettings'],
             registerTab(descriptor) {
@@ -115,8 +119,7 @@ test('apply 通过 ctx.effect 注册两个 single tab（图册 45 / 自进化 46
                 return disposer;
             },
         },
-        effect: (factory) => factory(),
-    };
+    });
     exports.apply(ctx);
     assert.deepEqual(
         Array.from(registered, (row) => row.id),
@@ -153,12 +156,10 @@ test('tab 根节点满足原生 tab 高度契约，且列表/空态都能首帧�
     const { exports } = loadBundle();
     const descriptor = (() => {
         let found = null;
-        exports.apply({
-            locale: 'zh-CN',
+        exports.apply(sidebarCtx({
             // 本半挂了两个标签页：这里只取「图册」那一个（最后一个注册的不是它）
             betterSidebar: { features: [], registerTab: (d) => { if (d.id === TAB_ID) found = d; return () => {}; } },
-            effect: (factory) => factory(),
-        });
+        }));
         return found;
     })();
     const props = {
@@ -250,16 +251,14 @@ test('版本号三处一致，且页脚真的显示它', async () => {
 
 test('重复注册不再判死：better-sidebar 对重复 id 抛错时 apply 不上抛', () => {
     const { exports } = loadBundle();
-    const ctx = {
-        locale: 'zh-CN',
+    const ctx = sidebarCtx({
         // 照抄 dsh-better-sidebar/lib/client-registry.js 的真实行为：同一个 id 再来一次就 throw
         betterSidebar: {
             registerTab() {
                 throw new Error('[dsh-better-sidebar] tab type "roadbook:gallery" already registered');
             },
         },
-        effect: (factory) => factory(),
-    };
+    });
     assert.doesNotThrow(() => exports.apply(ctx), '注册失败必须就地吞成警告 —— 抛出去 = DSH 无法启动');
 });
 
@@ -277,30 +276,52 @@ test('重复注册不再判死：better-sidebar 对重复 id 抛错时 apply 不
 /**
  * 照抄 cordis `ReflectService.handler.get` 的严格语义造一个 ctx：
  *   - 直接读属性：只有 inject 过的服务给值，其余**抛** `cannot get property "X" without inject`；
- *   - `ctx.get(name, false)`：cordis 官方「不带 inject 要求」的读法，服务不在时返回 undefined。
- * @param {{ injected?: string[], services?: object, getThrows?: boolean }} [options]
+ *   - `ctx.get(name, false)`：cordis 官方「不带 inject 要求」的读法，服务不在时返回 undefined；
+ *   - `ctx.inject(deps, cb)`：**作用域注入** —— 回调拿到的子 ctx 里 deps 就是注入过的
+ *     （属性可读、`effect`/`get` 照旧），deps 有缺时回调根本不被调用（cordis 里那个子 fiber
+ *     停在 pending，**不影响**本行 fiber 的状态）。
+ *
+ * 顶层 `injected` 在生产里是**空数组**（0.7.1 起），所以服务只能从作用域注入拿 —— 假 ctx
+ * 必须和生产一样严，否则「顶层 inject 里偷偷塞服务」这种回归在本地是绿的。
+ * @param {{ injected?: string[], services?: object, getThrows?: boolean, effect?: Function }} [options]
  */
 function strictCordisCtx(options = {}) {
     const injected = options.injected ?? [];
     const services = options.services ?? {};
     const reads = [];
-    const target = {
-        effect: (factory) => factory(),
-        get(name, strict) {
-            reads.push(name);
-            if (options.getThrows === true) throw new Error(`cannot get property "${name}" without inject`);
-            return services[name];
-        },
+    const scopes = [];
+    const build = (injectedNames) => {
+        const target = {
+            effect: options.effect ?? ((factory) => factory()),
+            get(name) {
+                reads.push(name);
+                if (options.getThrows === true) throw new Error(`cannot get property "${name}" without inject`);
+                return services[name];
+            },
+            inject(names, callback) {
+                scopes.push(Array.from(names));
+                if (names.some((name) => services[name] === undefined)) return () => {};
+                return callback(build(Array.from(names)));
+            },
+        };
+        return new Proxy(target, {
+            get(t, prop) {
+                if (typeof prop === 'symbol' || String(prop).startsWith('_')) return Reflect.get(t, prop);
+                if (Reflect.has(t, prop)) return Reflect.get(t, prop);
+                if (!injectedNames.includes(prop)) throw new Error(`cannot get property "${prop}" without inject`);
+                return services[prop];
+            },
+        });
     };
-    const proxy = new Proxy(target, {
-        get(t, prop) {
-            if (typeof prop === 'symbol' || String(prop).startsWith('_')) return Reflect.get(t, prop);
-            if (Reflect.has(t, prop)) return Reflect.get(t, prop);
-            if (!injected.includes(prop)) throw new Error(`cannot get property "${prop}" without inject`);
-            return services[prop];
-        },
-    });
-    return { ctx: proxy, reads };
+    return { ctx: build(injected), reads, scopes };
+}
+
+/**
+ * 生产形状的 apply ctx（顶层 inject 为空）：`betterSidebar` / `locale` 只能从作用域注入或
+ * `ctx.get` 拿到。所有「注册标签页」的测试都从这里造 ctx，口径只有一份。
+ */
+function sidebarCtx({ betterSidebar, locale = 'zh-CN', effect } = {}) {
+    return strictCordisCtx({ injected: [], services: { locale, betterSidebar }, effect }).ctx;
 }
 
 test('未 inject 的 locale 在 apply 里读属性会抛 —— 必须降级走 ctx.get，且照样把标签页注册上', () => {
@@ -388,16 +409,14 @@ test('readService 的两段口径：先属性、抛错后退 ctx.get、都没有
 test('同一页面内 apply 跑两次只注册一次（幂等）', () => {
     const { exports } = loadBundle();
     const registered = [];
-    const ctx = {
-        locale: 'zh-CN',
+    const ctx = sidebarCtx({
         betterSidebar: {
             registerTab(descriptor) {
                 registered.push(descriptor);
                 return () => {};
             },
         },
-        effect: (factory) => factory(),
-    };
+    });
     exports.apply(ctx);
     exports.apply(ctx);
     assert.equal(registered.length, 2, '第二次 apply 不许再注册（否则真实 better-sidebar 会对重复 id 抛错）');
@@ -407,8 +426,7 @@ test('同一页面内 apply 跑两次只注册一次（幂等）', () => {
 test('服务注册表里已有同 id 的 tab 时跳过注册，且不调用 registerTab', () => {
     const { exports } = loadBundle();
     let calls = 0;
-    const ctx = {
-        locale: 'zh-CN',
+    const ctx = sidebarCtx({
         betterSidebar: {
             getTabs: () => [{ id: TAB_ID }],
             registerTab(descriptor) {
@@ -416,14 +434,12 @@ test('服务注册表里已有同 id 的 tab 时跳过注册，且不调用 regi
                 return () => {};
             },
         },
-        effect: (factory) => factory(),
-    };
+    });
     exports.apply(ctx);
     assert.equal(calls, 1, '上一代实例留下的「图册」注册应被识别并跳过，只补注册缺的那个');
     // 两个 id 都在注册表里 → 一个也不许再注册
     let both = 0;
-    const ctx2 = {
-        locale: 'zh-CN',
+    const ctx2 = sidebarCtx({
         betterSidebar: {
             getTabs: () => [{ id: TAB_ID }, { id: EVOLVE_TAB_ID }],
             registerTab() {
@@ -431,8 +447,7 @@ test('服务注册表里已有同 id 的 tab 时跳过注册，且不调用 regi
                 return () => {};
             },
         },
-        effect: (factory) => factory(),
-    };
+    });
     exports.apply(ctx2);
     assert.equal(both, 0, '两个 id 都已注册 → 一次 registerTab 都不许调');
 });
@@ -442,8 +457,7 @@ test('effect 撤销后标记复位，下一次 apply 仍能注册（热更新不
     const registered = [];
     // 两个标签页各注册一次 = 两个 effect，撤销时要把两个 disposer 都收回来
     const disposers = [];
-    const ctx = {
-        locale: 'zh-CN',
+    const ctx = sidebarCtx({
         betterSidebar: {
             registerTab(descriptor) {
                 registered.push(descriptor);
@@ -453,7 +467,7 @@ test('effect 撤销后标记复位，下一次 apply 仍能注册（热更新不
         effect: (factory) => {
             disposers.push(factory());
         },
-    };
+    });
     exports.apply(ctx);
     assert.equal(registered.length, 2);
     assert.deepEqual(disposers.map((fn) => typeof fn), ['function', 'function'], '每个注册都要返回 disposer 交给 fiber');
@@ -487,11 +501,10 @@ function collectLabels(tree) {
 /** 用给定 ctx 注册一次标签页并取回**指定 id** 的描述符（默认图册；本半现在挂两个标签页）。 */
 function descriptorOf(exports, ctx, id = TAB_ID) {
     let descriptor = null;
-    exports.apply({
-        ...ctx,
+    exports.apply(sidebarCtx({
+        locale: ctx.locale,
         betterSidebar: { features: [], registerTab: (d) => { if (d.id === id) descriptor = d; return () => {}; }, ...(ctx.betterSidebar || {}) },
-        effect: (factory) => factory(),
-    });
+    }));
     return descriptor;
 }
 
@@ -549,7 +562,7 @@ test('locale 服务形状（真机形状）下英文标题生效；bind 查不�
 test('双语表注册进 locale 注册表：命名空间 roadbook，zh 与 en 各一次', () => {
     const { exports } = loadBundle();
     const calls = [];
-    exports.apply({
+    exports.apply(sidebarCtx({
         locale: {
             register(ns, locale, dict) {
                 calls.push([ns, locale, Object.keys(dict).length]);
@@ -557,8 +570,7 @@ test('双语表注册进 locale 注册表：命名空间 roadbook，zh 与 en �
             },
         },
         betterSidebar: { features: [], registerTab: () => () => {} },
-        effect: (factory) => factory(),
-    });
+    }));
     assert.deepEqual(calls.map((row) => [row[0], row[1]]), [['roadbook', 'zh'], ['roadbook', 'en']]);
     assert.ok(calls[0][2] > 20, '中文表应覆盖全部界面文案');
     assert.equal(calls[0][2], calls[1][2], '中英两份必须逐键对齐（缺键会在界面里回显键名）');
@@ -1057,8 +1069,9 @@ test('自进化标签页：首帧渲染「正在读取信号…」，根节点�
 // ── 插件详情页三处贡献（DSH 侧栏「插件」→ roadbook 组合包详情） ────────────────
 //
 // 这一组钉的是三件只能靠真机肉眼验的事：
-//   ① 注册走**作用域注入**（`ctx.inject(['slots'], …)`），`export const inject` 一个字符都不动
-//      —— 把 slots 写进 inject，服务缺席时本行会停在「未激活」，而 DSH 把未激活条目判成致命错误；
+//   ① 注册走**作用域注入**（`ctx.inject(['slots'], …)`），`export const inject` 保持**空数组**
+//      —— 写进顶层 inject 的服务缺席/迟到时本行会停在「未激活」，而 DSH 把未激活条目判成致命错误
+//      （0.7.0 真机事故；真 cordis 4.0.4 实测：顶层 inject 缺服务 ⇒ fiber 恒为 PENDING）；
 //   ② 三个 slot 各注册一条，且**对不属于本包的 subject 返回 null**（这三个 slot 在每一个插件的
 //      详情页上都会渲染，不做门就等于跑到别人的页面上说话）；
 //   ③ 能力关闭 / 宿主路由不在时，三处**一起**不出现（页头不许留一个点了必然报错的死按钮）。
@@ -1078,10 +1091,10 @@ function fakeSlots(log) {
     };
 }
 
-test('详情页贡献：走作用域注入注册三个 slot，且 inject 仍然只有 betterSidebar', () => {
+test('详情页贡献：走作用域注入注册三个 slot，且顶层 inject 是空数组', () => {
     const { exports } = loadBundle();
     // 跨 vm 边界的数组原型不同，`deepStrictEqual` 会因此判不等 —— 先搬回本 realm 再比。
-    assert.deepEqual(Array.from(exports.inject), ['betterSidebar'], 'inject 不许被 slots 污染 —— 缺席即「未激活」，那是 DSH 打不开的那类事故');
+    assert.deepEqual(Array.from(exports.inject), [], '顶层 inject 不许有任何服务 —— 缺席即「未激活」，那是 DSH 打不开的那类事故');
 
     const log = [];
     const slots = fakeSlots(log);
@@ -1106,30 +1119,48 @@ test('详情页贡献：走作用域注入注册三个 slot，且 inject 仍然�
     );
 });
 
-test('详情页贡献：slots 服务不可用 / inject 抛错时都不上抛，标签页照常注册', () => {
-    // 两种恶劣 ctx 各起一个**新的 bundle**：同一个 bundle 里 apply 跑第二次时，模块级的幂等标记
+test('作用域注入的隔离性：详情页接线炸了不许连累标签页；ctx.inject 读不到时什么都不注册也绝不抛', () => {
+    // 每个恶劣 ctx 各起一个**新的 bundle**：同一个 bundle 里 apply 跑第二次时，模块级的幂等标记
     // 会让 registerTab 不再被调用（这是设计，不是缺陷），拿它当失败会误伤。
-    const hostile = loadBundle().exports;
+
+    // ① 只有 slots 那一次作用域注入抛：标签页必须照注册
     const registered = [];
-    hostile.apply({
-        get inject() {
-            throw new Error('cannot get property "inject" without inject');
+    loadBundle().exports.apply({
+        inject(names, callback) {
+            if (names[0] === 'slots') throw new Error('cannot get property "slots" without inject');
+            return callback({ betterSidebar: { registerTab: (descriptor) => (registered.push(descriptor.id), () => {}) } });
         },
-        locale: 'zh-CN',
-        betterSidebar: { registerTab: (descriptor) => (registered.push(descriptor.id), () => {}) },
+        get: () => undefined,
         effect: (fn) => fn(),
     });
-    assert.deepEqual(registered, [TAB_ID, EVOLVE_TAB_ID], 'ctx.inject 读属性就抛（严格代理）：详情页接线放弃，标签页必须照注册');
+    assert.deepEqual(registered, [TAB_ID, EVOLVE_TAB_ID], '详情页那一次作用域注入抛错不许连累标签页');
 
-    // inject 在、但 slots 永远不到位（回调不被调用）：什么都不注册，也绝不抛
+    // ② slots 永远不到位（回调不被调用）：标签页照注册
     const second = [];
     loadBundle().exports.apply({
-        inject: () => () => {},
-        locale: 'zh-CN',
-        betterSidebar: { registerTab: (descriptor) => (second.push(descriptor.id), () => {}) },
+        inject(names, callback) {
+            if (names[0] === 'slots') return () => {};
+            return callback({ betterSidebar: { registerTab: (descriptor) => (second.push(descriptor.id), () => {}) } });
+        },
+        get: () => undefined,
         effect: (fn) => fn(),
     });
     assert.deepEqual(second, [TAB_ID, EVOLVE_TAB_ID]);
+
+    // ③ `ctx.inject` 这个属性本身读不到（严格代理的极端情形）：两次接线一起放弃，但**绝不抛**。
+    //    真 cordis 4.0.4 里它永远可读（顶层 inject 为空时 `ctx.inject` 仍是 Context 的方法，
+    //    实测 apply 照跑、fiber 到 ACTIVE），所以这一格钉的只是「读不到也不许上抛」。
+    const third = [];
+    loadBundle().exports.apply({
+        get inject() {
+            throw new Error('cannot get property "inject" without inject');
+        },
+        get: () => undefined,
+        locale: 'zh-CN',
+        betterSidebar: { registerTab: (descriptor) => (third.push(descriptor.id), () => {}) },
+        effect: (fn) => fn(),
+    });
+    assert.deepEqual(third, [], 'ctx.inject 读属性就抛：接线放弃，但绝不上抛');
 });
 
 test('详情页贡献：subject 门只认本组合包（别人的页面必须返回 null）', () => {

@@ -18,6 +18,33 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
+## [0.7.1] - 2026-10-05
+
+**真机「应用无法启动」的根因修复：客户端半的顶层 `inject` 必须为空。** 0.7.0 装上去后 DSH 弹「应用无法启动或已意外停止」，正文是 `web boot: 1 entry did not activate / roadbook: import failed (see console for the import error)` —— 而**控制台里其实没有任何 roadbook 的错误**。按「修 bug → 修订号」走 **0.7.1**。
+
+### 根因（三段证据，逐条可复现）
+
+- **那句提示在误导。** DSH 前端的 boot 审计（`dsh-web-frontend/dist/assets/index-5SrrfWpU.js`）对每个 loader 条目先查 `modules.importError(id)`：**只有查不到导入错误时**才打这条「see console for the import error」兜底文案 —— 它出现恰恰等于「没有任何导入错误可看」。而 `importError` 只读 import/prefetch 失败表（`dsh-client-modules/lib/client.js:765`），`loader.create()` 与条目级的失败根本不进那张表。
+- **同一句话今天已经打给过别的插件。** 14:59 那次崩的是 `dshmarket: import failed (see console for the import error)`（当时我的 0.7.0 还不存在），17:48 那次是 `roadbook: failed`（装的是 0.4.1，控制台里真凶是 `Uncaught Error: list slot "plugins.item" requires options.id`）。这条提示既不是本轮引入的，也不指向具体缺陷。
+- **我的导出没有被 cordis 拒收。** 把 DSH 自带的那份真 `@deepseek-ai/cordis` 4.0.4 从 `app.asar` 取出来当接收点（`ctx.plugin(exports)`）：0.4.1 与 0.7.0 **都被接受**；`factory(require)` 干净、`apply` 在零服务下零异常零警告。区别只有一处：
+
+  | 版本 | 顶层 `inject` | 真 cordis 里 `ctx.plugin()` 的结果 |
+  | :--- | :--- | :--- |
+  | 0.4.1 / 0.7.0 | `['betterSidebar']` | **PENDING**（服务没到就永远不激活） |
+  | 0.7.1 | `[]` | LOADING → **ACTIVE**（零服务也起得来） |
+
+  PENDING 在审计里**同样**算「did not activate」→ 照样 `throw` → 应用打不开。也就是说：**只要 better-sidebar 缺席或稍晚到位，RoadBook 就让整个 DSH 起不来** —— 而「用户把 better-sidebar 关掉」是完全正常的状态。根因就是这一行。
+
+### 修复
+
+- **`lib/client.js` 改为 `var inject = []`**，两个外部服务一律走作用域注入：`slots`（原有）与 `betterSidebar`（新增 `registerSidebarTabs`）。作用域注入只产生子 fiber、不是 loader 条目，不参与那次审计 —— 没有 better-sidebar 就没有「图册」「自进化」两个标签页，但 DSH 一定起得来。
+- 同一条规则仓库里已经写过两遍（宿主半读 `webServer`、自进化行的空 inject），这次是第三处。`_qc/check.ps1` 的断言从「inject 必须含 betterSidebar」**反转**成「顶层 inject 必须是空数组 + slots/betterSidebar 都走作用域注入」，并锚到代码行（`(?m)^\t\tvar inject = \[\];`）—— 注释满足不了它（四条变异逐条实测：好=真 / 坏=假 / 注释=假 / 把接线注释掉=假）。
+- 测试夹具跟着改严：`strictCordisCtx` 补上 `inject(deps, cb)` 的真实语义（服务不在 ⇒ 回调不被调用；在 ⇒ 回调拿到注入过的子 ctx），新增 `sidebarCtx` 作为生产形状的唯一来源。原先那批「假 ctx 把 betterSidebar 当普通属性直接给」的用例，正是让这个缺陷整套测试全绿的原因。
+
+### 复核遗留（未修，属 DSH 侧）
+
+审计把「条目还没被物化」与「条目真的坏了」判成同一件事，再配一句指向控制台的兜底文案；14:59 与 22:08 两次崩溃各自只命中**一个**条目、而且是不同的插件。0.7.1 只消掉了 RoadBook 这条确定性路径，没有修 DSH 的那条竞态。
+
 ## [0.7.0] - 2026-10-05
 
 **更新入口升为一等公民 + 升级生效对账**：更新能力此前只有「侧栏图册标签页页脚」一个落点——不看图册的用户永远不知道有新版本，而且「安装命令退出码 0」与「新版本真的在跑」混为一谈（界面只能说一句「重启 DSH 后生效」，永远没有下文）。按「加能力 → 次版本」走 **0.7.0**。
@@ -25,7 +52,7 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 ### 新能力
 
 - **插件详情页的「检查更新」入口**（用户裁决 Q1=A / Q2=A）：注册进 DSH 内置插件页（侧栏「插件」→ roadbook 组合包详情）声明的三个 list slot —— `plugins.detail.actions`（页头控件，在页面自己的开关与卸载**之前**）、`plugins.detail.badge`（标题旁一枚标签）、`plugins.detail.section`（页面内容之下的区块：状态一句话 + 运行/磁盘/上游三个版本 + 升级对账 + 上次检查时间）。每个条目都按页面的 `subject` 门控：**只认 `{ kind: 'bundle', pkg.name === 'roadbook' }`，其余一律返回 null** —— 这三个 slot 在**每一个**插件的详情页上都会渲染，不做门就等于跑到别人的页面上说话。
-- **接线走作用域注入，`export const inject` 一个字符都不动**（仍是 `['betterSidebar']`）：`ctx.inject(['slots'], …)`，服务缺席或 slot 永不被声明就什么都不发生。把 `slots` 写进 `inject` 会让服务缺席时本行停在「未激活」，而 DSH 的 web boot 把任一未激活条目判成致命错误 —— 那是 0.4.1 那次「应用无法启动」的同一类事故（`_qc/check.ps1` 现在按这条口径加了断言）。
+- **接线走作用域注入**：`ctx.inject(['slots'], …)`，服务缺席或 slot 永不被声明就什么都不发生。把 `slots` 写进 `inject` 会让服务缺席时本行停在「未激活」，而 DSH 的 web boot 把任一未激活条目判成致命错误 —— 那是 0.4.1 那次「应用无法启动」的同一类事故（`_qc/check.ps1` 当时按这条口径加了断言）。**→ 这条口径本身在 0.7.1 被推翻**：`inject` 里留着 `['betterSidebar']` 是同一个错误的另一半（顶层 inject 只要不为空，服务缺席/迟到就让本行 PENDING），见上节。
 - **升级生效对账（闭环）**：`lib/update.js` 新增两个纯函数 —— `lastApplyTarget()` 从观测文件里取最后一次 `apply-finish` 的**目标版本**（`after` 为空串的那次不算：`pnpm` 的 "Already up to date" 没换掉任何东西），`upgradeOutcome()` 把「目标版本」与「本进程加载时的版本」（`bootVersion`）对成四态：`applied` / `pending`（还没重启）/ `newer`（此后被别的版本盖过，不对这次更新下结论）/ `unknown`（读不到）。状态路由把它作为 `status.upgrade` 发出；界面据此把徽标切成「待重启」并如实报出两个版本。
 - **三个版本号分开报**：运行版本（`bootVersion`，重启才会变）／磁盘版本（`installedNow`）／上游版本（`latest`）。装完没重启时磁盘已是新版、内存里还是旧的 —— 合成一个数字就是把这件最容易被误读的事藏起来。
 
