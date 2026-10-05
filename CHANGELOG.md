@@ -18,6 +18,47 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
 
+## [0.4.1] - 2026-10-05
+
+**一次把 DSH 打不开的升级事故**：0.4.0 装上去、重启 DSH 之后弹「应用无法启动或已意外停止」，诊断报告里只有一行
+
+```
+web boot: 1 entry did not activate
+roadbook: failed
+```
+
+这不是「图册标签页没出来」，是**整个应用起不来**。根因在客户端半，而且是一行看起来最无辜的代码。
+
+### 根因
+
+cordis 的 `ctx` 是**严格**的：读一个**没写进 `inject` 的服务**不是返回 `undefined`，而是直接 throw
+
+```
+cannot get property "locale" without inject
+```
+
+（`@deepseek-ai/cordis` 的 `ReflectService.handler.get`；服务只有在某个祖先 fiber 的 `inject` 快照里才可见，走到根 fiber 还找不到就抛。）
+
+0.4.0 为了修「界面恒为中文」，把 `registerLocale(ctx)` 加成了 `apply()` 的**第一行**，而它读的 `ctx.locale` 并不在 `inject` 里（本行只声明了 `betterSidebar`）。于是：
+
+1. `apply()` 抛错 → cordis 把本行 fiber 记成 `failed`（`Fiber._reload` 的 catch 里 `this._error = reason`，`get state()` 随即返回 3）；
+2. 前端 boot 审计遍历所有 loader entry，把非 `active` 的收成一个 `Error` 上抛（`web boot: N entries did not activate`）；
+3. 桌面壳收到 `bootFailed` → 报致命错误 → 「应用无法启动」。
+
+**为什么 0.2.3 没事**：它只在**渲染期**读 locale，而渲染期的 ctx 是 better-sidebar 传进组件的 `props.ctx`（那个 ctx 自己 inject 过 locale），不是本插件自己的 ctx。**激活路径**上读没 inject 的服务，是 0.4.0 新引入的动作。
+
+**为什么自测没抓到**：`test/client-contract.test.mjs` 的假 ctx 是普通对象，`ctx.locale` 永远不抛 —— 假环境比真环境宽松，缺陷全绿通过。
+
+### 修复
+
+- **`readService(ctx, name)`（`lib/client.js`）**：两段口径 —— ① 先试属性访问（inject 过的服务走这条，语义最正）；② 属性访问抛错或为空 → 退回 `ctx.get(name, false)`，即 cordis 官方「不带 inject 要求」的读法，服务不在时返回 `undefined` 而不抛。**永不抛错**。所有服务读取（`locale` × 4、`betterSidebar` × 2）一律改走它。
+- **`apply()` 整段包 try/catch**（真正的接线挪进 `activate()`）：即使将来有人再往激活路径里加一句会抛的代码，最多丢一个标签页，不会再把 DSH 判死。客户端半没有这种权力。
+- **测试环境向真环境看齐**：新增 `strictCordisCtx()`，照抄 cordis 的严格语义（未 inject 的服务读属性就抛，只有 `ctx.get` 能拿到），四条新用例钉住「读不到 → 降级 → 标签页照注册 → 绝不上抛」，另有一条直接钉 `readService` 的两段口径。**变异验证**：把 `readService` 退回属性直读 → 3 条新用例变红；把 `apply` 的 try/catch 摘掉 → 第 4 条变红。两条防线各自独立可验。
+
+### 教训（写给下一次）
+
+假环境比真环境宽松时，测试通过只证明「假环境里能跑」。这次的真环境规则（严格服务访问）是一句能被读到的错误信息，代价是整个 DSH 打不开。**任何插进 `apply()` 的代码，都必须假设它会决定应用能不能启动。**
+
 ## [0.4.0] - 2026-10-05
 
 **一个静默失效的事实**：组合包此前**不会自动更新**（文档原话：卸载 + 重装），而升级路径上还有一层假绿——本机实测 `GET /dsh-market/api/v1/updates?name=roadbook` 返回 `updateAvailable:false`、`installedVersion:"0.2.3"`（回落到版本号 ⇒ 它的 `current` commit 是 null），**而同一时刻环境里装的确实是 0.2.3、远端 main 已经是 0.3.0**。根因在市场的 `lib/updates.js`：github 分支只从 spec 的 `#sha` 或 `readLockCommits()` 取当前 commit，而后者只认 codeload 压缩包形状；pnpm 对 `github:` 简写写的是 `resolution: {commit:…, repo:…, type: git}`。所以本轮**不转发任何人的结论**，自己判定。

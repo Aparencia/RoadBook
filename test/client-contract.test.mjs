@@ -243,6 +243,126 @@ test('重复注册不再判死：better-sidebar 对重复 id 抛错时 apply 不
     assert.doesNotThrow(() => exports.apply(ctx), '注册失败必须就地吞成警告 —— 抛出去 = DSH 无法启动');
 });
 
+// ── 2026-10-05 实机事故回归：cordis 的**严格服务访问**把整个 DSH 启动判死 ──────────
+// cordis 的 ctx 是代理：读一个**没写进 inject 的服务**不是返回 undefined，而是直接
+//     cannot get property "locale" without inject
+// （@deepseek-ai/cordis 的 ReflectService.handler.get；0.2.x 起就是这条语义）。
+// 这个 throw 只要发生在 apply() 里，cordis 就把本行 fiber 记成 failed，前端 boot 审计
+// 随即判死整个应用：
+//     web boot: 1 entry did not activate / roadbook: failed →「应用无法启动或已意外停止」
+// 0.4.0 的 registerLocale() 在 apply() 第一行读 ctx.locale（inject 里只有 betterSidebar），
+// 本机装上去 DSH 就直接打不开。下面三条钉住收口行为，而且**故意照抄 cordis 的语义**
+// 而不是用宽松的普通对象 —— 之前正是「假 ctx 太宽松」让这个缺陷整套测试全绿。
+
+/**
+ * 照抄 cordis `ReflectService.handler.get` 的严格语义造一个 ctx：
+ *   - 直接读属性：只有 inject 过的服务给值，其余**抛** `cannot get property "X" without inject`；
+ *   - `ctx.get(name, false)`：cordis 官方「不带 inject 要求」的读法，服务不在时返回 undefined。
+ * @param {{ injected?: string[], services?: object, getThrows?: boolean }} [options]
+ */
+function strictCordisCtx(options = {}) {
+    const injected = options.injected ?? [];
+    const services = options.services ?? {};
+    const reads = [];
+    const target = {
+        effect: (factory) => factory(),
+        get(name, strict) {
+            reads.push(name);
+            if (options.getThrows === true) throw new Error(`cannot get property "${name}" without inject`);
+            return services[name];
+        },
+    };
+    const proxy = new Proxy(target, {
+        get(t, prop) {
+            if (typeof prop === 'symbol' || String(prop).startsWith('_')) return Reflect.get(t, prop);
+            if (Reflect.has(t, prop)) return Reflect.get(t, prop);
+            if (!injected.includes(prop)) throw new Error(`cannot get property "${prop}" without inject`);
+            return services[prop];
+        },
+    });
+    return { ctx: proxy, reads };
+}
+
+test('未 inject 的 locale 在 apply 里读属性会抛 —— 必须降级走 ctx.get，且照样把标签页注册上', () => {
+    const { exports } = loadBundle();
+    const registered = [];
+    const localeCalls = [];
+    const { ctx, reads } = strictCordisCtx({
+        injected: ['betterSidebar'],
+        services: {
+            betterSidebar: { registerTab(descriptor) { registered.push(descriptor); return () => {}; } },
+            locale: {
+                register(ns, tag, dict) { localeCalls.push([ns, tag, Object.keys(dict).length]); return () => {}; },
+                getSnapshot: () => ({ active: 'en-US' }),
+            },
+        },
+    });
+    assert.doesNotThrow(
+        () => exports.apply(ctx),
+        '读一个没 inject 的服务必须降级成「没有这个服务」—— 抛出去 = fiber failed = DSH 打不开',
+    );
+    assert.equal(registered.length, 1, '兜住异常之后仍要真的把「图册」标签页注册上');
+    assert.deepEqual(
+        localeCalls.map((row) => row[1]),
+        ['zh', 'en'],
+        'locale 双语表要经 ctx.get 拿到服务后照常注册（zh、en 各一次）',
+    );
+    assert.ok(reads.includes('locale'), 'locale 只能走 ctx.get(name, false) 这条路');
+});
+
+test('连 ctx.get 都不可用时：只丢语言表，标签页照注册，且绝不上抛', () => {
+    const { exports } = loadBundle();
+    const registered = [];
+    const { ctx } = strictCordisCtx({
+        injected: ['betterSidebar'],
+        getThrows: true,
+        services: { betterSidebar: { registerTab(descriptor) { registered.push(descriptor); return () => {}; } } },
+    });
+    assert.doesNotThrow(() => exports.apply(ctx));
+    assert.equal(registered.length, 1, '语言是锦上添花：拿不到 locale 不该连标签页一起丢掉');
+});
+
+test('最坏情况（服务全读不到、服务对象自己也是严格代理、effect 也抛）：apply 整段兜底', () => {
+    const { exports } = loadBundle();
+    const { ctx } = strictCordisCtx({ injected: [], getThrows: true, services: {} });
+    assert.doesNotThrow(() => exports.apply(ctx), '客户端半没有把 DSH 判死的权力');
+    // 连 effect 都坏掉时也必须只留警告
+    const hostile = {
+        get effect() { throw new Error('effect exploded'); },
+        get get() { throw new Error('get exploded'); },
+    };
+    assert.doesNotThrow(() => exports.apply(hostile));
+    // 服务对象**本身**是严格代理：`typeof service.registerTab` 这一步就抛。
+    // 这一条只有 apply 外层那圈 try 兜得住 —— readService 只保证「取服务」不抛，
+    // 取到之后的每一步同样在兜底范围内。
+    const proxyService = new Proxy({}, {
+        get(_target, prop) {
+            if (prop === 'features') return [];
+            throw new Error(`cannot get property "${String(prop)}" without inject`);
+        },
+    });
+    const { ctx: withProxyService } = strictCordisCtx({
+        injected: ['betterSidebar'],
+        services: { betterSidebar: proxyService },
+    });
+    assert.doesNotThrow(
+        () => exports.apply(withProxyService),
+        '取到服务之后的每一步也必须在 apply 的兜底范围内',
+    );
+});
+
+test('readService 的两段口径：先属性、抛错后退 ctx.get、都没有给 undefined', () => {
+    const { exports } = loadBundle();
+    const { readService } = exports.__internals;
+    const service = { register() {} };
+    assert.equal(readService({ locale: service }, 'locale'), service, '注入了就走属性访问（语义最正）');
+    assert.equal(readService({}, 'locale'), undefined, '普通对象上没有就是 undefined');
+    const { ctx } = strictCordisCtx({ injected: [], services: { locale: service } });
+    assert.equal(readService(ctx, 'locale'), service, '属性访问抛错后必须退回 ctx.get');
+    const { ctx: dead } = strictCordisCtx({ injected: [], getThrows: true, services: { locale: service } });
+    assert.equal(readService(dead, 'locale'), undefined, '两条路都断了也只是 undefined，绝不抛');
+});
+
 test('同一页面内 apply 跑两次只注册一次（幂等）', () => {
     const { exports } = loadBundle();
     const registered = [];
