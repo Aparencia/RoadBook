@@ -292,7 +292,7 @@
 2. 每个判断给 ❌反例/✅正例 对照
 3. 每个人要做的判断给照着念的清单
 4. 每个命令给可直接复制的一行
-5. 每张卡 ≤150 行（**2026-10-03 起本轮降级为观测项**：按用户裁决"取消行限制、卡片量限制，先完整后续再进行精简"，测量照跑但超限不拦红；下一轮精简时恢复为硬断言）；宪法 ≤240；START-HERE ≤60；ARCHITECTURE ≤120；RUNBOOK ≤100；`SKILL.md` ≤120；项目 `docs/README.md` ≤55；`docs/registry/COMPONENTS.md` 单页 ≤50；教训卡 ≤12；决策卡 ≤60；项目 `STATE.md` ≤45；`CHANGELOG.md` ≤40；新增七份条件文档 OBSERVABILITY ≤80 / PRIVACY ≤80 / I18N ≤60 / USER_GUIDE ≤60 / UI ≤120 / DESIGN_TOKENS ≤110 / MOTION ≤100——超了就是设计错误，回去砍。**模板五个守护脚本另有行数上限（`_qc/check.ps1` 的 `$budget` 表强制）：check ≤110 / doctor ≤80 / gate ≤110 / orphans ≤90 / security ≤130**；`_qc/check.ps1` 自身 ≤670 行（校验器也要有上限；上调须同时改 §8 与本行所在断言——2026-10-03 由 360 上调到 400（superpowers 15 个 skill 内化的 26 条断言 + 内化记录），2026-10-04 由 400 上调到 440（mattpocock/skills 内化断言 20 组 + 内化记录），2026-10-04 由 440 上调到 470（C 档内化：仪器自检 / 加载面评估集 / 台账 / 机判列断言），2026-10-04 由 470 上调到 490（C 档内化批次 3：卡面判据——检查命令列 / 外部意见 / 降标守卫 / 有界复核循环），2026-10-04 由 490 上调到 520（C 档内化批次 4：防幻觉与上下文硬规则 / 七级梯子 / 妥协点标记 / 依赖来源纪律），2026-10-04 由 520 上调到 600（C 档内化批次 5/6：体检信号 15/16 + 改规则四条件 + 二分定位 + 妥协点收口 + 教训卡三字段 + 删除前六问 + 入口 description 规则 + 渐进披露 + 零成本字面近似层），2026-10-04 由 600 上调到 650（安全批次：7-9 外部技能与插件准入卡 + 第五个守护脚本 security.ps1 + 密钥/危险执行链/依赖锁/CI pin 断言），2026-10-05 由 650 上调到 670（门禁改跑整套件 glob：原先逐个点名插件测试文件，banner.test.mjs 因此漏检——本地全绿不算数），2026-10-05 由 670 上调到 700（主插件自动更新：`lib/update.js` 存在性 / 判定必须三态、读不到 = unknown / 两条更新路由与 DNS rebinding 同源守卫 / 根 README 可发现——四条断言各挡一个静默失效方向））
+5. 每张卡 ≤150 行（**2026-10-03 起本轮降级为观测项**：按用户裁决"取消行限制、卡片量限制，先完整后续再进行精简"，测量照跑但超限不拦红；下一轮精简时恢复为硬断言）；宪法 ≤240；START-HERE ≤60；ARCHITECTURE ≤120；RUNBOOK ≤100；`SKILL.md` ≤120；项目 `docs/README.md` ≤55；`docs/registry/COMPONENTS.md` 单页 ≤50；教训卡 ≤12；决策卡 ≤60；项目 `STATE.md` ≤45；`CHANGELOG.md` ≤40；新增七份条件文档 OBSERVABILITY ≤80 / PRIVACY ≤80 / I18N ≤60 / USER_GUIDE ≤60 / UI ≤120 / DESIGN_TOKENS ≤110 / MOTION ≤100——超了就是设计错误，回去砍。**模板五个守护脚本另有行数上限（`_qc/check.ps1` 的 `$budget` 表强制）：check ≤110 / doctor ≤80 / gate ≤110 / orphans ≤90 / security ≤130**；`_qc/check.ps1` 自身 ≤720 行（校验器也要有上限；上调须同时改 §8 与本行所在断言——2026-10-03 由 360 上调到 400（superpowers 15 个 skill 内化的 26 条断言 + 内化记录），2026-10-04 由 400 上调到 440（mattpocock/skills 内化断言 20 组 + 内化记录），2026-10-04 由 440 上调到 470（C 档内化：仪器自检 / 加载面评估集 / 台账 / 机判列断言），2026-10-04 由 470 上调到 490（C 档内化批次 3：卡面判据——检查命令列 / 外部意见 / 降标守卫 / 有界复核循环），2026-10-04 由 490 上调到 520（C 档内化批次 4：防幻觉与上下文硬规则 / 七级梯子 / 妥协点标记 / 依赖来源纪律），2026-10-04 由 520 上调到 600（C 档内化批次 5/6：体检信号 15/16 + 改规则四条件 + 二分定位 + 妥协点收口 + 教训卡三字段 + 删除前六问 + 入口 description 规则 + 渐进披露 + 零成本字面近似层），2026-10-04 由 600 上调到 650（安全批次：7-9 外部技能与插件准入卡 + 第五个守护脚本 security.ps1 + 密钥/危险执行链/依赖锁/CI pin 断言），2026-10-05 由 650 上调到 670（门禁改跑整套件 glob：原先逐个点名插件测试文件，banner.test.mjs 因此漏检——本地全绿不算数），2026-10-05 由 670 上调到 700（主插件自动更新：`lib/update.js` 存在性 / 判定必须三态、读不到 = unknown / 两条更新路由与 DNS rebinding 同源守卫 / 根 README 可发现——四条断言各挡一个静默失效方向）——**注：本条曾与断言不同步**（设计写 ≤670 而 `_qc/check.ps1` 的断言已上调到 700，属"同批改一处漏一处"），2026-10-05 一并纠正；2026-10-05 由 700 上调到 720（自进化行 roadbook-evolve：六条断言——打包白名单须含 `signals.js` / 三态判定 / 两条只读路由 + 同源守卫 / `inject` 必须为空 / `$umbRows` 补齐此前漏登记的 `roadbook-team` / 测试套件 glob 增第三组））
 6. 全部脚本一律 .ps1（Windows 优先）；必须用 .sh 时卡内附一行 Git Bash 跑法
 7. 卡内对母版内部文件的引用 = 0（判据内联）；对项目文件的引用 = 具体路径
 8. 卡头部元信息 ≤3 行（卡号/名/触发），不写"来源/定位/生成日期"长前缀
@@ -445,7 +445,9 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 
 **纪律（防两处真相）**：`SKILL.md` 只做**路由 + 六条铁律 + 红线**，不复制任何判据；判据只在 `playbook/` 卡内，冲突以卡为准并回来修 SKILL.md。`_qc/check.ps1` 用机械断言兜住两点：引用的每张卡必须存在（防卡改名后路由指空）、`description` ≤500 且 `name` 合法（防目录里被截断成看不懂的半句或被 DSH 直接忽略）。
 
-**版本口径**：`V6` 是**世代号**（第 6 代流程），**自 2026-10-05 起不再用于打 tag**（用户裁决：世代号只作流程代际标识，标签线唯一）。发布一律用插件版 semver，唯一事实源 = 根 `package.json` 的 `version`；当前标签线 `v0.4.1 → v0.5.0`。历史 tag `v0.6.0`（2026-10-03 世代首发）原地保留、不移动不删除，但**不再作为版本号参考**——此后新 tag 一律从插件 semver 线续号。判据变更必须重新打 tag——**打 tag 自 `2026-10-05.2` 起由 agent 在发布流程内执行**（用户裁决；见 §4 的 5-6 卡与 5-2 卡），**已发布的 tag 不许移动或删除**（禁 `git tag -f`）。
+**版本口径**：`V6` 是**世代号**（第 6 代流程），**自 2026-10-05 起不再用于打 tag**（用户裁决：世代号只作流程代际标识，标签线唯一）。发布一律用插件版 semver，唯一事实源 = 根 `package.json` 的 `version`；当前标签线 `v0.4.1 → v0.5.0 → v0.6.0`。判据变更必须重新打 tag——**打 tag 自 `2026-10-05.2` 起由 agent 在发布流程内执行**（用户裁决；见 §4 的 5-6 卡与 5-2 卡），**已发布的 tag 不许移动或删除**（禁 `git tag -f`）。
+
+> **唯一例外（2026-10-05，用户裁决，记录在案）**：历史世代号 tag `v0.6.0`（2026-10-03 世代首发，带 GitHub Release）**被删除并改指插件线 v0.6.0**。理由：它已被裁决为「不再作版本号参考」，却仍占着插件 semver 线马上要用的号；删除优于让插件线永久跳过 0.6.0。**这是一次性例外，不是新的通行做法**——上一条「已发布 tag 不许移动或删除」继续对今后每一个 tag 生效；本节的记录与 `CHANGELOG.md` [0.6.0] 节「tag 例外」互为印证，防止后人看到「规则说不许删、历史上却删过一个」时误判规则已废。
 
 ## 14. 版本管理主动性（2026-10-03 增补）
 
@@ -545,11 +547,12 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 | cost-meter | 成本读数 | 工具层：成本读数（不进流程门禁） |
 | code-review / auto-review | 4-2 卡的人审替代车道 | 4-2 卡 |
 | better-sidebar / `present` | 证据展示（截图、报告） | 3-4 卡验收、5-1 卡回执 |
-| roadbook（主插件 = 本仓库根） | 伞形组合包：`- insert:` 下**平铺**四条**可独立开关**的子行（无 group 容器行 —— 容器行在面板上显示成「已关闭」）；装它一次 = 技能分发 + 自动加载 + 图纸工作台 | 根 `README.md` 插件一节、根 `package.json` |
+| roadbook（主插件 = 本仓库根） | 伞形组合包：`- insert:` 下**平铺**五条**可独立开关**的子行（无 group 容器行 —— 容器行在面板上显示成「已关闭」）；装它一次 = 技能分发 + 自动加载 + 图纸工作台 + 自进化信号表 | 根 `README.md` 插件一节、根 `package.json` |
 | ├ roadbook（主行） | 就绪自检（随包文件全在）与版本口径（唯一事实源 = 根 `package.json`）；**自动更新**（0.4.0）：开机查上游版本（默认只提示）→「图册」页「更新」→ 自己跑安装命令替换 → 重启生效，判定五态、命令探测阶梯与观测文件见 `lib/update.js` 顶部注释 | 根 `lib/index.js`、`lib/update.js` |
 | ├ roadbook-skills | 把包内 `skills/` 分发给 DSH（`roadbook` 与 `roadbook-atlas` 两个技能，一个 provider） | §13 分发 |
 | ├ roadbook-autoload | 命中触发词自动加载本流程 | §15（三层门控与关闭方式） |
-| └ roadbook-atlas | 图纸工作台：typed JSON 规格 → 自包含交互式 HTML，成品进 better-sidebar「图册」标签页（渲染器随包 vendored） | `plugin/roadbook-atlas/README.md`（回执契约、退出码口径、三种关闭粒度） |
+| ├ roadbook-atlas | 图纸工作台：typed JSON 规格 → 自包含交互式 HTML，成品进 better-sidebar「图册」标签页（渲染器随包 vendored） | `plugin/roadbook-atlas/README.md`（回执契约、退出码口径、三种关闭粒度） |
+| └ roadbook-evolve | **自进化信号表**（0.6.0）：S1 观测臂污染 / S2 注入活性 / S3 常驻提示可用率 / S4 工作树 / S5 规则索引 / S6 路由完整性，三态判定（读不到 = `unknown`，不许显示成 `ok`），两条只读路由 + 侧栏「自进化」标签页 | §17.5、`plugin/roadbook-evolve/README.md` |
 | gitbash-shell | 命令解释器差异 | 契约 §2② 正斜杠 + PowerShell 5.1 兼容（`Select-String` 无 `-Recurse`） |
 
 > 2026-10-03 用户裁决：运行时协作三张工具卡（原 8-1 / 8-2 / 8-3）已删除，本表保留的是**DSH 官方工具面的适配记录**——工具仍可直接使用，动作仍照主线卡走；多 agent 并行的机械判据在 4-1 卡并行车道，验收口径在 §12 个人档。
@@ -585,3 +588,30 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 
 - **计数类自查的模式必须覆盖同一事实的所有量词**：`README.md:19` 写的是「路由表 41 **行**」，而本批的自查模式是 `'41 张'`，两条 Select-String 都把它放过去了——直到执行者自己逐行核 diff 才发现。凡计数自查，模式要写成宽松式（如 `41\s*[张行个]`）再逐条判读，不能只搜自己刚写过的那个量词。
 - **改 `.ps1` 后必须验证 UTF-8 BOM**：本批一次编辑抹掉了 `_qc/check.ps1` 的 BOM，Windows PowerShell 5.1 随即按 ANSI 解码该文件，中文全成乱码并抛 `Unexpected token '寮?'` 级解析错误；而 pwsh 7 与 `git diff` 都看不出任何异常（diff 里中文照样正常显示）。**判据：`[IO.File]::ReadAllBytes()` 前三字节 = `239,187,191`**。`template/security.ps1` 早已把「`.ps1` 无 BOM」列为红项，母版自身也在其射程内——本节所记即该判据的一次真实触发。
+
+### 17.5 自进化行 roadbook-evolve（0.5.0 → 0.6.0；2026-10-05，用户裁决）
+
+**起因（三条同源证据，全部来自本机实测）**：① 自动加载行的自进化三环（命中观测 / 技能指纹对账 / 空转观测）在真机上**零读数**——`%TEMP%\roadbook-autoload.jsonl` 138 条记录里 `inject` 0 条、`card-read` 0 条、`idle` 0 条，而 banner 的 33 次注册里 **25 次 `unavailable`**；② 卡行为自测脚手架 `_qc/baseline/` 的 `ledger.json` 至今 `entries: []`（从未运行，缺 headless harness 就 exit 2）；③ `%TEMP%\roadbook-update.jsonl` 的 468 条里混着 **65 对测试假记录**（`fake-installer.mjs`、哨兵版本 `9.9.9`）——**给 6-6 体检抽样的数据是脏的**。结论：RoadBook 能发现「没照做」，发现不了「该不该这么做」，而前者也缺一个**不依赖人记得跑**的读数口。
+
+**形态（第 6 行，`- insert:` 平铺）**：`roadbook-evolve` → 模块 `roadbook/evolve`，宿主半 `plugin/roadbook-evolve/index.js`（接线）+ 纯逻辑 `signals.js`（可离线单测），客户端半在伞包 `lib/client.js` 注册第二个标签页「自进化」（order 46）。**不单独安装**（与 atlas / team 同口径：它相对 import 伞包 `lib/update.js` 复用 `trustedLocalRequest`，故无独立 `dsh.bundle`）。
+
+**六条信号（三态判定，阈值常量在 `signals.js`、README、测试三处同值）**：
+
+| id | 信号 | 越界判据 | 首次实现时的本机读数 |
+| :-: | :-- | :-- | :-- |
+| S1 | 观测臂污染 | 命中测试痕量的记录占比 > 0 | 65/468 |
+| S2 | 注入活性 | `inject = 0` 且 `loaded ≥ 10` | 0/35 |
+| S3 | banner 可用率 | `registered/banner < 50%` | 4/33 = 12% |
+| S4 | 工作树状态 | `git status --porcelain` 行数 > 0 | 0 |
+| S5 | 规则索引健康 | `rules.mjs --audit` 退出码 ≠ 0 | 0（42 条判绿） |
+| S6 | 路由完整性 | `route.mjs --audit` 退出码 ≠ 0 | 0 |
+
+**三条不变量**：① **读不到就是 `unknown`**——文件缺失、git 跑不起来、audit 超时、样本不足一律判 `unknown` 并写明原因，**「判不了」与「一切正常」必须长得不一样**（这是本行存在的全部理由）；② **不复刻既有判据**——S5/S6 只记退出码，判据仍在 `rules.mjs` / `route.mjs` 手里（复刻 = 第二处真相）；③ **任何一侧失败都不上抛**——抛出去会把整行变成面板上的「未运行」（0.4.1 的同型事故）。
+
+**边界（V1 明确不做）**：不自动开 GitHub issue（凭据 + 台账公开性需裁决 + 外部 CLI 要走 7-9 准入）、不自动改卡（撞 A6）、不写仓库文件（默认落 `<tmpdir>`，避免脏树破 B9）、不跑 LLM harness（属 `schedule` 唤醒的活）。S1 **是启发式**：按内容标记分 `prod`/`suspect`，判不出的记 `unknown` 单独显示；V2 应由生产者直接写 `arm: prod|test` 字段。
+
+**新增一条通用门槛（本行第一个遵守）**：**任何自进化机制必须回答「它怎么被证明还活着」**。本行每次 tick 往 `<tmpdir>/roadbook-evolve.jsonl` 写一条 `tick` 事件，标签页显示「上次 tick：x 分钟前」，超过 48 小时没有 tick 即判 `hit`——一个会静默死掉的观测机制比没有更糟，因为它让人以为有人在看着。
+
+**本批沉淀的一条教训（假绿方向）**：宿主半初版 `readGit` 只取 `git status --porcelain` 的**退出码**却写死 `porcelainLines: 0`，于是 S4 永远显示「工作树干净」；而 `signals.test.mjs`（纯逻辑）**18 例全绿**——它证明「算得对」，证明不了「喂进去的是真数据」。修法是补 `service.test.mjs`（13 例，注入假子进程与假文件读取），其中一条就是把「stdout 有行必须判 hit」钉死。**接线层必须有自己的测试**，否则纯逻辑层的绿色是假绿的同谋。
+
+**验收**：`node plugin/roadbook-evolve/test/signals.test.mjs` 18/18、`service.test.mjs` 13/13；`test/umbrella-contract.test.mjs` 的平铺行数断言 5 → 6（并新增 evolve 导出面三条）；`_qc/check.ps1` 的 `$umbSub` 4 → 5 个入口、`$umbRows` **4 → 6 行（顺带补齐此前漏登记的 `roadbook-team`）**、新增 evolve 包/文件/路由/`inject` 四条断言、测试套件 glob 增第三组。

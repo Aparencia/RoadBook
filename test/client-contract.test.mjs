@@ -31,6 +31,8 @@ const CLIENT_URL = new URL('../lib/client.js', import.meta.url);
 const SOURCE = readFileSync(CLIENT_URL, 'utf8');
 const PACKAGE_NAME = 'roadbook';
 const TAB_ID = 'roadbook:gallery';
+/** 第二个标签页（2026-10-05 批 3）：宿主半判定，客户端半只显示。 */
+const EVOLVE_TAB_ID = 'roadbook:evolve';
 
 /** 假 React：只要够组件首帧渲染一次。 */
 function fakeReact() {
@@ -100,7 +102,7 @@ test('better-sidebar 缺席时静默跳过（不抛错、不注册）', () => {
     assert.equal(effected, 0);
 });
 
-test('apply 通过 ctx.effect 注册一个 single tab，disposer 被 fiber 持有', () => {
+test('apply 通过 ctx.effect 注册两个 single tab（图册 45 / 自进化 46），disposer 被 fiber 持有', () => {
     const { exports } = loadBundle();
     const registered = [];
     const disposer = () => {};
@@ -116,11 +118,15 @@ test('apply 通过 ctx.effect 注册一个 single tab，disposer 被 fiber 持�
         effect: (factory) => factory(),
     };
     exports.apply(ctx);
-    assert.equal(registered.length, 1);
-    const descriptor = registered[0];
-    assert.equal(descriptor.id, TAB_ID);
+    assert.deepEqual(
+        Array.from(registered, (row) => row.id),
+        [TAB_ID, EVOLVE_TAB_ID],
+        '两个标签页都要注册（图册在前：45 < 46）',
+    );
+    const descriptor = registered.find((row) => row.id === TAB_ID);
     assert.equal(descriptor.single, true, '一个会话只该有一个图册标签页');
     assert.equal(typeof descriptor.order, 'number');
+    assert.equal(descriptor.order, 45);
     assert.equal(typeof descriptor.component, 'function');
     assert.equal(typeof descriptor.title, 'function');
     assert.equal(typeof descriptor.icon, 'function');
@@ -131,6 +137,16 @@ test('apply 通过 ctx.effect 注册一个 single tab，disposer 被 fiber 持�
     // 图标必须能在两种尺寸下渲染出元素
     assert.ok(descriptor.icon(16));
     assert.ok(descriptor.icon(20));
+
+    const evolve = registered.find((row) => row.id === EVOLVE_TAB_ID);
+    assert.equal(evolve.order, 46, '自进化紧随图册之后');
+    assert.equal(evolve.single, true, '一个会话只该有一个自进化标签页');
+    assert.equal(typeof evolve.component, 'function');
+    assert.equal(typeof evolve.title, 'function');
+    assert.equal(typeof evolve.description, 'function');
+    assert.ok(evolve.icon(16));
+    assert.ok(evolve.icon(20));
+    assert.equal(evolve.settings, undefined, '这一页没有设置项：settings 在 better-sidebar 里是可选的');
 });
 
 test('tab 根节点满足原生 tab 高度契约，且列表/空态都能首帧渲染', () => {
@@ -139,7 +155,8 @@ test('tab 根节点满足原生 tab 高度契约，且列表/空态都能首帧�
         let found = null;
         exports.apply({
             locale: 'zh-CN',
-            betterSidebar: { features: [], registerTab: (d) => { found = d; return () => {}; } },
+            // 本半挂了两个标签页：这里只取「图册」那一个（最后一个注册的不是它）
+            betterSidebar: { features: [], registerTab: (d) => { if (d.id === TAB_ID) found = d; return () => {}; } },
             effect: (factory) => factory(),
         });
         return found;
@@ -189,12 +206,7 @@ test('版本号三处一致，且页脚真的显示它', async () => {
     const host = await import(new URL('../lib/index.js', import.meta.url).href);
     assert.equal(host.pluginVersion(), manifest.version, '宿主半 pluginVersion() 必须等于 package.json 的 version');
 
-    let descriptor = null;
-    exports.apply({
-        locale: 'zh-CN',
-        betterSidebar: { features: [], registerTab: (d) => { descriptor = d; return () => {}; } },
-        effect: (factory) => factory(),
-    });
+    const descriptor = descriptorOf(exports, { locale: 'zh-CN' });
     const tree = descriptor.component({
         ctx: { locale: 'zh-CN', betterSidebar: { features: [] } },
         store: { getPrefs: () => ({ pluginSettings: {} }) },
@@ -220,6 +232,14 @@ test('版本号三处一致，且页脚真的显示它', async () => {
     assert.ok(
         labels.some((label) => label.endsWith(`v${manifest.version}`)),
         `页脚应显示 v${manifest.version}，实际尾部文案：${labels.slice(-4).join(' | ')}`,
+    );
+
+    // 第二个标签页的页脚同样必须显示当前版本（两处手写常量，升版本时都会漂）
+    const evolveFrame = exports.__internals.evolveFrame({ t: (key) => key, view: null, error: '', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
+    const evolveLabels = collectLabels(evolveFrame);
+    assert.ok(
+        evolveLabels.some((label) => label.endsWith(`v${manifest.version}`)),
+        `自进化页脚也应显示 v${manifest.version}，实际：${evolveLabels.slice(-3).join(' | ')}`,
     );
 });
 
@@ -301,7 +321,8 @@ test('未 inject 的 locale 在 apply 里读属性会抛 —— 必须降级走 
         () => exports.apply(ctx),
         '读一个没 inject 的服务必须降级成「没有这个服务」—— 抛出去 = fiber failed = DSH 打不开',
     );
-    assert.equal(registered.length, 1, '兜住异常之后仍要真的把「图册」标签页注册上');
+    assert.equal(registered.length, 2, '兜住异常之后仍要真的把两个标签页注册上');
+    assert.deepEqual(Array.from(registered, (d) => d.id), [TAB_ID, EVOLVE_TAB_ID]);
     assert.deepEqual(
         localeCalls.map((row) => row[1]),
         ['zh', 'en'],
@@ -319,7 +340,8 @@ test('连 ctx.get 都不可用时：只丢语言表，标签页照注册，且�
         services: { betterSidebar: { registerTab(descriptor) { registered.push(descriptor); return () => {}; } } },
     });
     assert.doesNotThrow(() => exports.apply(ctx));
-    assert.equal(registered.length, 1, '语言是锦上添花：拿不到 locale 不该连标签页一起丢掉');
+    assert.equal(registered.length, 2, '语言是锦上添花：拿不到 locale 不该连标签页一起丢掉');
+    assert.deepEqual(Array.from(registered, (d) => d.id), [TAB_ID, EVOLVE_TAB_ID]);
 });
 
 test('最坏情况（服务全读不到、服务对象自己也是严格代理、effect 也抛）：apply 整段兜底', () => {
@@ -378,7 +400,8 @@ test('同一页面内 apply 跑两次只注册一次（幂等）', () => {
     };
     exports.apply(ctx);
     exports.apply(ctx);
-    assert.equal(registered.length, 1, '第二次 apply 不许再注册（否则真实 better-sidebar 会 throw）');
+    assert.equal(registered.length, 2, '第二次 apply 不许再注册（否则真实 better-sidebar 会对重复 id 抛错）');
+    assert.deepEqual(Array.from(registered, (d) => d.id), [TAB_ID, EVOLVE_TAB_ID], '两个标签页各自只登记一次');
 });
 
 test('服务注册表里已有同 id 的 tab 时跳过注册，且不调用 registerTab', () => {
@@ -388,7 +411,7 @@ test('服务注册表里已有同 id 的 tab 时跳过注册，且不调用 regi
         locale: 'zh-CN',
         betterSidebar: {
             getTabs: () => [{ id: TAB_ID }],
-            registerTab() {
+            registerTab(descriptor) {
                 calls += 1;
                 return () => {};
             },
@@ -396,13 +419,29 @@ test('服务注册表里已有同 id 的 tab 时跳过注册，且不调用 regi
         effect: (factory) => factory(),
     };
     exports.apply(ctx);
-    assert.equal(calls, 0, '上一代实例留下的同 id 注册应被识别并跳过');
+    assert.equal(calls, 1, '上一代实例留下的「图册」注册应被识别并跳过，只补注册缺的那个');
+    // 两个 id 都在注册表里 → 一个也不许再注册
+    let both = 0;
+    const ctx2 = {
+        locale: 'zh-CN',
+        betterSidebar: {
+            getTabs: () => [{ id: TAB_ID }, { id: EVOLVE_TAB_ID }],
+            registerTab() {
+                both += 1;
+                return () => {};
+            },
+        },
+        effect: (factory) => factory(),
+    };
+    exports.apply(ctx2);
+    assert.equal(both, 0, '两个 id 都已注册 → 一次 registerTab 都不许调');
 });
 
 test('effect 撤销后标记复位，下一次 apply 仍能注册（热更新不留死角）', () => {
     const { exports } = loadBundle();
     const registered = [];
-    let disposer = null;
+    // 两个标签页各注册一次 = 两个 effect，撤销时要把两个 disposer 都收回来
+    const disposers = [];
     const ctx = {
         locale: 'zh-CN',
         betterSidebar: {
@@ -412,15 +451,15 @@ test('effect 撤销后标记复位，下一次 apply 仍能注册（热更新不
             },
         },
         effect: (factory) => {
-            disposer = factory();
+            disposers.push(factory());
         },
     };
     exports.apply(ctx);
-    assert.equal(registered.length, 1);
-    assert.equal(typeof disposer, 'function', '注册必须返回 disposer 交给 fiber');
-    disposer();
+    assert.equal(registered.length, 2);
+    assert.deepEqual(disposers.map((fn) => typeof fn), ['function', 'function'], '每个注册都要返回 disposer 交给 fiber');
+    disposers.forEach((fn) => fn());
     exports.apply(ctx);
-    assert.equal(registered.length, 2, '撤销后应能重新注册');
+    assert.equal(registered.length, 4, '撤销后两个都应能重新注册');
 });
 
 // ── 2026-10-05 第二批：预览截断、语言快照、自动刷新指纹、规格过期判定 ──────────
@@ -445,12 +484,12 @@ function collectLabels(tree) {
     return labels;
 }
 
-/** 用给定 ctx 注册一次标签页并取回描述符。 */
-function descriptorOf(exports, ctx) {
+/** 用给定 ctx 注册一次标签页并取回**指定 id** 的描述符（默认图册；本半现在挂两个标签页）。 */
+function descriptorOf(exports, ctx, id = TAB_ID) {
     let descriptor = null;
     exports.apply({
         ...ctx,
-        betterSidebar: { features: [], registerTab: (d) => { descriptor = d; return () => {}; }, ...(ctx.betterSidebar || {}) },
+        betterSidebar: { features: [], registerTab: (d) => { if (d.id === id) descriptor = d; return () => {}; }, ...(ctx.betterSidebar || {}) },
         effect: (factory) => factory(),
     });
     return descriptor;
@@ -741,4 +780,276 @@ test('更新条首帧：等状态时渲染「检查中」，且图册标签页�
     };
     walkTypes(tabTree);
     assert.equal(found, true, '图册标签页必须挂上更新条');
+});
+
+// ── 2026-10-05 批 3：「自进化」标签页（宿主半判定 → 这一半只显示） ──────────────
+// 本仓库最在意的一条口径就落在这里：**unknown 必须显示成「判不了」，绝不能显示成正常**
+// （读不到 ≠ 通过）。另外宿主路由不在时要整块降级、不留死按钮。
+// 假 React 跑不了 effect / setState，所以「加载完成」那一帧驱动不到 —— 渲染因此被抽成纯函数
+// evolveFrame：任意一帧都能在 Node 里逐字钉住，而不是只钉一张映射表。
+
+/** 收集一帧里所有「徽标」样式的 span：{ text, border }（假 React 把子节点放在 children 数组里）。 */
+function collectBadges(tree) {
+    const out = [];
+    const walk = (node) => {
+        if (node === null || node === undefined || typeof node === 'boolean') return;
+        if (Array.isArray(node)) {
+            node.forEach(walk);
+            return;
+        }
+        if (typeof node !== 'object') return;
+        const style = node.props && node.props.style;
+        if (style && typeof style === 'object' && typeof style.border === 'string' && style.borderRadius === '999px') {
+            out.push({ text: (node.children || []).filter((child) => typeof child === 'string').join(''), border: style.border });
+        }
+        (node.children || []).forEach(walk);
+    };
+    walk(tree);
+    return out;
+}
+
+/** 收集一帧里所有指定类型的元素。 */
+function collectElements(tree, type) {
+    const out = [];
+    const walk = (node) => {
+        if (node === null || node === undefined || typeof node === 'boolean') return;
+        if (Array.isArray(node)) {
+            node.forEach(walk);
+            return;
+        }
+        if (typeof node !== 'object') return;
+        if (node.type === type) out.push(node);
+        (node.children || []).forEach(walk);
+    };
+    walk(tree);
+    return out;
+}
+
+/** evolveFrame 用的查表函数：直接吃 bundle 里的中文表（键缺失回显键名，便于发现漏翻译）。 */
+function evolveT(dictionaries) {
+    return (key) => (typeof dictionaries.zh[key] === 'string' ? dictionaries.zh[key] : key);
+}
+
+/** 一条真实形状的载荷（照抄宿主半 plugin/roadbook-evolve/index.js 的 evaluateSignals 输出）。 */
+function evolvePayload() {
+    return {
+        ok: true,
+        signals: [
+            { id: 'S2', title: '注入活性', unit: 'inject/loaded', reading: '0/138', threshold: 'inject = 0 且 loaded ≥ 10', verdict: 'hit', detail: '一次都没注入过' },
+            { id: 'S4', title: '工作树状态', unit: 'porcelain 行数', reading: null, threshold: '> 0', verdict: 'unknown', detail: 'git 读不到' },
+            { id: 'S5', title: '规则索引健康', unit: '退出码', reading: '0', threshold: '退出码 ≠ 0', verdict: 'ok', detail: 'rules.mjs 判绿' },
+        ],
+        tally: { total: 6, hit: 0, ok: 6, unknown: 0 },
+        liveness: { ticks: 3, lastTickAt: '2026-10-05T12:00:00.000Z', ageMinutes: 5, verdict: 'ok' },
+        autoload: { total: 138, loaded: 12, inject: 0, cardRead: 0, idle: 0, arms: { prod: 73, suspect: 65, unknown: 0 } },
+        update: { total: 65, checks: 4, applyStart: 2, applyFailures: 0 },
+        generatedAt: '2026-10-05T12:30:00.000Z',
+    };
+}
+
+test('自进化三态：只有字面量 ok/hit 被承认，其余（含缺失与大小写不同）一律判不了', () => {
+    const { evolveVerdictOf, evolveVerdictKey } = loadBundle().exports.__internals;
+    assert.equal(evolveVerdictOf('ok'), 'ok');
+    assert.equal(evolveVerdictOf('hit'), 'hit');
+    assert.equal(evolveVerdictOf('unknown'), 'unknown');
+    assert.equal(evolveVerdictOf(undefined), 'unknown', '缺字段 = 判不了，不是通过');
+    assert.equal(evolveVerdictOf(null), 'unknown');
+    assert.equal(evolveVerdictOf(''), 'unknown');
+    assert.equal(evolveVerdictOf('OK'), 'unknown', '大小写不同不许蒙混成正常（宿主契约是小写）');
+    assert.equal(evolveVerdictOf('warn'), 'unknown', '宿主将来加的新取值一律默认拒绝');
+    assert.notEqual(evolveVerdictKey('unknown'), evolveVerdictKey('ok'), '「判不了」与「正常」必须是两句不同的话');
+    assert.notEqual(evolveVerdictKey('hit'), evolveVerdictKey('ok'));
+});
+
+test('evolveView：没读数的信号不许显示成正常；tally 由行自己数，不采信宿主那一份', () => {
+    const { evolveView } = loadBundle().exports.__internals;
+    assert.equal(evolveView(null), null);
+    assert.equal(evolveView({ ok: false, error: 'handler' }), null, 'ok !== true = 整块不渲染');
+    assert.equal(evolveView({ ok: true }), null, 'signals 不是数组 = 整块不渲染');
+    assert.equal(evolveView({ ok: true, signals: {} }), null);
+
+    const view = evolveView({
+        ok: true,
+        signals: [
+            { id: 'S2', title: '注入活性', unit: 'inject/loaded', reading: '0/138', threshold: 'x', verdict: 'hit', detail: '' },
+            { id: 'S3', title: 'banner 可用率', unit: 'registered/banner', reading: null, threshold: '< 50%', verdict: 'unknown', detail: '没有 banner 记录' },
+            // 宿主自相矛盾：说 ok 却没有读数 —— 界面必须降成 unknown（读不到 ≠ 通过）
+            { id: 'S9', title: '矛盾样本', unit: 'x', reading: null, threshold: '> 0', verdict: 'ok', detail: '' },
+            null,
+        ],
+        tally: { total: 99, hit: 0, ok: 99, unknown: 0 },
+        liveness: { ticks: 0, lastTickAt: null, ageMinutes: null, verdict: 'ok' },
+        generatedAt: '2026-10-05T12:00:00.000Z',
+    });
+    assert.deepEqual(Array.from(view.signals, (row) => row.id), ['S2', 'S3', 'S9'], '坏行丢掉，好行一个不少');
+    assert.deepEqual(Array.from(view.signals, (row) => row.verdict), ['hit', 'unknown', 'unknown']);
+    assert.equal(view.tally.total, 3);
+    assert.equal(view.tally.hit, 1);
+    assert.equal(view.tally.ok, 0, '没有一条真正的 ok');
+    assert.equal(view.tally.unknown, 2, 'tally 由行自己数：宿主把 unknown 数进 ok 的那种错必须数得出来');
+    assert.equal(view.liveness.ticks, 0);
+    assert.equal(view.liveness.verdict, 'unknown', '一次 tick 都没有却说正常 = 自相矛盾，降成判不了');
+    assert.equal(evolveView({ ok: true, signals: [] }).liveness, null, '没有 liveness 字段就不渲染那块');
+});
+
+test('自进化一帧：unknown 渲染成「判不了」+ 中性虚线；有读数才配「正常」', () => {
+    const { evolveView, evolveFrame, dictionaries } = loadBundle().exports.__internals;
+    const t = evolveT(dictionaries);
+    const view = evolveView(evolvePayload());
+    const tree = evolveFrame({ t, view, error: '', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
+    const labels = collectLabels(tree);
+
+    // 计数三态分开显示，且是哪三句
+    assert.ok(labels.includes(`${dictionaries.zh['evolve.tally.hit']} 1`), `缺越界计数：${labels.join(' | ')}`);
+    assert.ok(labels.includes(`${dictionaries.zh['evolve.tally.ok']} 1`), '缺正常计数');
+    assert.ok(labels.includes(`${dictionaries.zh['evolve.tally.unknown']} 1`), '缺判不了计数');
+    assert.ok(labels.some((label) => label.includes('判不了 ≠ 通过：读不到就是不通过')));
+
+    // 行级徽标：unknown 行 = 判不了 + 虚线；ok 行 = 正常 + 实线
+    // （计数徽标是「词 + 空格 + 数字」，行级徽标只有词；两种都要落在同一条判据上）
+    const badges = collectBadges(tree);
+    const ofWord = (word) => badges.filter((badge) => badge.text === word || badge.text.indexOf(`${word} `) === 0);
+    const undecided = ofWord(dictionaries.zh['evolve.tally.unknown']);
+    const ok = ofWord(dictionaries.zh['evolve.tally.ok']);
+    assert.equal(undecided.length, 2, '一个在计数行（「判不了 N」）、一个在那条 unknown 信号上');
+    assert.equal(ok.length, 3, '计数行 + 那条 ok 信号 + 自身活性（同一份载荷里 liveness 也是 ok）');
+    undecided.forEach((badge) => assert.ok(badge.border.includes('dashed'), `判不了必须用中性虚线：${badge.border}`));
+    ok.forEach((badge) => assert.ok(badge.border.includes('solid'), '正常是实线：与判不了肉眼可分'));
+    const hit = ofWord(dictionaries.zh['evolve.tally.hit']);
+    assert.equal(hit.length, 2);
+
+    // 没有读数的那条：显示「无读数」，且绝不许出现「0」或「正常」蒙混
+    assert.ok(labels.some((label) => label.includes(dictionaries.zh['evolve.noReading'])), `缺无读数提示：${labels.join(' | ')}`);
+    assert.ok(labels.includes('git 读不到'), '宿主给的 detail（判不了的原因）必须显示');
+    // autoload / update 观测摘要：测试痕量必须单独报数（6-6 抽样抽到混合物的那件事）
+    assert.ok(labels.some((label) => label.includes('测试痕量 65/138')), `缺痕量计数：${labels.join(' | ')}`);
+    assert.ok(labels.some((label) => label.includes('记录 138')), '缺 autoload 摘要');
+    assert.ok(labels.some((label) => label.includes('记录 65')), '缺 update 摘要');
+    assert.equal(collectElements(tree, 'iframe').length, 0, '这一页不预览任何文件');
+});
+
+test('自进化一帧：宿主路由不在 = 整块降级、一个按钮都不留；刷新失败 = 旧读数顶警告', () => {
+    const { evolveView, evolveFrame, dictionaries } = loadBundle().exports.__internals;
+    const t = evolveT(dictionaries);
+
+    // ① 路由不在：只有说明，没有按钮（点 404 的死按钮不许出现）
+    const gone = evolveFrame({ t, view: null, error: 'Failed to fetch', unavailable: true, busy: false, onRefresh() {}, onTick() {} });
+    const goneLabels = collectLabels(gone);
+    assert.ok(goneLabels.includes(dictionaries.zh['evolve.unavailable']));
+    assert.ok(goneLabels.includes(dictionaries.zh['evolve.unavailableHint']));
+    assert.equal(collectElements(gone, 'button').length, 0, '路由不在时不许留任何按钮');
+    assert.ok(!goneLabels.includes(dictionaries.zh['evolve.tick']), '更不许留「重算」');
+
+    // ② 首帧（还没读到）：只说正在读，同样不给按钮
+    const first = evolveFrame({ t, view: null, error: '', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
+    const firstLabels = collectLabels(first);
+    assert.ok(firstLabels.includes(dictionaries.zh['evolve.loading']));
+    assert.equal(collectElements(first, 'button').length, 0);
+
+    // ③ 有读数 + 刷新失败：数据留着，但顶着一条警告（不能让人以为是刚读到的）
+    const stale = evolveFrame({ t, view: evolveView(evolvePayload()), error: 'HTTP 500', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
+    const staleLabels = collectLabels(stale);
+    assert.ok(staleLabels.some((label) => label.includes('读取失败：HTTP 500')));
+    assert.ok(staleLabels.includes('注入活性'), '旧读数仍要显示');
+
+    // ④ 有读数时给两个手动入口：刷新 + 重算（忙时显示「正在重算…」）
+    const ready = evolveFrame({ t, view: evolveView(evolvePayload()), error: '', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
+    const buttons = collectElements(ready, 'button');
+    assert.equal(buttons.length, 2);
+    assert.deepEqual(Array.from(buttons, (node) => node.children[0]), [dictionaries.zh['action.refresh'], dictionaries.zh['evolve.tick']]);
+    const busy = evolveFrame({ t, view: evolveView(evolvePayload()), error: '', unavailable: false, busy: true, onRefresh() {}, onTick() {} });
+    assert.ok(collectLabels(busy).includes(dictionaries.zh['evolve.ticking']), '重算进行中要说出来');
+});
+
+test('自进化请求：状态走 GET /roadbook/evolve/status，重算走 POST /roadbook/evolve/tick', async () => {
+    const requests = [];
+    const { exports } = loadBundle({
+        fetch: async (url, init) => {
+            requests.push({ url, method: init && init.method, body: init && init.body });
+            return { ok: true, status: 200, json: async () => ({ ok: true, signals: [] }) };
+        },
+    });
+    const { fetchEvolveStatus, fetchEvolveTick, EVOLVE_STATUS_PATH, EVOLVE_TICK_PATH } = exports.__internals;
+    assert.equal(EVOLVE_STATUS_PATH, '/roadbook/evolve/status');
+    assert.equal(EVOLVE_TICK_PATH, '/roadbook/evolve/tick');
+    const status = await fetchEvolveStatus();
+    assert.equal(status.ok, true);
+    await fetchEvolveTick();
+    assert.deepEqual(requests.map((row) => `${row.method} ${row.url}`), [
+        'GET /roadbook/evolve/status',
+        'POST /roadbook/evolve/tick',
+    ]);
+    assert.equal(requests[1].body, '{}', '重算不改状态：宿主半自己读文件、跑审计');
+});
+
+test('自进化路由不在（404）/ 宿主连不上：如实报「不可用」，不是「全是正常」', async () => {
+    const missing = loadBundle({ fetch: async () => ({ ok: false, status: 404, json: async () => ({ error: 'not found' }) }) });
+    const gone = await missing.exports.__internals.fetchEvolveStatus();
+    assert.equal(gone.ok, false);
+    assert.equal(gone.unavailable, true);
+    assert.equal(missing.exports.__internals.evolveView(gone), null, '读不到 = 整块不渲染（不是空表，更不是全绿）');
+
+    const offline = loadBundle({
+        fetch: async () => {
+            throw new Error('Failed to fetch');
+        },
+    });
+    assert.equal((await offline.exports.__internals.fetchEvolveStatus()).unavailable, true);
+
+    const refused = loadBundle({
+        fetch: async () => ({ ok: false, status: 403, json: async () => ({ ok: false, error: 'untrusted-origin' }) }),
+    });
+    const denied = await refused.exports.__internals.fetchEvolveStatus();
+    assert.equal(denied.unavailable, false, '403 是「路由在但拒绝了」：要显示原因，不能静默');
+    assert.equal(denied.reason, 'untrusted-origin');
+
+    // 200 但 ok !== true（宿主自己的兜底形状）也不许被当成一份读数
+    const odd = loadBundle({ fetch: async () => ({ ok: true, status: 200, json: async () => ({ ok: false, error: 'handler', message: 'boom' }) }) });
+    const bad = await odd.exports.__internals.fetchEvolveStatus();
+    assert.equal(bad.ok, false);
+    assert.equal(bad.unavailable, false);
+    assert.equal(bad.reason, 'handler');
+});
+
+test('中英两份文案逐键对齐（不只是长度相同），自进化三态两份都在', () => {
+    const { dictionaries } = loadBundle().exports.__internals;
+    const zhKeys = Object.keys(dictionaries.zh).sort();
+    const enKeys = Object.keys(dictionaries.en).sort();
+    // 只比长度会漏掉「键名漂移」：中文有、英文没有的键，界面里会原样回显键名
+    assert.deepEqual(enKeys, zhKeys, '中英两份必须逐键对齐');
+    for (const key of ['evolve.tabTitle', 'evolve.tabDesc', 'evolve.tally.ok', 'evolve.tally.hit', 'evolve.tally.unknown', 'evolve.unavailable', 'evolve.noReading', 'evolve.tick', 'evolve.livenessNever']) {
+        assert.ok(zhKeys.includes(key), `中文表缺 ${key}`);
+    }
+    assert.notEqual(dictionaries.zh['evolve.tally.unknown'], dictionaries.zh['evolve.tally.ok']);
+    assert.notEqual(dictionaries.en['evolve.tally.unknown'], dictionaries.en['evolve.tally.ok']);
+    assert.equal(dictionaries.zh['evolve.tally.unknown'], '判不了');
+});
+
+test('自进化标签页：首帧渲染「正在读取信号…」，根节点满足原生 tab 高度契约，标题双语', () => {
+    const { exports } = loadBundle();
+    const descriptor = descriptorOf(exports, { locale: 'zh-CN' }, EVOLVE_TAB_ID);
+    assert.equal(descriptor.id, EVOLVE_TAB_ID);
+    assert.equal(exports.EVOLVE_TAB_ID, EVOLVE_TAB_ID);
+    assert.equal(descriptor.title(), '自进化');
+    // 英文标题要另起一个 bundle：同一个 bundle 的模块级幂等标记不会让第二次注册生效
+    const en = descriptorOf(loadBundle().exports, { locale: 'en-US' }, EVOLVE_TAB_ID);
+    assert.equal(en.title(), 'Evolution');
+    assert.equal(en.description(), 'Self-evolution signals: breach / OK / undecided, reported as three separate states');
+
+    const tree = descriptor.component({
+        ctx: { locale: 'zh-CN', betterSidebar: { features: [] } },
+        store: { getPrefs: () => ({ pluginSettings: {} }) },
+        scope: { sessionId: 'session-1', cwd: '/repo' },
+        tab: { type: EVOLVE_TAB_ID },
+        visible: true,
+        onReferenceFile() {},
+    });
+    assert.ok(tree && tree.props, '组件必须返回元素');
+    assert.equal(tree.props.style.flex, '1 1 auto');
+    assert.equal(tree.props.style.height, '100%');
+    assert.equal(tree.props.style.minHeight, 0);
+    assert.equal(tree.props.style.overflow, 'hidden');
+    const labels = collectLabels(tree);
+    assert.ok(labels.includes('正在读取信号…'), `首帧应显示读取中，实际：${labels.join(' | ')}`);
+    assert.ok(labels.some((label) => label.endsWith(`v${exports.PLUGIN_VERSION}`)), '页脚应显示当前版本');
 });

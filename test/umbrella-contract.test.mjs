@@ -47,13 +47,14 @@ test('根 package.json 是组合包：声明 dsh.bundle.patch，且客户端半�
   assert.ok(Array.isArray(manifest.dsh.client.inject) && manifest.dsh.client.inject.length > 0);
 });
 
-test('五个子行的模块入口都在 exports 里，且文件真的存在', () => {
+test('子行的模块入口都在 exports 里，且文件真的存在', () => {
   const expected = {
     '.': './lib/index.js',
     './autoload': './plugin/roadbook-autoload/index.js',
     './atlas': './plugin/roadbook-atlas/lib/index.js',
     './client': './lib/client.js',
     './team': './plugin/roadbook-team/index.js',
+    './evolve': './plugin/roadbook-evolve/index.js',
   };
   for (const [subpath, target] of Object.entries(expected)) {
     assert.equal(manifest.exports[subpath], target, `exports["${subpath}"] 应为 ${target}`);
@@ -65,7 +66,7 @@ test('五个子行的模块入口都在 exports 里，且文件真的存在', ()
   }
 });
 
-test('cordis.patch.yml：平铺五个顶层行，id 与模块名都与文档一致，且没有 group 容器行', () => {
+test('cordis.patch.yml：平铺六个顶层行，id 与模块名都与文档一致，且没有 group 容器行', () => {
   assert.match(patch, /^- insert:/m);
   assert.doesNotMatch(patch, /roadbook-bundle/, '不该再有 group 容器行（面板会把它显示成「已关闭」）');
   assert.doesNotMatch(patch, /^\s+group:\s*true\s*$/m, '平铺后没有任何 group 行');
@@ -76,6 +77,7 @@ test('cordis.patch.yml：平铺五个顶层行，id 与模块名都与文档一�
     ['roadbook-autoload', /^\s+name:\s*roadbook\/autoload\s*$/m],
     ['roadbook-atlas', /^\s+name:\s*roadbook\/atlas\s*$/m],
     ['roadbook-team', /^\s+name:\s*roadbook\/team\s*$/m],
+    ['roadbook-evolve', /^\s+name:\s*roadbook\/evolve\s*$/m],
   ];
   for (const [id, namePattern] of rows) {
     const row = rowBlock(id);
@@ -120,6 +122,16 @@ test('子行模块可 import，且导出面符合 cordis 插件契约', async ()
   assert.deepEqual(autoload.inject, ['agents', 'skills']);
   assert.equal(typeof autoload.apply, 'function');
   assert.ok(Array.isArray(autoload.hostFallbacks), '兜底清单必须对外可见（apply() 把它写进日志与观测文件）');
+
+  // evolve：`inject` 必须是**空数组**。写进 inject 会让「webServer 服务缺席」被宿主判成整行不可用
+  // （面板显示「未运行」），而它注册的两条路由本来就是「服务在才有」的可选能力。
+  const evolve = await import('../plugin/roadbook-evolve/index.js');
+  assert.equal(evolve.name, 'roadbook-evolve');
+  assert.deepEqual(evolve.inject, []);
+  assert.equal(typeof evolve.apply, 'function');
+  assert.equal(evolve.EVOLVE_STATUS_PATH, '/roadbook/evolve/status');
+  assert.equal(evolve.EVOLVE_TICK_PATH, '/roadbook/evolve/tick');
+  assert.equal(typeof (await import('../plugin/roadbook-evolve/signals.js')).evaluateSignals, 'function');
 });
 
 test('主行的就绪自检：随包文件当前全在，版本号与 package.json 一致', async () => {
@@ -136,7 +148,13 @@ test('主行的就绪自检：随包文件当前全在，版本号与 package.js
 
 test('就绪自检按静态 import 闭包推导：宿主入口的相对依赖一个都不能漏', async () => {
   const main = await import('../lib/index.js');
-  assert.deepEqual(main.HOST_ENTRY_MODULES, ['lib/index.js', 'plugin/roadbook-autoload/index.js', 'plugin/roadbook-atlas/lib/index.js', 'plugin/roadbook-team/index.js']);
+  assert.deepEqual(main.HOST_ENTRY_MODULES, [
+    'lib/index.js',
+    'plugin/roadbook-autoload/index.js',
+    'plugin/roadbook-atlas/lib/index.js',
+    'plugin/roadbook-team/index.js',
+    'plugin/roadbook-evolve/index.js',
+  ]);
 
   const closure = main.relativeImportClosure(ROOT, 'plugin/roadbook-autoload/index.js');
   assert.ok(closure.includes('plugin/roadbook-autoload/index.js'), '闭包含入口自身');

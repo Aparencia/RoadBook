@@ -18,6 +18,35 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
 
+## [0.6.0] - 2026-10-05
+
+**新增第六行 `roadbook-evolve`（自进化信号表）+ 客户端半第二个标签页「自进化」**（用户指令：「新增一个自进化 plugin」）。设计记录见 `design/v6-design.md` §17.5。
+
+### 新能力
+
+- **`plugin/roadbook-evolve/`**：宿主半 `index.js`（只做接线）+ 纯逻辑 `signals.js`（可离线单测）。把「流程自己有没有在正常工作」算成六条信号，**三态判定**（`ok` / `hit` / `unknown`）：S1 观测臂污染 / S2 注入活性 / S3 常驻提示可用率 / S4 工作树状态 / S5 规则索引健康 / S6 路由完整性。**判据不复刻**——S5/S6 只记 `rules.mjs --audit` 与 `route.mjs --audit` 的退出码（复刻 = 第二处真相）。
+- **两条只读本机路由**：`GET /roadbook/evolve/status`、`POST /roadbook/evolve/tick`；都过 `trustedLocalRequest` 同源守卫，都走可选服务 `ctx.inject(['webServer'])`（读不到只让路由不出现，绝不让整行变「未运行」）。
+- **侧栏「自进化」标签页**（id `roadbook:evolve`，order 46）：显示信号表与越界项；`unknown` 显示成「判不了」而不是「正常」。
+- **自身活性判据**（本行第一个遵守它自己提的门槛「任何自进化机制必须回答：它怎么被证明还活着」）：每次 tick 写一条 `tick` 观测，超 48 小时无 tick 判 `hit`。
+
+### 边界（V1 明确不做，见 `plugin/roadbook-evolve/README.md`）
+
+不自动开 GitHub issue（凭据 + 台账公开性未裁决 + 外部 CLI 要走 7-9 准入）｜不自动改卡（撞 A6）｜不写仓库文件（默认落 `<tmpdir>`，避免脏树破 B9）｜不跑 LLM harness（属 `schedule` 唤醒的活）。S1 是**启发式**（`fake-` 命令 / 哨兵版本 / 显式 `arm`），判不出的记 `unknown` 单独显示；V2 应由生产者直接写 `arm: prod|test`。
+
+### 变更
+
+- 根 `package.json`：`exports` 增 `./evolve`；`scripts.test` 增第三组 glob。
+- `cordis.patch.yml`：`- insert:` 下平铺第 6 行 `roadbook-evolve` → `roadbook/evolve`。
+- `lib/index.js`：`HOST_ENTRY_MODULES` 增 `plugin/roadbook-evolve/index.js`（就绪自检的 import 闭包随之覆盖 `signals.js` 与 `lib/update.js`）。
+- `test/umbrella-contract.test.mjs`：平铺行数断言 5 → 6；`HOST_ENTRY_MODULES` 断言同步；新增 evolve 导出面三条。
+- `_qc/check.ps1`：`$umbSub` 4 → 5 个入口；`$umbRows` **4 → 6 行**——**顺带补齐此前漏登记的 `roadbook-team`**（它此前只在 `umbrella-contract` 里被断言，check.ps1 从没查过它）；新增 evolve 四条断言（打包白名单 / 三态判定 / 两条路由 / `inject` 必须为空）；测试套件 glob 增第三组。
+- `design/v6-design.md`：§17.2 工具面表加 `roadbook-evolve` 行（并改「平铺四条」→「平铺五条」）；新增 §17.5 实施记录。
+- `README.md`：插件一节「四个子行」→「五个子行」并补 evolve 一句。
+
+### 本批沉淀的一条教训（写进 design §17.5）
+
+宿主半初版 `readGit` 只取 `git status --porcelain` 的**退出码**却写死 `porcelainLines: 0`，S4 因此永远显示「工作树干净」——而纯逻辑测试 **18 例全绿**（它证明「算得对」，证明不了「喂进去的是真数据」）。修法是补 `plugin/roadbook-evolve/test/service.test.mjs`（13 例，注入假子进程与假文件读取），其中一条把「stdout 有行必须判 hit」钉死。**接线层必须有自己的测试。**
+
 ## [未发布]
 
 **V6 补卡批 · 流程三处补强（2026-10-05）** —— 用户裁决三项：①想法决定实施前先调研市场成熟方案/同类产品/GitHub 现成轮子 ②版本号管理细节 ③完善项目重构流程。齐套要求：先逐项与用户确认 → 中英同批改卡（`playbook/` + `playbook_EN/`）→ 同步 `design/v6-design.md` → 跑 `check.ps1` 取退出码 0 → 提交。
@@ -30,7 +59,7 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
   - `5-6 版本与变更日志管理` / `5-6-version-and-changelog-management.md`：升版判定表（只换实现、外部行为不变 → 不升版本，改走 7-8）+「未发布」节四类 + **tag 纪律**（已发布 tag 不许移动或删除，禁 `git tag -f`）。
   - `7-10 技术栈迁移` / `7-10-tech-stack-migration.md`：与 7-8 的**分界判据**（外部行为要求不变 → 7-8）+ 迁移八步（选型先行 → 黑盒契约/黄金样例 → 数据双跑对账差异为零才切读 → 删旧或登记并行态 → 观察窗）。
 - **7-8 项目重构收敛**：明写「不含技术栈/框架迁移——那走 7-10」，重构线（行为不变）与迁移线（行为可变、旧系统当 oracle）在 design §4 档位表里各自成线。
-- **`design/v6-design.md` §13 版本口径**：`V6` 世代号**不再用于打 tag**，标签线唯一走插件 semver（当前 `v0.4.1 → v0.5.0`）；历史 `v0.6.0` 原地保留但不作版本参考。
+- **`design/v6-design.md` §13 版本口径**：`V6` 世代号**不再用于打 tag**，标签线唯一走插件 semver（当时 `v0.4.1 → v0.5.0`）；历史 `v0.6.0` 原拟「原地保留、不作版本参考」——**该 tag 已于 2026-10-05 经用户裁决删除并改指插件线 v0.6.0**（见本文件 [0.6.0] 节「tag 例外」）。
 
 ### 变更
 

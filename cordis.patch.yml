@@ -49,3 +49,9 @@
       disabled: !!js "!ctx.get('agentTeams')"
       config:
         policy: follow
+    # 自进化行：把自进化的证据算成一张信号表（S1–S6），侧栏「自进化」标签页读它。
+    # **只读**：不自动开 issue、不自动改卡、不写仓库文件（边界见 plugin/roadbook-evolve/README.md）。
+    - id: roadbook-evolve
+      name: roadbook/evolve
+      config:
+        intervalHours: 24

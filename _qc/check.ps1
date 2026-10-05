@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 700) "行数 $selfN <= 700 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；上调须同时改本行与 design §8）"
+Check ($selfN -le 720) "行数 $selfN <= 720 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -428,9 +428,9 @@ if ($null -ne $umb) {
     Check (($umb.name -eq 'roadbook') -and ($umb.type -eq 'module') -and ([bool]$umb.private)) "主插件身份：roadbook / ESM / private（实际：$($umb.name) / $($umb.type)）"
     Check ($umb.dsh.bundle.patch -eq './cordis.patch.yml') '主插件声明 dsh.bundle.patch（DSH 的 reconcile 才把它登记为组合包）'
     Check (($umb.dsh.client.platform -eq 'web') -and (@($umb.dsh.client.inject).Count -gt 0)) '主插件声明客户端半（platform: web + inject 非空）'
-    $umbSub = [ordered]@{ '.' = './lib/index.js'; './autoload' = './plugin/roadbook-autoload/index.js'; './atlas' = './plugin/roadbook-atlas/lib/index.js'; './client' = './lib/client.js' }
+    $umbSub = [ordered]@{ '.' = './lib/index.js'; './autoload' = './plugin/roadbook-autoload/index.js'; './atlas' = './plugin/roadbook-atlas/lib/index.js'; './team' = './plugin/roadbook-team/index.js'; './evolve' = './plugin/roadbook-evolve/index.js'; './client' = './lib/client.js' }
     $umbMiss = @($umbSub.Keys | Where-Object { ([string]$umb.exports.$_) -ne $umbSub[$_] -or (-not (Test-Path (Join-Path $root ($umbSub[$_] -replace '^\./','')))) })
-    Check (-not $umbMiss) "伞包 exports 四个入口齐且文件存在（缺/错：$($umbMiss -join ', ')）"
+    Check (-not $umbMiss) "伞包 exports 五个入口齐且文件存在（缺/错：$($umbMiss -join ', ')）"
     Check ((-not $umb.exports.'./bundle') -and (-not (Test-Path (Join-Path $root 'lib\bundle.js')))) 'group 容器已删（exports 无 ./bundle、lib/bundle.js 不存在）'
     $umbFiles = @($umb.files)
     Check (($umbFiles -contains 'lib') -and ($umbFiles -contains 'skills') -and ($umbFiles -contains 'plugin')) '伞包 files 白名单含 lib/ skills/ plugin/（随包分发不漏）'
@@ -445,9 +445,9 @@ Check (($umbIgnore -match '(?m)^\.env\s*$') -and ($umbIgnore -match '(?m)^\*\.pe
 foreach ($k in @('cordis.patch.yml','lib\index.js','lib\client.js','skills\roadbook\SKILL.md','skills\roadbook-atlas\SKILL.md','test\skill-mirror.test.mjs','test\umbrella-contract.test.mjs','test\packaging.test.mjs')) { Check (Test-Path (Join-Path $root $k)) "伞包文件存在：$k" }
 $umbYml = [IO.File]::ReadAllText((Join-Path $root 'cordis.patch.yml'), [Text.Encoding]::UTF8)
 Check (($umbYml -match '(?m)^- insert:') -and ($umbYml -notmatch 'roadbook-bundle') -and ($umbYml -notmatch '(?m)^\s+group:\s*true\s*$')) '伞包 patch：- insert: 平铺（不再有 group 容器行 —— 容器行自己在面板上显示成「已关闭」）'
-$umbRows = [ordered]@{ 'roadbook' = 'roadbook'; 'roadbook-skills' = '@deepseek-ai/dsh-skill-filesystem'; 'roadbook-autoload' = 'roadbook/autoload'; 'roadbook-atlas' = 'roadbook/atlas' }
+$umbRows = [ordered]@{ 'roadbook' = 'roadbook'; 'roadbook-skills' = '@deepseek-ai/dsh-skill-filesystem'; 'roadbook-autoload' = 'roadbook/autoload'; 'roadbook-atlas' = 'roadbook/atlas'; 'roadbook-team' = 'roadbook/team'; 'roadbook-evolve' = 'roadbook/evolve' }
 $umbRowBad = @($umbRows.Keys | Where-Object { ($umbYml -notmatch ("(?m)^\s{4}-\s*id:\s*" + [regex]::Escape($_) + '\s*$')) -or ($umbYml -notmatch ("(?m)^\s+name:\s*'?" + [regex]::Escape($umbRows[$_]) + "'?\s*$")) })
-Check (-not $umbRowBad) "四个子行是 - insert: 的直接子项（缩进 4 空格；id/模块名缺或缩进错：$($umbRowBad -join ', ')）"
+Check (-not $umbRowBad) "五个子行是 - insert: 的直接子项（缩进 4 空格；id/模块名缺或缩进错：$($umbRowBad -join ', ')）"
 Check (($umbYml -match 'bundledSkillDir') -and ($umbYml -match "createRequire\(baseUrl\)\.resolve\('roadbook/package\.json'\)") -and ($umbYml -match 'includeDefaultRoots:\s*false')) '技能行按伞包 npm 身份解析 bundledSkillDir，且不与默认根重复'
 Check ((Get-FileHash (Join-Path $root 'SKILL.md') -Algorithm SHA256).Hash -eq (Get-FileHash (Join-Path $root 'skills\roadbook\SKILL.md') -Algorithm SHA256).Hash) 'skills/roadbook/SKILL.md 是根 SKILL.md 的逐字节镜像（改一份必须同步另一份）'
 # ── 2026-10-05：主插件自动更新（判定 / 取证 / 执行 / 两条本机路由） ──────────────
@@ -465,9 +465,22 @@ $umbLineTxt = [IO.File]::ReadAllText((Join-Path $root 'lib\index.js'), [Text.Enc
 Check (($umbLineTxt -match '/roadbook/update/status') -and ($umbLineTxt -match '/roadbook/update/apply') -and ($umbLineTxt -match 'candidateInstallers')) '主行注册两条更新路由并走命令探测（找不到可用命令就拒绝，不许随便挑一条）'
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match '自动更新') '根 README 写明主插件自带自动更新（可发现）'
 $umbCli = [IO.File]::ReadAllText((Join-Path $root 'lib\client.js'), [Text.Encoding]::UTF8)
-Check (($umbCli -match 'id:\s*"roadbook"') -and ($umbCli -match 'roadbook:gallery') -and ($umbCli -notmatch 'roadbook-atlas:gallery')) '客户端半 id = 包名、标签页 id = roadbook:gallery（旧 id 不许残留）'
+Check (($umbCli -match 'id:\s*"roadbook"') -and ($umbCli -match 'roadbook:gallery') -and ($umbCli -match 'roadbook:evolve') -and ($umbCli -notmatch 'roadbook-atlas:gallery')) '客户端半 id = 包名、标签页 id = roadbook:gallery + roadbook:evolve（旧 id 不许残留）'
 $umbAtlas = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-atlas\package.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
 Check (((-not $umbAtlas.dsh.bundle) -and (-not $umbAtlas.dsh.client)) -and (@($umbAtlas.exports.PSObject.Properties.Name) -contains './package.json')) 'atlas 子插件已降级：无 dsh.bundle / dsh.client（不单独安装，避免第二个状态源）'
+# ── 2026-10-05：自进化行 roadbook-evolve ────────────────────────────────────────
+# 三条断言各挡一个静默失效方向：① 打包漏 signals.js（入口静态 import 它，漏了 = 面板「未运行」，
+# 与 0.2.1 的 host-fallback 事故同型）；② 判定退化成真假两值（读不到显示成 ok = 假绿，本行存在的
+# 全部理由就是不许这样）；③ 把 webServer 写进 inject（服务缺席时整行被判不可用，而它注册的路由
+# 本来就是「服务在才有」的可选能力）。
+$umbEvolve = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-evolve\package.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
+Check (((-not $umbEvolve.dsh.bundle) -and (-not $umbEvolve.dsh.client)) -and (@($umbEvolve.exports.PSObject.Properties.Name) -contains './package.json')) 'evolve 子插件不单独安装：无 dsh.bundle / dsh.client'
+Check ((@($umbEvolve.files) -contains 'index.js') -and (@($umbEvolve.files) -contains 'signals.js')) 'evolve files 白名单含 index.js 与 signals.js（入口静态 import 后者；漏包 = ERR_MODULE_NOT_FOUND）'
+$umbEvoTxt = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-evolve\signals.js'), [Text.Encoding]::UTF8)
+Check (($umbEvoTxt -match 'VERDICTS') -and ($umbEvoTxt -match "'unknown'") -and ($umbEvoTxt -match '读不到')) '自进化信号表是三态（ok/hit/unknown）：读不到判 unknown，不许显示成 ok'
+$umbEvoIdx = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-evolve\index.js'), [Text.Encoding]::UTF8)
+Check (($umbEvoIdx -match '/roadbook/evolve/status') -and ($umbEvoIdx -match '/roadbook/evolve/tick') -and ($umbEvoIdx -match 'trustedLocalRequest')) '自进化行注册两条只读路由并过同源守卫'
+Check ($umbEvoIdx -match '(?m)^export const inject = \[\];\s*$') '自进化行 inject 必须是空数组（写进 inject 会让缺 webServer 时整行被判「未运行」）'
 $umbRd = [IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)
 Check (($umbRd -match '主插件') -and ($umbRd -match 'roadbook-skills') -and ($umbRd -match '不单独安装')) '根 README 写明「一个主插件 + 可独立开关的子行、子插件不单独安装」'
 $blDir = Join-Path $root '_qc/baseline'
@@ -672,7 +685,8 @@ if ($null -eq $nodeExe) {
     # banner.test.mjs 就是这么漏的（CI 跑得到、本地门禁跑不到，于是本地全绿也不算数）。
     $suites = @(
         @{ Glob = ((Join-Path $root 'test') -replace '\\', '/') + '/*.test.mjs'; Label = '仓库自测全绿（node --test "test/*.test.mjs"）' },
-        @{ Glob = ((Join-Path $plg 'test') -replace '\\', '/') + '/*.test.mjs'; Label = '插件离线单测全绿（node --test "plugin/roadbook-autoload/test/*.test.mjs"）' }
+        @{ Glob = ((Join-Path $plg 'test') -replace '\\', '/') + '/*.test.mjs'; Label = '插件离线单测全绿（node --test "plugin/roadbook-autoload/test/*.test.mjs"）' },
+        @{ Glob = ((Join-Path $root 'plugin\roadbook-evolve\test') -replace '\\', '/') + '/*.test.mjs'; Label = '自进化插件离线单测全绿（node --test "plugin/roadbook-evolve/test/*.test.mjs"）' }
     )
     foreach ($suite in $suites) {
         $out = & node --test $suite.Glob 2>&1
