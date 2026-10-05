@@ -2,7 +2,7 @@
 
 > 本文件是 agent 每次会话自动读取的最高行为准则（DSH 的 `dsh-agent-instructions` 把项目根 AGENTS.md 注入为**持久基线**，不必每会话再粘贴一遍）。修改本文件 = 修改项目规则，需要人在场确认。
 > **本文件是硬规则的唯一正文。** `skills/roadbook/SKILL.md` 只做路由与门禁、`playbook/0-1-驱动卡.md` 只做意图路由与回执，两处都不再重复判据正文；机器索引只装标识与机械钩子，不装判据散文（防第三处真相）。
-> **规则版本：2026-10-05.1** ｜ 机器索引 `rules/rules.json`（`version` 与本行同号；字段 id / class / trigger / predicate / judge / renderedIn / anchors）。
+> **规则版本：2026-10-05.2** ｜ 机器索引 `rules/rules.json`（`version` 与本行同号；字段 id / class / trigger / predicate / judge / renderedIn / anchors）。
 > 母版侧双向校验：`node skills/roadbook/bin/rules.mjs --audit`（结构 / 分类 / 判定钩子 / 落点）+ `node --test test/rule-parity.test.mjs`（索引 ↔ 正文锚点）。生成出来的项目没有 `rules/` 与 `skills/` 时，以本行版本号为准。
 > 行数硬上限 240 行：加一条规则前先问"这条防止过哪次真实返工"，答不出就别加。
 
@@ -20,7 +20,6 @@
 
 - **A1** 执行 SQL / 数据库迁移 / 删除或修改真实数据 —— 谓词：shell 命中数据库客户端或迁移命令（psql / mysql / sqlcmd / prisma migrate / alembic）
 - **A2** 执行发布部署 —— 谓词：shell 命中部署动作（deploy / publish / rsync 到生产 / 云平台部署命令）
-- **A3** 打 git tag —— 谓词：shell 命中 `git tag` 或发布类打标命令
 - **A4** 门禁裁决（红/黄/绿的最终判定）—— 谓词：agent 自述"通过 / 绿了"而本轮没有真实门禁输出
 - **A5** 确认验收（照行为验收清单点检）—— 谓词：把验收结论写成已完成，而没有人逐条点检
 - **A6** 宪法（本文件）与 `STATE.md` 裁决字段的修改确认 —— 谓词：写侧工具命中本文件或 STATE.md 的裁决字段
@@ -158,7 +157,7 @@
 ### 个人档（原 §12；默认，单人 + AI 执行）
 
 - 上文所有"多方 / 干系人 / 沟通节奏"条款走单人分支：结论一行写进 `STATE.md` 的 `裁剪记录`，理由一行即可，不写会议纪要。
-- 不可委托 A 类不打折：执行 SQL / 发布部署 / 删除或修改真实数据 / 打 tag / 门禁裁决 / 验收确认。
+- 不可委托 A 类不打折：执行 SQL / 发布部署 / 删除或修改真实数据 / 门禁裁决 / 验收确认。
 - 长任务用 goal 持续轮次 + 里程碑回执；上下文吃紧时压缩前先把证据落盘，交接靠 STATE.md（只写稳定事实，读出的证据不回写）。
 
 ## 10. 环境速查（项目事实，不是规则）

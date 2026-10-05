@@ -76,12 +76,17 @@ $STEPS = @('git status --porcelain','powershell -NoProfile -File security.ps1') 
 ```powershell
 pnpm install          # or pip install -r requirements.txt (by stack)
 git init
-git add README.md AGENTS.md STATE.md CHANGELOG.md .tool-versions .env.example .gitignore .gitattributes check.ps1 doctor.ps1 gate.ps1 orphans.ps1 security.ps1 docs
+$initFiles = @(
+  'README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','.env.example','.gitignore','.gitattributes',
+  'check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','docs'
+  # append the stack files the selection generates (package.json / lockfile / requirements.txt / src / tests, etc.) to the line above one by one — no untracked file may fall outside this list
+)
+git add $initFiles
 $n = (git ls-files).Count    # write into STATE.md's "file-count baseline" and "current file count" (the baseline is written only this once)
 git commit -m "1-2 chore(init): init project from V6 template"
 $anchor = git rev-parse HEAD
 ```
-The list = every managed file at the root (including gate.ps1, orphans.ps1, security.ps1, CHANGELOG.md, .gitattributes); after committing, `git status --porcelain` must be empty (non-empty = some file was never added to the repo). Record `$anchor` as the first entry of STATE.md "recently completed".
+The list = every managed file at the root (including gate.ps1, orphans.ps1, security.ps1, CHANGELOG.md, .gitattributes); after committing, `git status --porcelain` must be empty (non-empty = some file was never added to the repo; no untracked file may fall outside the list, and when `pnpm install` has generated a lockfile, the lockfile must be committed along with it). Record `$anchor` as the first entry of STATE.md "recently completed".
 **Action 7: first run of check / gate / orphans / security (guardrail green)**
 ```powershell
 powershell -NoProfile -File check.ps1
@@ -96,6 +101,8 @@ This card's hard gate = doctor.ps1 exit code 0 + all four commands above returni
 3. No remote for now: must write into the STATE.md trim record "本地-only，风险：磁盘故障 = 全部历史清零" ("local-only; risk: a disk failure wipes all history")
 
 Before the first push, run `git status --porcelain`: if `.env` / `*.key` / `*.pem` show up → stop (pushing is irreversible). **Pushing is not part of DoD** (network or credential failures would create false red lights); it belongs to the 5-1 archive wrap-up and 6-6 signal 10.
+
+Before the first push, also run the two git history checks (`git status --porcelain` only shows the working tree and cannot see secrets already committed into history): `git log --all --oneline -- .env` must produce no output (output = `.env` was committed into history, the secret is already in that history, and **pushing is irreversible** — stop and report to the user); `git check-ignore -v .env` must produce output (`.env` is already in .gitignore, and an ignored file can never enter a commit).
 
 **The four green-light proofs (missing any one = initialization not complete):**
 ```text

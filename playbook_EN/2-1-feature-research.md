@@ -25,10 +25,10 @@ Also state: the output lands at `docs/specs/<日期>_<slug>/RESEARCH.md`; the ap
 
 **Action 0: create the task workspace**
 ```powershell
-$spec = 'docs/specs/20260912_export'   # replace with 今天日期_功能slug (assign before calling)
+$spec = 'docs/specs/2026-09-12_export'   # replace with 今天日期_功能slug (assign before calling)
 New-Item -ItemType Directory -Force $spec | Out-Null
 ```
-The date uses today (YYYYMMDD), slug = a short English word for the feature (e.g. `20260912_export`).
+The date uses today (YYYY-MM-DD), slug = a short English word for the feature (e.g. `2026-09-12_export`).
 
 **Action 1: read the three upstream places (check before acting, to prevent parallel creation)**
 - `docs/pool/IDEAS.md`: the idea is already in the pool → cite the original line; starting a separate effort is forbidden
@@ -122,7 +122,7 @@ Update STATE.md:
 
 After writing back, wrap up with the fixed three steps (write back → commit → re-run check.ps1):
 ```powershell
-$spec = 'docs/specs/20260912_export'   # this task's directory; assign before calling
+$spec = 'docs/specs/2026-09-12_export'   # this task's directory; assign before calling
 git add STATE.md $spec
 git commit -m "2-1 docs(spec): add export research"
 powershell -NoProfile -File check.ps1

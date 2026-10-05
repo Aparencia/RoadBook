@@ -1,6 +1,6 @@
 {
   "schema": "roadbook-rules/1",
-  "version": "2026-10-05.1",
+  "version": "2026-10-05.2",
   "note": "硬规则的机器可读索引。**只放标识与机械钩子，不放判据散文**——判据散文住在 template/AGENTS.md（每项目一份、随项目版本化），卡片里放业务判据。本文件的用途：① 让 rules.mjs --audit 能机械校验分类与判定命令是否齐备；② 让测试能双向断言「索引 ↔ 正文」不漂移；③ 让插件（阶段 4/5）知道哪些规则的机械后果是 deny / ask。分类依据是**违反后果**，不是重要性。",
   "anchorTargets": {
     "zh": "template/AGENTS.md",
@@ -75,29 +75,6 @@
       "anchors": {
         "zh": "执行发布部署",
         "en": "Executing a release or deployment — the human performs it"
-      }
-    },
-    {
-      "id": "A3",
-      "class": "A",
-      "title": "打 git tag",
-      "trigger": [
-        "打 tag"
-      ],
-      "predicate": "shell 命令命中 `git tag` 或发布类打标命令",
-      "judge": {
-        "kind": "gate",
-        "action": "deny",
-        "status": "planned",
-        "phase": 5
-      },
-      "renderedIn": [
-        "template/AGENTS.md",
-        "skills/roadbook/SKILL.md"
-      ],
-      "anchors": {
-        "zh": "打 git tag",
-        "en": "Creating a git tag — the human performs it"
       }
     },
     {

@@ -1,9 +1,9 @@
 ---
 name: roadbook
-description: Roadbook（路书）V6 开发流程母版：把开发动作落到 41 张固定流程卡上（0-1 驱动卡 + 40 张动作卡；中文权威版 playbook/、英文执行版 playbook_EN/），含门禁、完成的唯一定义（DoD）、红灯与红线规则。当用户要求按这套流程推进开发、问「下一步走哪张卡 / 流程上该做什么」、要开工或收工（归档验收 / 体检清理 / 依赖升级 / 项目重构），或需要按卡逐条执行并留证据时加载。Use when the user wants development run through this card-based process, wants the next card, or wants the process enforced on a task. Do not use when no process is wanted: a one-off question, a single command, casual chat, an unrelated project, or an explicit request to skip the process.
+description: Roadbook（路书）V6 开发流程母版：把开发动作落到 45 张卡（0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡）上（中文权威版 playbook/、英文执行版 playbook_EN/），含门禁、完成的唯一定义（DoD）、红灯与红线规则。当用户要求按这套流程推进开发、问「下一步走哪张卡 / 流程上该做什么」、要开工或收工（归档验收 / 体检清理 / 依赖升级 / 项目重构），或需要按卡逐条执行并留证据时加载。Use when the user wants development run through this card-based process, wants the next card, or wants the process enforced. Do not use when no process is wanted: a one-off question, a single command, casual chat, an unrelated project, or an explicit request to skip the process.
 ---
 
-# Roadbook（路书）· skill 路由（41 张卡，中英双语）
+# Roadbook（路书）· skill 路由（45 张卡：0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡，中英双语）
 
 **基目录 = 本母版根**（`playbook/` 中文权威版、`playbook_EN/` 英文执行版、`template/`、`design/`、`_qc/`）。下面所有相对路径都相对基目录解析。上游仓库：<https://github.com/Aparencia/RoadBook>。
 
@@ -30,7 +30,7 @@ description: Roadbook（路书）V6 开发流程母版：把开发动作落到 4
 - **项目现状**：项目根的 `STATE.md`（唯一事实源：阶段 / 下一步 / 起点锚点 / 文件数基线 / 最近归档 / 未决问题）。
 - **改流程本身**：同时改 `design/v6-design.md` + 该卡中英两份，并跑 `powershell -NoProfile -File _qc/check.ps1`（退出码 0 才算改完；路径一律正斜杠）。
 
-## 双语规则（41 张卡两份，agent 先读英文）
+## 双语规则（45 张卡两份，agent 先读英文）
 
 - **agent 执行任何卡时先读英文执行版**（`playbook_EN/` 目录下与本卡同卡号的那份）；中文版在 `playbook/`，是权威源与人类阅读版。
 - **冲突裁决**：判据冲突以中文版为准；措辞歧义以英文版为准（英文版存在的理由就是把含糊的中文表述显式化）。
@@ -45,11 +45,12 @@ description: Roadbook（路书）V6 开发流程母版：把开发动作落到 4
 - **产物寿命**：写下任何产物先声明属哪一类——持久（进仓库）/ 会话内（临时目录，随时可删）/ 永不入库（只贴回执）；**没有声明按会话内处理**（防临时报告被当成长期事实源）。
 - **分发自检**：装成 DSH skill 的那份是本仓库的 clone，不会自动变新——`git -C "$env:USERPROFILE/.dsh/skills/roadbook" log --oneline -1` 与母版 `git log --oneline -1` 比对，不一致就 `git -C "$env:USERPROFILE/.dsh/skills/roadbook" pull --ff-only`（症状：skill 描述里的卡数与母版不符）。
 
-## 路由：什么场景走哪张卡（41 张全覆盖）
+## 路由：什么场景走哪张卡（45 张全覆盖）
 
 | 场景 | 卡（AI 执行版） |
 | :-- | :-- |
 | 每轮开口先过驱动卡（意图路由 + 启动回执 + 个人档） | `playbook_EN/0-1-driver-card.md`（0-1 驱动卡） |
+| 收会话 / 新开会话 / 要 fork 或派子代理 / 长任务要不要用 goal | `playbook_EN/0-2-session-lifecycle.md`（0-2 会话生命周期） |
 | 有个想法，要不要做（Go / Kill / Pivot） | `playbook_EN/1-1-idea-research.md`（1-1 想法调研） |
 | 新项目从零开始（选型 + 生成骨架 + git 与远端） | `playbook_EN/1-2-stack-init.md`（1-2 选型初始化） |
 | 已有项目接入这套流程（反推结构 + 定裁剪） | `playbook_EN/1-3-onboard-existing-project.md`（1-3 接入已有项目） |
@@ -58,6 +59,7 @@ description: Roadbook（路书）V6 开发流程母版：把开发动作落到 4
 | 需求模糊 / 有真实用户（访谈 / 观察 / 问卷） | `playbook_EN/2-3-requirement-elicitation.md`（2-3 需求获取与用户研究） |
 | 给非功能需求定可测阈值（六维清单） | `playbook_EN/2-4-non-functional-requirements.md`（2-4 非功能需求） |
 | L 档 / 多方：风险登记册与干系人 | `playbook_EN/2-5-risk-and-stakeholders.md`（2-5 风险与干系人） |
+| 想法要落地成实现之前（决定自研 / 接入 / 抄思路） | `playbook_EN/2-6-external-solution-research.md`（2-6 外部方案调研） |
 | 动手前定方案（L 档；含改造 vs 重写判据） | `playbook_EN/3-1-design.md`（3-1 设计） |
 | 触碰 auth / 支付 / 删数据 / 外部接口 | `playbook_EN/3-2-threat-modeling.md`（3-2 威胁建模） |
 | 设计批准后定测试策略（金字塔与门槛） | `playbook_EN/3-3-test-strategy.md`（3-3 测试策略） |
@@ -74,6 +76,7 @@ description: Roadbook（路书）V6 开发流程母版：把开发动作落到 4
 | L 档 / 高风险发布：策略与灰度阶梯 | `playbook_EN/5-3-progressive-delivery.md`（5-3 发布策略与灰度） |
 | 发布后观测窗（健康检查 + 核心指标） | `playbook_EN/5-4-observability.md`（5-4 运行期观测） |
 | 定期 / 改数据结构后做恢复演练 | `playbook_EN/5-5-backup-and-dr.md`（5-5 备份与恢复演练） |
+| 要定版本号 / 要写升级注意 / 归档要往「未发布」节追加一行 / 该打 tag 了 | `playbook_EN/5-6-version-and-changelog-management.md`（5-6 版本与变更日志管理） |
 | 线上故障 / P0（先定级，止血优先于根因） | `playbook_EN/6-1-incident-response.md`（6-1 事件响应） |
 | 出 bug 找原因（诊断四问 + 五问法） | `playbook_EN/6-2-root-cause-analysis.md`（6-2 根因分析） |
 | 修 bug（最小改动 + 范围双维锁） | `playbook_EN/6-3-bugfix.md`（6-3 修复） |
@@ -90,13 +93,14 @@ description: Roadbook（路书）V6 开发流程母版：把开发动作落到 4
 | 交付 / 换人（用户文档与交接清单） | `playbook_EN/7-7-user-docs-and-handover.md`（7-7 用户文档与交接） |
 | 结构腐化 / 迁移 / 大改造（不动外部行为） | `playbook_EN/7-8-refactoring.md`（7-8 项目重构） |
 | 装 / 启用 / 升级第三方技能、插件、MCP server、外部 CLI（准入五查） | `playbook_EN/7-9-skill-and-plugin-admission.md`（7-9 外部技能与插件准入） |
+| 换语言 / 框架 / 存储 / 运行时 / 托管平台（实现载体整体替换，允许内部行为与数据形态变化） | `playbook_EN/7-10-tech-stack-migration.md`（7-10 技术栈迁移） |
 
 拿不准、跨多张卡时：回到 `playbook_EN/0-1-driver-card.md` 让它判。
 
 ## 红线与门禁（判据原文见 `AGENTS.md` C3 / C4）
 
 - **红线（必须人在场确认）**：认证/鉴权体系 ｜ 计费/支付 ｜ 删除数据、改表结构 ｜ 新增对外接口 ｜ 本文件与 `STATE.md` 的裁决字段。
-- **不可委托**：执行 SQL、发布部署、打 tag、门禁裁决、验收确认（A 类六条）。
+- **不可委托**：执行 SQL、发布部署、门禁裁决、验收确认、改宪法与 STATE 裁决字段、装第三方件（A 类六条；**打 tag 自 2026-10-05.2 起改由 agent 在发布流程内执行**）。
 - 档位 S/M/L 只升不降；门禁三形态：批级知会 / 轻确认 / 裁决；**个人档默认轻确认**，L 档与红线域才用裁决。
 - 并行任务（Agent Teams / 子 agent）：写作用域互斥、共享文件由主线程独占、并发写者 ≤5，**验收由主线程亲自跑门禁并抽查 diff**。
 

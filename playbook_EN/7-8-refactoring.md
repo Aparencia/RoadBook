@@ -1,16 +1,16 @@
 # Card 7-8 · Refactoring (behavior unchanged, implementation swapped)
-> Trigger: duplicated code everywhere / god class / circular dependency / tech-stack or framework migration / a performance fix that requires swapping the implementation ｜ Output: docs/refactor/REFACTOR_<date>_<slug>.md + batched commits (one rollback point per batch) ｜ Next: 4-2 Self-check and guardrails (end of each batch) / 5-1 Archive (final wrap-up)
+> Trigger: duplicated code everywhere / god class / circular dependency / a performance fix that requires swapping the implementation (**switching language, framework, storage, runtime or hosting platform → go to 7-10 Tech stack migration, not this card**) ｜ Output: docs/refactor/REFACTOR_<date>_<slug>.md + batched commits (one rollback point per batch) ｜ Next: 4-2 Code review (end of each batch) / 5-1 Archive (final wrap-up)
 
 ---
 
 ## ① Start confirmation
 
-1. **Plain-language restatement and landing point**: say in plain words "which implementation is being swapped out, and after the swap the external behavior is identical"; output = `docs/refactor/REFACTOR_<date>_<slug>.md` (holding the unchanged items, the safety-net list, the batch table, the four acceptance items, the rollback plan); next card = 4-2 Self-check and guardrails (end of each batch) / 5-1 Archive (final wrap-up).
+1. **Plain-language restatement and landing point**: say in plain words "which implementation is being swapped out, and after the swap the external behavior is identical"; output = `docs/refactor/REFACTOR_<date>_<slug>.md` (holding the unchanged items, the safety-net list, the batch table, the four acceptance items, the rollback plan); next card = 4-2 Code review (end of each batch) / 5-1 Archive (final wrap-up).
 2. **Trigger check (only start when it matches)**:
    - The same logic is duplicated in three or more places, and one change means changing all of them → this card
    - One class/function carries three or more responsibilities at once (a god class) → this card
    - Modules reference each other in a cycle (A→B→A) → this card
-   - Switching language / framework / storage (a tech-stack or framework migration) → this card (get the choice settled in 3-3 first)
+   - Switching language / framework / storage / runtime / hosting platform (the implementation substrate is replaced wholesale) → **not this card**: go to 7-10 Tech stack migration (this card only covers code-level refactoring where the substrate stays and the external behavior stays unchanged)
    - Changing four places just to make one performance metric pass → this card
    - ❌ Counter-example: you only want to add one button / one field → that goes through 2-1 Requirement clarification, do not dress it up as a refactor
    - ✅ Good example: the rate-limiting logic is copied into 5 files and one change means changing 5 places → this card
@@ -132,7 +132,7 @@ Give, item by item:
 
 Update STATE.md:
 - `当前任务` kept (another batch remains) or cleared (final wrap-up)
-- `下一步` = 4-2 Self-check and guardrails (another batch remains) / 5-1 Archive (wrap-up)
+- `下一步` = 4-2 Code review (another batch remains) / 5-1 Archive (wrap-up)
 - `未决问题` = old implementations not yet retired and their due dates, contract changes awaiting the user's verdict
 - `档位` = change surface <40% in place → tier M; ≥40% or a rewrite → tier L with the reason written out
 - `工作树状态` = 干净 (must be clean between batches)

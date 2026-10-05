@@ -43,7 +43,7 @@ Cluster topic by topic with keywords: ≥2 cards hit on the same topic, or some 
 **Signal 5: doc orphan line rate (observation item)**
 The sampling rule is fixed: take the **last 10 lines each** of `docs/registry/APIS.md` and `docs/registry/DATA_DICT.md` (the newest registered entries are at the end of the file; the same rule is reproducible every round):
 ```powershell
-@(Get-Content docs/registry/APIS.md -Tail 10) + @(Get-Content docs/registry/DATA_DICT.md -Tail 10) | Where-Object { $_ -match '\S' }
+@([IO.File]::ReadAllLines('docs/registry/APIS.md',[Text.Encoding]::UTF8) | Select-Object -Last 10) + @([IO.File]::ReadAllLines('docs/registry/DATA_DICT.md',[Text.Encoding]::UTF8) | Select-Object -Last 10) | Where-Object { $_ -match '\S' }
 ```
 Assign each route / field / search term in the sampled lines to `$word` in turn and run an existence check in the source code (`Get-ChildItem -Path $srcRoot -Recurse -File | Select-String -Pattern $word`, with `$srcRoot` set to this project's source root; note that on PowerShell 5.1 `Select-String` has no recursion parameter, so only the pipeline form above runs): the proportion of lines with zero hits > 20% → proposal: "the registry has gone stale" (treat the cause: strengthen the write-back-with-each-batch discipline of card 4-1, or add orphan line detection to check.ps1).
 **Signal 6: expired parallel state (the old implementation should have died and has not)**: read the "并行态登记簿" table of `STATE.md` (columns: `并行态 | 旧实现 | 新实现 | 删除条件（可判定） | 到期 | 登记批次`):
@@ -86,7 +86,7 @@ If `下次到期` has already passed, is empty, or still holds the template plac
 **Signal 13: route drift** — the card numbers, file names and commands pointed to by the resident entry points (`SKILL.md` and the driver card) do not match what is on disk = the routing is lying. Audit action: reconcile every entry-point item against disk (commands below), list the items that do not match, and require them to be fixed in the same batch.
 ```powershell
 $entry = 'SKILL.md'   # replace with the resident entry file; run it once per file if there are several
-Get-Content $entry | Select-String -Pattern '\d+-\d+'
+[IO.File]::ReadAllLines($entry, [Text.Encoding]::UTF8) | Select-String -Pattern '\d+-\d+'
 ```
 Criteria: the card number / file name / command written in an entry-point item makes `Test-Path` false on disk, or the card number actually points to a different card → record one "route drift"; ≥2 → proposal: "fix the entry point and the cards in the same batch" (landing point: the entry file + the card pointed at wrongly, in one and the same commit; fixing only one side is forbidden). ❌ the card was renamed while the entry point still writes the old name, yet the report says "entry point normal" ｜ ✅ all 14 entry items make `Test-Path` true → no proposal
 **Signal 14: no-op rule** — a rule whose deletion leaves behavior completely unchanged (relative to the model's default it changed nothing) = it should be deleted, or rewritten as an executable criterion. "It reads sensible" does not count; the criterion is to delete it and run one comparison — no change in behavior means it is a no-op. Audit action: pick a candidate rule, delete it temporarily and run one task of the same class, comparing against the run with the rule kept.

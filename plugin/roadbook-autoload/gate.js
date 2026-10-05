@@ -39,12 +39,11 @@ export const TEAM_TOOLS = ['spawn_teammate', 'send_message', 'interrupt_agent', 
 export const TEAM_TOOL_PREFIX = 'team_task_'
 
 /**
- * 红线域命令模式（A 类不可委托，取自 AGENTS.md A1–A3 的谓词）。
+ * 红线域命令模式（A 类不可委托，取自 AGENTS.md A1–A2 的谓词）。
  * `raw: true` 的那几条还要在**去掉引号前**的原文里再扫一遍：数据库客户端名出现在引号里，
  * 通常正是 `bash -c "psql …"` 这种被包了一层的真执行，而不是提交信息里的一句闲聊。
  */
 export const REDLINE_RULES = [
-  { id: 'A3', label: '打 git tag', pattern: /\bgit\s+tag\b/i },
   { id: 'A1', label: '执行 SQL（数据库客户端）', pattern: /\b(psql|mysql|sqlcmd|mysqldump)\b/i, raw: true },
   { id: 'A1', label: '执行数据库迁移', pattern: /\b(prisma\s+migrate|alembic|flyway|liquibase|migrat\w*)\b/i },
   { id: 'A2', label: '执行发布部署', pattern: /\bdeploy\w*\b|\bgh\s+release\b|\bpublish\w*\b/i },

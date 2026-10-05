@@ -74,7 +74,7 @@ Method: <one of the five> ｜ Participants: <how many, which roles; write "user 
 
 **Action 6: create the task directory (assign first, then call)**
 ```powershell
-$spec = 'docs/specs/20261003_export'
+$spec = 'docs/specs/2026-10-03_export'
 New-Item -ItemType Directory -Force -Path $spec | Out-Null
 ```
 
@@ -90,7 +90,7 @@ New-Item -ItemType Directory -Force -Path $spec | Out-Null
 ## ③ Evidence receipt
 
 Only three kinds of evidence count: real command output / file paths / commit hashes. Give, item by item:
-1. ELICIT.md full path + line count (`$spec = 'docs/specs/20261003_export'; (Get-Content "$spec/ELICIT.md").Count`)
+1. ELICIT.md full path + line count (`$spec = 'docs/specs/2026-10-03_export'; "$spec/ELICIT.md = $([IO.File]::ReadAllLines("$spec/ELICIT.md", [Text.Encoding]::UTF8).Count) 行"`)
 2. The method chosen + one sentence of the basis (matching Action 1's criteria)
 3. Number of raw record rows + how many of them have a numeric frequency ("经常/偶尔" ("often / occasionally") appears 0 times)
 4. Number of "said vs wanted" mismatches + at least 1 quoted set of original words
@@ -109,7 +109,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 
 After the write-back, the closing triple (write back state → commit → re-run the gate for a 0):
 ```powershell
-$spec = 'docs/specs/20261003_export'
+$spec = 'docs/specs/2026-10-03_export'
 git add STATE.md $spec
 git commit -m "2-3 docs(spec): 需求获取记录（原话+说的vs要的+未决项）"
 powershell -NoProfile -File check.ps1

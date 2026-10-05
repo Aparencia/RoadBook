@@ -69,7 +69,7 @@ Select-String -Path docs/RUNBOOK.md -Pattern '回滚' -Context 0,12
 - Keep every notification on file: time + recipients + exact text, written into INCIDENT.md.
 
 **Action 6: write `docs/specs/<date>_<slug>/INCIDENT.md`**
-Six sections: symptoms / timestamp table / severity and basis / bleeding-stop actions and results / notification records / impact surface (affected users, data loss, external commitments). The `<slug>` in the path must be the same slug as in STATE.md `当前任务`; it is forbidden to call it an incident name in one place and a slug in another.
+Six sections: symptoms / timestamp table / severity and basis / bleeding-stop actions and results / notification records / impact surface (affected users, data loss, external commitments). The `<slug>` in the path must be the same slug as in STATE.md `当前任务`; it is forbidden to call it an incident name in one place and a slug in another; `<date>` is always `YYYY-MM-DD` (hyphenated — the same format as the specs directory created by 2-1/2-3 and the 5-1 archive directory). [disambiguated]
 
 **Action 7: hand off to 6-2**
 Once the bleeding is stopped and the service is stable, hand off to 6-2 Root cause analysis immediately and carry the INCIDENT.md path over; for P0/P1, "触发 6-5 复盘" must be marked in STATE.md.

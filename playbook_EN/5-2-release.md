@@ -1,5 +1,5 @@
 # Card 5-2 · Release
-> Trigger: a milestone / a batch of features has accumulated / the user says "release / go live / let others use it" ｜ Output: docs/versions/vX.Y.Z.md + the root CHANGELOG.md + tag (tagged by a human) + RUNBOOK update ｜ Next: awaiting a new intent (an incident → 6-1 incident response)
+> Trigger: a milestone / a batch of features has accumulated / the user says "release / go live / let others use it" ｜ Output: docs/versions/vX.Y.Z.md + the root CHANGELOG.md + tag (tagged by the agent) + RUNBOOK update ｜ Next: awaiting a new intent (an incident → 6-1 incident response)
 
 ---
 
@@ -9,7 +9,7 @@
 2. **Assumptions list**: the 3~5 default assumptions you are making on the user's behalf (e.g. "no table-structure change this time", "there are no real users"), each with the way it was verified.
 3. **Clarifying questions (≤5, keep them to a minimum)**: the default three questions — where is it deployed (local demo / static hosting / a hosting platform / a cloud server)? Are there real users? Does the data need migrating? Plus which version number to fix (a concrete number, e.g. v0.3.0). Anything findable in RUNBOOK or CHANGELOG must not be asked of a human.
 4. **Paste the reference checklist verbatim** (paste word for word this card's §② "Merge Danger marking + release seven checks").
-5. Also declare: the output lands in = `docs/versions/vX.Y.Z.md` (this release's concrete version number) + a formal version section in the root `CHANGELOG.md` + tag (**tagged by a human**) + the deployment section of `docs/RUNBOOK.md`; next card = awaiting a new intent (an incident → 6-1 incident response).
+5. Also declare: the output lands in = `docs/versions/vX.Y.Z.md` (this release's concrete version number) + a formal version section in the root `CHANGELOG.md` + tag (**tagged by the agent**, after the commit is green and the three-way alignment has been checked) + the deployment section of `docs/RUNBOOK.md`; next card = awaiting a new intent (an incident → 6-1 incident response).
 
 ---
 
@@ -49,19 +49,21 @@
 - `docs/versions/vX.Y.Z.md` details: what was done / why / known issues / deployment actions / rollback point
 - The version number is identical in all three places (CHANGELOG = detail file name = tag)
 
-**6. Tagging (performed by a human; the agent only gives the commands)**:
+**6. Tagging (performed by the agent; after the commit is green and the three-way alignment has been checked)**:
 ```powershell
-$ver = 'v0.3.0'           # this release's version number; all three places must agree
-git tag $ver
-git push origin $ver      # when a remote exists
+$ver = 'v0.3.0'                          # this release's version number; all three places must agree
+git tag -a $ver -m "release $ver"        # annotated tag; lightweight tags and git tag -f are forbidden
+git push origin $ver                     # when a remote exists
 ```
 ❌ Counter-example: the CHANGELOG says v0.3.0, the detail file is called v0.3.1.md, and the tag is v0.30 (the three places disagree, so no matching version can be found when rolling back)
+❌ Counter-example: noticing the tag points at the wrong place and overwriting it with `git tag -f` (**a published tag must never be moved or deleted** — it is the only anchor others have when checking a version)
 ✅ Good example: all three are v0.3.0 — the CHANGELOG section title / `docs/versions/v0.3.0.md` / `git tag v0.3.0`
 
 **7. Close-out sync**: update the deployment section of docs/RUNBOOK.md §1; check the conditional-document triggers — real users → create USER_GUIDE; collecting PII and public → PRIVACY; open source → LICENSE.
 
 **Prohibitions:**
-- The agent performing a deployment or tagging is forbidden (non-delegable, performed by a human)
+- The agent performing a deployment is forbidden (non-delegable, performed by a human)
+- Moving or deleting a published tag is forbidden (`git tag -f` / overwriting a tag with `git push --force` is a violation)
 - Releasing while skipping the rollback plan is forbidden ("it should be fine" is not a plan)
 - Releasing when the version disagrees across the three places is forbidden
 
@@ -78,7 +80,7 @@ git push origin $ver      # when a remote exists
 
 ## ④ State write-back
 
-**The order iron rule: write back state first → then commit → then re-run check.ps1 for a 0 (the tag and the deployment are performed by a human; the agent only gives the commands).**
+**The order iron rule: write back state first → then commit → then re-run check.ps1 for a 0 (the deployment is performed by a human; the tag is performed by the agent after the commit is green).**
 
 Update STATE.md: `当前阶段` = maintenance / a new cycle; `下一步` = awaiting a new intent; `未来 3 步` rolled.
 
@@ -88,7 +90,7 @@ git add STATE.md CHANGELOG.md docs/versions/v0.3.0.md docs/RUNBOOK.md
 git commit -m "5-2 chore(release): 发布 $ver"
 powershell -NoProfile -File check.ps1
 ```
-(`$ver` reuses the assignment from §②⑥, and the detail file name matches it; after committing and going green, ask a human to tag and push `git push origin $ver`.)
+(`$ver` reuses the assignment from §②⑥, and the detail file name matches it; after committing and going green, the agent performs the tagging and push from §②⑥.)
 
 Fixed closing line:
 `Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

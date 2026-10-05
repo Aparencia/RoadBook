@@ -12,11 +12,41 @@
 | 改目录约定 / 回执 schema / 命令参数 / Loader 行 id（已装用户需要动作） | 次版本 + 迁移说明 | 回执加字段 → 0.3.0 |
 
 一次升版动四处：根 `package.json` 的 `version`、`lib/client.js` 顶部 `PLUGIN_VERSION`、本文件顶部加一节、
-`git tag`（**由人打**，agent 不打 tag）。改完从仓库根跑：
+`git tag`（由agent 打 tag）。改完从仓库根跑：
 
 ```bash
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
+
+## [未发布]
+
+**V6 补卡批 · 流程三处补强（2026-10-05）** —— 用户裁决三项：①想法决定实施前先调研市场成熟方案/同类产品/GitHub 现成轮子 ②版本号管理细节 ③完善项目重构流程。齐套要求：先逐项与用户确认 → 中英同批改卡（`playbook/` + `playbook_EN/`）→ 同步 `design/v6-design.md` → 跑 `check.ps1` 取退出码 0 → 提交。
+
+### 新能力
+
+- **新建 4 张卡，卡数 41 → 45**（中英逐张对应，`design/v6-design.md` §4/§4.1 已登记；构成改为「0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡」）：
+  - `0-2 会话生命周期` / `0-2-session-lifecycle.md`：会话收尾四步（证据落盘 → 工作树三选一 → 回写 STATE.md → 需要跨会话时写交接条）；**压缩前必须先落盘**（同一条命令的红/绿两次输出要在压缩发生前写进文件）；会话归档只做三件、不新建仓库文档。
+  - `2-6 外部方案调研` / `2-6-external-solution-research.md`：**轮子先行五查**（有没有 / 活不活 / 能不能用 / 合不合 / 值不值）+ **判定三值**（接入现成 / 抄思路自研 / 自研）；许可证无 LICENSE 或 GPL·AGPL·SSPL → 停下问人。
+  - `5-6 版本与变更日志管理` / `5-6-version-and-changelog-management.md`：升版判定表（只换实现、外部行为不变 → 不升版本，改走 7-8）+「未发布」节四类 + **tag 纪律**（已发布 tag 不许移动或删除，禁 `git tag -f`）。
+  - `7-10 技术栈迁移` / `7-10-tech-stack-migration.md`：与 7-8 的**分界判据**（外部行为要求不变 → 7-8）+ 迁移八步（选型先行 → 黑盒契约/黄金样例 → 数据双跑对账差异为零才切读 → 删旧或登记并行态 → 观察窗）。
+- **7-8 项目重构收敛**：明写「不含技术栈/框架迁移——那走 7-10」，重构线（行为不变）与迁移线（行为可变、旧系统当 oracle）在 design §4 档位表里各自成线。
+- **`design/v6-design.md` §13 版本口径**：`V6` 世代号**不再用于打 tag**，标签线唯一走插件 semver（当前 `v0.4.1 → v0.5.0`）；历史 `v0.6.0` 原地保留但不作版本参考。
+
+### 变更
+
+- **`_qc/check.ps1`**：§4 表解析张数断言 41 → 45；新增 8 条 needle（4 张新卡中英各 3 项判据）；新增 3 条「三份活文档卡数 = §4 表张数」同源断言（README / START-HERE / SKILL，数值从 `$cardNo.Count` 推导，避免三处再写死数字）。
+- **`test/fixtures/route-scenarios.json` 重生成**（`expect.chain` / `expect.ledger`）：起因见 `_qc/baseline/ledger.json` 的 `note` —— 卡文本按预期变化（+4 张卡、A3 规则移除）；已复跑 `node --test test/route-cli.test.mjs` 取 14 pass / 0 fail。
+- **卡内口径修复 16 个文件**（中英各 8）：日期、计数、密钥检查、`1-2` 首提交自相矛盾等；其中 `1-2` 的矛盾用两个临时 git 仓库实测复现了修复前后行为差异。
+- **模板侧机制修复 5 处**（`template/`）：`docs/README.md`、`docs/USER_GUIDE.md`、`docs/registry/DATA_DICT.md`、`.gitignore`、`.tool-versions` 的既有漂移。
+
+**打 tag 改为由 agent 执行（规则版本 `2026-10-05.1` → `2026-10-05.2`）** —— 用户裁决：「允许 agent 打 tag」。
+
+### 变更
+
+- **A3「打 git tag」从 A 类不可委托清单移除**（A 类 7 条 → 6 条；id 不复用，避免与历史引用混淆）：`git tag -a` 与 `git push origin <tag>` 自本版起由 agent 在发布流程内执行（**提交跑绿 + 三对齐核对通过之后**）。**执行发布部署仍是不可委托（A2）**，本次只移出打标这一个动作。
+- **已发布的 tag 不许移动或删除**：禁 `git tag -f`、禁强制覆盖已推送的 tag；tag 一律用注解式（`git tag -a $ver -m "…"`）。
+- 同批改动：`template/AGENTS.md`（A 类正文 + 个人档一行 + `规则版本：`）、`rules/rules.json`（删 A3 条目 + 版本号）、`design/glossary-en.md` §6 英文锚点表、`SKILL.md` 与 `skills/roadbook/SKILL.md`（逐字节镜像）、`design/v6-design.md`（§4 个人档、§5 三落点、§6 宪法要点、§13 版本口径）、`design/playbook-contract.md` §7 归属表、`playbook/5-2-发布.md` 与 `playbook_EN/5-2-release.md`、根 `README.md`、插件动作闸 `plugin/roadbook-autoload/gate.js`（红线谓词 A1–A3 → A1–A2）与其 4 条用例、插件 README 红线表。
+- **项目侧动作**：项目根 `AGENTS.md` 副本的 `规则版本：` 落后于 `2026-10-05.2`、或整行缺失 = 按「缺字段」处理——先同步副本再继续；**不许拿旧副本当授权**（旧副本里"打 tag 只能人做"那条已作废）。
 
 ## [0.5.0] - 2026-10-05
 

@@ -76,15 +76,15 @@ Hitting any of the five red-line domains — authentication/authorization, payme
 
 **Action 5: two commands (assign first, then call; a hit on the first = slogan-style security, and the second must output exactly 6)**
 ```powershell
-$spec = 'docs/specs/20261003_export'
+$spec = 'docs/specs/2026-10-03_export'
 Select-String -Path "$spec/THREAT.md" -Pattern '注意|加强|做好|小心|安全意识'
-Select-String -Path "$spec/THREAT.md" -Pattern 'S 仿冒|T 篡改|R 抵赖|I 信息泄露|D 拒绝服务|E 提权' | Measure-Object -Line
+$n = @([IO.File]::ReadAllLines("$spec/THREAT.md", [Text.Encoding]::UTF8) | Where-Object { $_ -match 'S 仿冒|T 篡改|R 抵赖|I 信息泄露|D 拒绝服务|E 提权' }).Count; "$spec/THREAT.md = $n 行"
 ```
 
-❌ Counter-example: all six threats write only `STRIDE: I` (a bare letter) → the second command prints `Lines : 0`, so the gate is unreachable
-✅ Example: all six lines are present, each with its category name (`S 仿冒` / `T 篡改` / `R 抵赖` / `I 信息泄露` / `D 拒绝服务` / `E 提权`) → it prints `Lines : 6`
+❌ Counter-example: all six threats write only `STRIDE: I` (a bare letter) → the second command prints `docs/specs/2026-10-03_export/THREAT.md = 0 行`, so the gate is unreachable
+✅ Example: all six lines are present, each with its category name (`S 仿冒` / `T 篡改` / `R 抵赖` / `I 信息泄露` / `D 拒绝服务` / `E 提权`) → it prints `docs/specs/2026-10-03_export/THREAT.md = 6 行`
 
-**Action 6: external input and the agent surface (a new subsection; the six STRIDE categories above and the "category count = 6" command stay exactly as they are)**
+**Action 6: external input and the agent surface (a new subsection; the six STRIDE categories above and the "category count = 6" criterion stay exactly as they are)**
 Iron rule: **A guardrail prompt is not a security boundary** — mitigations must land in deterministic checks / resource-scope authorization / isolation / credential binding; writing only "require the model not to…" is forbidden. [disambiguated: 资源域授权 = authorization scoped to the named resource, not a global role check]
 Four sources of untrusted input (every source is treated as untrusted): ① model output ② memory and persistent context ③ tool descriptions and MCP responses ④ external documents and web content (**including the body of third-party skills**).
 Six checkable predicates (each one criterion sentence + one mitigation landing point):
@@ -96,7 +96,7 @@ Six checkable predicates (each one criterion sentence + one mitigation landing p
 6. **Tool-description poisoning**: criterion = the capabilities a description claims ⊆ the resources actually reachable; a description that disagrees with the behavior is a hit ｜ mitigation landing point = descriptions go through review and an allow-list check.
 Three self-check commands (assign first, then call; paste the verbatim output even when it is empty. Each of the three checks one thing: (a) references that read credential-file paths (b) zero-width/invisible characters (c) 「永不拒绝 / 无需确认」 ("never refuses / no confirmation needed") style wording):
 ```powershell
-$spec = 'docs/specs/20261003_export'   # this task's spec directory; assign before calling
+$spec = 'docs/specs/2026-10-03_export'   # this task's spec directory; assign before calling
 Get-ChildItem -Path "$spec" -Recurse -File | Select-String -Pattern '\.aws|\.ssh|\.netrc'
 Get-ChildItem -Path "$spec" -Recurse -File | Select-String -Pattern '\u200b|\u200c|\u200d|\ufeff'
 Get-ChildItem -Path "$spec" -Recurse -File | Select-String -Pattern '永不拒绝|无需确认'
@@ -136,7 +136,7 @@ Only three kinds of evidence count: real command output / file paths / commit ha
 
 After the write-back, the closing triple (write back state → commit → re-run the gate for a 0):
 ```powershell
-$spec = 'docs/specs/20261003_export'
+$spec = 'docs/specs/2026-10-03_export'
 git add STATE.md $spec
 git commit -m "3-2 docs(spec): 威胁建模（四问+STRIDE+缓解或显式接受）"
 powershell -NoProfile -File check.ps1

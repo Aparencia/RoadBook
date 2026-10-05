@@ -83,15 +83,13 @@ test('gate：只拦写侧工具（read / glob / grep / list_agents 一律放行�
   }
   // 优先级说明（如实钉住，免得读者以为红线只对 shell 生效）：红线判据在写侧判定**之前**，
   // 因为红线管的是「这个动作能不能做」，不取决于它是从哪个工具发出来的。
-  assert.equal(decideGate({ tool: 'read', args: { command: 'git tag v1' }, session: noReceipt() }).rule, 'redline-A3')
+  assert.equal(decideGate({ tool: 'read', args: { command: 'psql -U postgres -d app' }, session: noReceipt() }).rule, 'redline-A1')
 })
 
 // ── A 类红线：命中即拦，与走不走流程无关 ────────────────────────────────
 
-test('gate：红线域命令 → deny（A1 SQL/迁移 · A2 发布部署 · A3 打 tag）', () => {
+test('gate：红线域命令 → deny（A1 SQL/迁移 · A2 发布部署；打 tag 自 2026-10-05.2 起已移出 A 类）', () => {
   const cases = [
-    ['git tag v1.0.0', 'A3'],
-    ['git tag -a v2 -m "x"', 'A3'],
     ['psql -U postgres -d app', 'A1'],
     ['mysql -u root -p', 'A1'],
     ['sqlcmd -S localhost -Q "select 1"', 'A1'],
@@ -114,9 +112,9 @@ test('gate：红线域命令 → deny（A1 SQL/迁移 · A2 发布部署 · A3 �
 
 test('gate：红线与走不走流程无关——闲聊里敲红线命令照样拦（A 类不可委托）', () => {
   const chat = session([userEvent('今天天气怎么样')])
-  const verdict = decideGate({ tool: 'bash', args: { command: 'git tag v9' }, session: chat })
+  const verdict = decideGate({ tool: 'bash', args: { command: 'psql -U postgres -d app' }, session: chat })
   assert.equal(verdict.decision, 'deny')
-  assert.equal(verdict.rule, 'redline-A3')
+  assert.equal(verdict.rule, 'redline-A1')
 })
 
 test('gate：不误伤——提交信息里的 deploy/migrate、只读命令、正文里的 psql 都不拦', () => {
@@ -177,7 +175,8 @@ test('gate：commandOf 只认 command/cmd/script，别的键一概不算命令',
 
 test('gate：stripQuoted 只吃引号内文本；matchRedline 命中规则或 undefined', () => {
   assert.equal(stripQuoted('git commit -m "migrate now"'), 'git commit -m ""')
-  assert.equal(matchRedline('git tag v1').id, 'A3')
+  assert.equal(matchRedline('psql -U postgres').id, 'A1')
+  assert.equal(matchRedline('git tag v1'), undefined, '打 tag 自 2026-10-05.2 起已移出 A 类，不再是红线命令')
   assert.equal(matchRedline('git commit -m "deploy docs"'), undefined)
   assert.equal(matchRedline(''), undefined)
   assert.equal(matchRedline('   '), undefined)

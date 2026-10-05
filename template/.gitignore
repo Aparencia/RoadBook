@@ -15,6 +15,21 @@ venv/
 .ruff_cache/
 *.tsbuildinfo
 
+# DSH 与 AI 工具的本地状态（工具生成，不入库；未忽略 = 工作树永远不干净）
+# .dsh-code-index 是 DSH 代码索引缓存：母版根 .gitignore 已挡而模板未同步，用 DSH 的项目首次收工就被 check.ps1 判红。
+# .mcp.json / .claude / .codex 是 agent 配置与凭据落点：4-5 卡要求下面这条命令必须有输出，无输出 = 照卡做必红。
+#   git check-ignore -v .mcp.json .claude .codex
+# 四条都不写尾斜杠：尾斜杠只匹配「已存在的目录」，而探针命令必须在目录尚未生成时也能命中
+# （实测：带尾斜杠时上一条命令只输出 .mcp.json 一行 → 卡据此判红，尽管规则写对了）。
+.dsh-code-index
+.mcp.json
+.claude
+.codex
+
+# 并行工作区（4-1 卡要求开工作区前先 `git check-ignore -q .worktrees`）
+# 未忽略就开 = 整棵工作树被提交进仓库，所以先忽略、单独一笔提交，再开工作区。
+.worktrees
+
 # 环境与密钥（永不提交）
 .env
 .env.local

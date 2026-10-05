@@ -68,7 +68,7 @@
 | # | 规则 | 结论 |
 | --- | --- | --- |
 | ① | **Team 类工具**（`spawn_teammate` / `send_message` / `interrupt_agent` / `wait_agent` / `team_task_*`）且 `roadbook-team` 行的 `policy: off` | `deny`（「装了不用」的机械落点） |
-| ② | **A 类红线**命令：`git tag` / `gh release` / `psql`·`mysql`·`sqlcmd`·`mysqldump` / `migrate`·`prisma migrate`·`alembic` / `deploy` / `publish` / `rsync`→生产 / `terraform apply`·`kubectl apply`·`docker push` | `deny`（与走不走流程**无关**：不可委托动作不该因为「这轮在闲聊」就放过去） |
+| ② | **A 类红线**命令：`gh release` / `psql`·`mysql`·`sqlcmd`·`mysqldump` / `migrate`·`prisma migrate`·`alembic` / `deploy` / `publish` / `rsync`→生产 / `terraform apply`·`kubectl apply`·`docker push`（**打 tag 自 `2026-10-05.2` 起不在红线里**，由发布卡执行） | `deny`（与走不走流程**无关**：不可委托动作不该因为「这轮在闲聊」就放过去） |
 | ③ | **C7 未按卡开工**：写侧工具（`write` / `edit` / `apply_patch` / `bash` / `pwsh`）+ 开发意图 + 本会话**没有卡回执** | `deny` +「先贴卡号与开工回执，或说明本轮不走流程」 |
 
 **只在开发对话下开闸**：沿用注入那两道门（git 项目 + 命中开发意图关键词且未命中抑制词）；闲聊 / 问答 / 纯翻译 / 用户说了「不用流程」一律放行。**子代理会话不拦**（`includeSubagents` 默认 `false` ⇒ 那里根本没有注入，判据若照跑会把队友的每次写入都拦下）。**判不了就放行**：读不到会话日志、注入之后还没有事件、事件多到超出 `cardReadState` 的扫描窗口 —— 这三种都是 `unknown`，沿用本仓「不猜」口径放行，不拿猜出来的结论挡人。

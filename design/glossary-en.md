@@ -253,7 +253,22 @@
 | 执行面 | execution surface |
 | 指令面 | instruction surface |
 | 触发面 | trigger surface |
-| 判定三值（准入 / 有条件准入 / 拒绝） | the three-value verdict (admission / conditional admission / rejection) |
+| 判定三值（第三方技能·插件准入：准入 / 有条件准入 / 拒绝） | the three-value verdict (skill or plugin admission: admission / conditional admission / rejection) |
+| 判定三值（外部方案：接入现成 / 抄思路自研 / 自研） | the three-value verdict (external solution: adopt the ready-made wheel / borrow the idea and build it yourself / build it yourself) |
+| 轮子先行五查 | the five wheel-first checks |
+| 外部方案节 | the "external solutions" section |
+| 会话生命周期 | session lifecycle |
+| 会话收尾四步 | session close-out in four steps |
+| 压缩前先落盘 | evidence on disk before compaction |
+| 交接条 | handover note |
+| 升版判定表 | version-bump decision table |
+| 未发布节 | the unreleased section |
+| 升级注意 | upgrade notes |
+| 迁移八步 | the eight migration steps |
+| 黑盒契约（旧系统当 oracle） | black-box contract (the old system as the oracle) |
+| 差异为零 | zero difference |
+| 重构线 | the refactoring line |
+| 迁移线 | the migration line |
 | 隔离目录（先看不装） | isolated directory (read first, do not install) |
 | 供应链面 | supply-chain surface |
 | 机检退出码 | machine-check exit code |
@@ -280,7 +295,6 @@
 | :-- | :-- |
 | A1 | Executing SQL, database migrations, or deleting or modifying real data — the human performs it |
 | A2 | Executing a release or deployment — the human performs it |
-| A3 | Creating a git tag — the human performs it |
 | A4 | Gate verdicts (the final red / amber / green call) — the human makes them |
 | A5 | Confirming acceptance (walking the behaviour acceptance checklist item by item) |
 | A6 | Confirming changes to the constitution (this file) and to STATE.md verdict fields |

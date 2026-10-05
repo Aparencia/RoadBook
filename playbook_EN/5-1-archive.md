@@ -41,7 +41,7 @@ Expected: the last line reads `<N> markers, <M> with no trigger.` (N/M are real 
 **5. Standing-document staleness and over-limit check (run item by item; update anything over the limit or inconsistent)**:
 ```powershell
 $budget = @{ 'AGENTS.md' = 240; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100 }
-foreach ($f in $budget.Keys) { "$f = $(@(Get-Content $f).Count) lines (limit $($budget[$f]))" }
+foreach ($f in $budget.Keys) { "$f = $([IO.File]::ReadAllLines($f, [Text.Encoding]::UTF8).Count) lines (limit $($budget[$f]))" }
 Select-String -Path README.md -Pattern 'powershell'
 ```
 Expected: one `<file> = <actual line count> lines (limit <limit>)` line per budgeted file first, then the `powershell` hits in README.md.
@@ -75,6 +75,8 @@ $closed  = @($rows | Where-Object { $_ -match '\|\s*closed\s*\|' }).Count
 $keyItem = ($rows | Where-Object { $_ -match '\|\s*open\s*\|' } | Select-Object -First 1)
 Set-Content -Path "$dest/tech-debt.md" -Encoding UTF8 -Value @("# 债务快照 $date", "open $open ｜ carried $carried ｜ closed $closed", "关键项：$keyItem")
 ```
+The directory-name date format = `YYYY-MM-DD` (`$date` is exactly the output of `Get-Date -Format 'yyyy-MM-dd'`, e.g. `2026-10-03`) and it **comes from the same source as the specs directory created by 2-1**: the same `$date` serves as the date in `docs/specs/<date>_<slug>` and in `docs/archive/<date>_<slug>`, and the two must not use different formats (a date is always hyphenated; the 8-digit compact form must not appear).
+
 Expected: `$dest/tech-debt.md` has 3 lines (title / `open x ｜ carried y ｜ closed z` / the key item); the three counts come from the `状态` column of TECH_DEBT.md via the command above.
 The debt snapshot is written to `$dest/tech-debt.md` (3 lines: title / the three counts / the key item). The counts **must be derived by the command above from the `状态` column of `docs/TECH_DEBT.md`** (assign `$open`/`$carried`/`$closed`/`$keyItem` before writing the file; referencing an unassigned variable silently writes empty numbers, which is no measurement at all). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
    - ❌ Counter-example: writing `docs/archive/2026-10-03/` (no slug; two tasks on the same day overwrite each other)
@@ -84,9 +86,9 @@ The debt snapshot is written to `$dest/tech-debt.md` (3 lines: title / the three
 
 ```powershell
 powershell -NoProfile -File orphans.ps1
-git ls-files | Measure-Object -Line | Select-Object -ExpandProperty Lines
+"git ls-files = $(@(git ls-files).Count) lines"
 ```
-Expected: orphans.ps1's summary line (the five class counts) is pasteable verbatim; the second line is only a reference count.
+Expected: orphans.ps1's summary line (the five class counts) is pasteable verbatim; the second line prints `git ls-files = <N> lines` and is only a reference count.
 (The second line is only a reference count; the measurement standard is orphans.ps1's summary line, and **the summary line is pasted into the receipt verbatim**.)
 
    - a. `[孤儿]` file level: files in `git ls-files` with zero references (their file name cannot be found in any .md/.ps1/.json/source file, and they are not in the entry list)
@@ -114,6 +116,7 @@ Expected: the current branch name + the remote list (empty when there is no remo
    - With a remote → push at close-out `git push origin HEAD` (to pin the upstream, `git push -u origin $branch`); without a remote → record one line "local-only"
    - A rejected `git push` = the remote has moved ahead (someone else pushed): **stop and report to the user** and check `git log --oneline origin/$branch..HEAD`; **`--force` is forbidden** ("rejected, so force it" is wrong); a force push requires an explicit request from the user
    - **Reverse secret check**: `.env` / `*.key` / `*.pem` must be **ignored** (`git check-ignore -v` producing output = correct; an ignored file can never appear in porcelain); if `git status --porcelain` does list one of them = it is not ignored, **stop and report a red light**; committing and pushing are forbidden
+   - **Pre-push git history secret check (mandatory for the first push; `git status --porcelain` only shows the working tree and cannot see secrets already committed into history)**: `git log --all --oneline -- .env` must produce **no output** (output = `.env` was committed into history, the secret already exists in that history, and **pushing is irreversible** — stop and report to the user); `git check-ignore -v .env` must produce **output** (`.env` is already in .gitignore, and an ignored file can never enter a commit). Only when both pass is `git push` allowed.
    - Two consecutive archive cycles without a push = 6-6 card signal 10 (push lag)
 
 **11. Security-gate final check (the archive counts as complete only on exit code 0)**:

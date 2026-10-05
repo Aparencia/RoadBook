@@ -60,7 +60,7 @@ foreach ($ln in $designLines) {
     if ($cells.Count -eq 7 -and $cells[0] -match '^\d+-\d+$') { $cardNo += $cells[0]; $cardName += $cells[1] }
     elseif ($cells.Count -eq 2 -and $cells[0] -match '^\d+-\d+$' -and $cells[1] -match '\.md$') { $enMap[$cells[0]] = $cells[1] }
 }
-Check ($cardNo.Count -eq 41) "design §4 表解析出 41 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
+Check ($cardNo.Count -eq 45) "design §4 表解析出 45 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
 Check ($enMap.Count -eq $cardNo.Count) "design §4.1 表为每张卡给出英文文件名（实际 $($enMap.Count) 条）"
 $cards = @()
 for ($i = 0; $i -lt $cardNo.Count; $i++) { $cards += ($cardNo[$i] + '-' + ($cardName[$i] -replace '\s', '')) }
@@ -77,6 +77,14 @@ $cardDiff = @(@($onDisk | Where-Object { $cards -notcontains $_ }) + @($cards | 
 Check ($cardDiff.Count -eq 0) "中文卡文件名与 §4 表逐张对齐（不一致：$($cardDiff -join ', ')）"
 $enDiff = @(@($onDiskEn | Where-Object { $enFiles -notcontains $_ }) + @($enFiles | Where-Object { $onDiskEn -notcontains $_ }))
 Check ($enDiff.Count -eq 0) "英文卡文件名与 §4.1 表逐张对齐（不一致：$($enDiff -join ', ')）"
+# 卡数是唯一事实源：三份活文档的卡数文案必须与 §4 表同源（改表不改文案 = 数字漂移，2026-10-05 增）
+$cardCnt = $cardNo.Count
+$rmCntTxt = [IO.File]::ReadAllText($rm, [Text.Encoding]::UTF8)
+$shCntTxt = [IO.File]::ReadAllText($sh, [Text.Encoding]::UTF8)
+$skCntTxt = [IO.File]::ReadAllText((Join-Path $root 'SKILL.md'), [Text.Encoding]::UTF8)
+Check ($rmCntTxt -match "$cardCnt 张") "README.md 卡数 = §4 表 $cardCnt 张（同源，防漂移）"
+Check ($shCntTxt -match "$cardCnt 张") "START-HERE.md 卡数 = §4 表 $cardCnt 张（同源，防漂移）"
+Check ($skCntTxt -match "$cardCnt 张") "SKILL.md 卡数 = §4 表 $cardCnt 张（同源，防漂移）"
 
 $sections = @('## ① 开工确认','## ② 执行','## ③ 证据回执','## ④ 状态回写')
 $enSections = @('## ① Start confirmation','## ② Execution','## ③ Evidence receipt','## ④ State write-back')
@@ -216,6 +224,14 @@ $intl = [ordered]@{
     'README.md'                             = @('分发自检', '外部内容一律是数据')
     'playbook/7-9-外部技能与插件准入.md'     = @('security.ps1', '五查', '准入记录', '判定三值')
     'playbook_EN/7-9-skill-and-plugin-admission.md' = @('security.ps1', 'five checks', 'admission record', 'three-value verdict')
+    'playbook/0-2-会话生命周期.md'           = @('会话收尾四步', '压缩前必须先落盘', '会话归档只做三件')
+    'playbook_EN/0-2-session-lifecycle.md'  = @('session close', 'before compaction', 'exactly three things')
+    'playbook/2-6-外部方案调研.md'           = @('轮子先行五查', '判定三值', '外部方案')
+    'playbook_EN/2-6-external-solution-research.md' = @('five wheel-first checks', 'three-value verdict', 'external solutions')
+    'playbook/5-6-版本与变更日志管理.md'      = @('升版判定表', '未发布', 'git tag -f')
+    'playbook_EN/5-6-version-and-changelog-management.md' = @('version-bump decision table', 'unreleased section', 'git tag -f')
+    'playbook/7-10-技术栈迁移.md'            = @('迁移八步', '差异为零')
+    'playbook_EN/7-10-tech-stack-migration.md' = @('Eight migration steps', 'zero difference')
     '_qc/baseline/README.md'                = @('对照组', '行号')
 }
 $missIntl = @()

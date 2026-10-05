@@ -104,6 +104,8 @@ Write the hash as the first entry of STATE.md "recently completed". `git add -A`
 3. No remote for now: write into the STATE.md trim record "本地-only，风险：磁盘故障 = 全部历史清零" ("local-only; risk: a disk failure = all history is wiped")
 Before the first push, confirm `git status --porcelain` is empty and that no tracked file holds a secret: if `git ls-files | Select-String '\.env|\.key$|\.pem$'` hits anything, stop (pushing is irreversible). **Pushing is not part of DoD**; a failure is only recorded as a trim note, not a red light.
 
+Before the first push, also run the two git history checks (`git ls-files` only shows the current index and cannot see secrets already committed into history): `git log --all --oneline -- .env` must produce no output (output = `.env` was committed into history, the secret is already in that history, and **pushing is irreversible** — stop and report to the user); `git check-ignore -v .env` must produce output (`.env` is already in .gitignore, and an ignored file can never enter a commit).
+
 **Prohibitions:**
 - Modifying any business code is forbidden (if you find a bug, log it to docs/TECH_DEBT.md; fixing it in passing is forbidden)
 - Writing unverified commands into ARCHITECTURE/AGENTS is forbidden

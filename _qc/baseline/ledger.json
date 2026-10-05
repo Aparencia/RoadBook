@@ -5,5 +5,6 @@
   "status_values": ["open", "verified", "downgraded", "fixed"],
   "downgrade_rule": "被用户明确纠正、或被后续同代 run 打翻的结论，status 置 downgraded 并在 note 写一行反证（ECC continuous-learning-v2：被纠正即降置信）。",
   "revalidate_rule": "改卡后必须复跑对应 case（T7 缓存复验）：同一 case 在新 HEAD 上不再复现，才把 status 置 fixed 并在 revalidated 写 <HEAD短哈希>；没复跑过不许写 fixed。",
+  "note": "2026-10-05：按 V6 补卡批（用户裁决）重生成 test/fixtures/route-scenarios.json 的 expect.chain / expect.ledger —— 起因是卡文本预期内变化：新增 0-2 会话生命周期 / 2-6 外部方案调研 / 5-6 版本与变更日志管理 / 7-10 技术栈迁移 四张卡并把 §4 表 41→45，另 batch-1 从 rules/rules.json 移除 A3 硬规则。已跑 ROUTE_FIXTURE_UPDATE=1 node --test test/route-cli.test.mjs 再生成，随即不带该变量复跑 14 pass / 0 fail 佐证。台账 entries 未改动（本次不是新的评测 run）。",
   "entries": []
 }
