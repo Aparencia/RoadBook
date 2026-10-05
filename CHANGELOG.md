@@ -18,6 +18,11 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
 
+## [0.2.3] - 2026-10-04
+
+**客户端半把 DSH 启动搞挂的缺陷**（用户实机报「应用无法启动或已意外停止 / web boot: 1 entry did not activate / roadbook: failed」）：DSH 的 web boot 把「任一客户端条目未激活」判成致命错误并拒绝启动（客户端半 `eM()` 收集所有非 active 条目后直接 `throw`），而 better-sidebar 的 `registerTab` 对重复 id 是**直接 throw**（`lib/client-registry.js`：`if (tabs.has(descriptor.id)) throw new Error('... already registered')`）—— 于是「同一 bundle 被 Loader 实例化两次」或「热重载后上一代注册仍在注册表里」都会让 roadbook 从「一个标签页没出来」升级成「整个应用起不来」。客户端半没有这种权力，三处收口：① 注册前先查 `service.getTabs()` 有没有同 id、以及模块级 `registered` 标记（本页面已注册）→ 命中即跳过；② `ctx.effect(register)` 包 try/catch，失败只留一条警告（`ctx.logger.warn`，退化为 `console.warn`），**绝不上抛**；③ effect 撤销时把标记复位，热更新后仍能重新注册。
+**测试**：`test/client-contract.test.mjs` 新增 4 例（重复 id 抛错不向外抛 / 同页面 apply 两次只注册一次 / 服务里已有同 id 则跳过不调用 registerTab / disposer 撤销后能重新注册）。
+
 ## [0.2.2] - 2026-10-04
 
 **装出来的副本不再误报缺件**（0.2.1 装机验证时发现）：主行的就绪自检把根 `SKILL.md` 也算成「随包文件」，而它**不在** `package.json` 的 `files` 白名单里 —— git / npm 安装（插件面板「Git 地址」走的就是这条路）只分发白名单内的文件，于是每一份装出来的副本都会打一条

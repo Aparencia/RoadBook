@@ -204,3 +204,83 @@ test('版本号三处一致，且页脚真的显示它', async () => {
         `页脚应显示 v${manifest.version}，实际尾部文案：${labels.slice(-4).join(' | ')}`,
     );
 });
+
+// ── 2026-10-04 实机事故回归：客户端半注册失败曾把整个 DSH 启动判死 ──────────────
+// DSH 的 web boot 收集所有非 active 的客户端条目后直接 throw（"web boot: N entries did not
+// activate"），而 better-sidebar 的 registerTab 对重复 id 是直接 throw。两者一叠加，
+// 「重复注册」就从「一个标签页没出来」升级成「应用起不来」。下面四条钉住收口行为。
+
+test('重复注册不再判死：better-sidebar 对重复 id 抛错时 apply 不上抛', () => {
+    const { exports } = loadBundle();
+    const ctx = {
+        locale: 'zh-CN',
+        // 照抄 dsh-better-sidebar/lib/client-registry.js 的真实行为：同一个 id 再来一次就 throw
+        betterSidebar: {
+            registerTab() {
+                throw new Error('[dsh-better-sidebar] tab type "roadbook:gallery" already registered');
+            },
+        },
+        effect: (factory) => factory(),
+    };
+    assert.doesNotThrow(() => exports.apply(ctx), '注册失败必须就地吞成警告 —— 抛出去 = DSH 无法启动');
+});
+
+test('同一页面内 apply 跑两次只注册一次（幂等）', () => {
+    const { exports } = loadBundle();
+    const registered = [];
+    const ctx = {
+        locale: 'zh-CN',
+        betterSidebar: {
+            registerTab(descriptor) {
+                registered.push(descriptor);
+                return () => {};
+            },
+        },
+        effect: (factory) => factory(),
+    };
+    exports.apply(ctx);
+    exports.apply(ctx);
+    assert.equal(registered.length, 1, '第二次 apply 不许再注册（否则真实 better-sidebar 会 throw）');
+});
+
+test('服务注册表里已有同 id 的 tab 时跳过注册，且不调用 registerTab', () => {
+    const { exports } = loadBundle();
+    let calls = 0;
+    const ctx = {
+        locale: 'zh-CN',
+        betterSidebar: {
+            getTabs: () => [{ id: TAB_ID }],
+            registerTab() {
+                calls += 1;
+                return () => {};
+            },
+        },
+        effect: (factory) => factory(),
+    };
+    exports.apply(ctx);
+    assert.equal(calls, 0, '上一代实例留下的同 id 注册应被识别并跳过');
+});
+
+test('effect 撤销后标记复位，下一次 apply 仍能注册（热更新不留死角）', () => {
+    const { exports } = loadBundle();
+    const registered = [];
+    let disposer = null;
+    const ctx = {
+        locale: 'zh-CN',
+        betterSidebar: {
+            registerTab(descriptor) {
+                registered.push(descriptor);
+                return () => {};
+            },
+        },
+        effect: (factory) => {
+            disposer = factory();
+        },
+    };
+    exports.apply(ctx);
+    assert.equal(registered.length, 1);
+    assert.equal(typeof disposer, 'function', '注册必须返回 disposer 交给 fiber');
+    disposer();
+    exports.apply(ctx);
+    assert.equal(registered.length, 2, '撤销后应能重新注册');
+});
