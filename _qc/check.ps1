@@ -424,6 +424,8 @@ if ($null -ne $umb) {
 $ciPath = Join-Path $root '.github\workflows\ci.yml'; $ciTxt = if (Test-Path $ciPath) { [IO.File]::ReadAllText($ciPath, [Text.Encoding]::UTF8) } else { '' }
 Check ((Test-Path $ciPath) -and ($ciTxt -match '_qc/check\.ps1') -and ($ciTxt -notmatch 'continue-on-error')) 'CI 工作流 .github/workflows/ci.yml 在位：只跑与本地相同的 _qc/check.ps1，且无 continue-on-error（口径唯一：design §16 第 6 行）'
 Check (([IO.File]::ReadAllText((Join-Path $root '.gitignore'), [Text.Encoding]::UTF8)) -match '\.dsh-code-index') '.gitignore 覆盖 .dsh-code-index/（DSH 代码索引本地缓存；未忽略会让工作树永远不干净，5-1 卡「工作树必须干净」判据失效）'
+$umbIgnore = [IO.File]::ReadAllText((Join-Path $root '.gitignore'), [Text.Encoding]::UTF8)
+Check (($umbIgnore -match '(?m)^\.env\s*$') -and ($umbIgnore -match '(?m)^\*\.pem\s*$') -and ($umbIgnore -match '(?m)^\*\.key\s*$')) '母版 .gitignore 挡 .env / *.pem / *.key（design §14 第 5 行要求推送前 git check-ignore -v .env 自证：母版此前一条都不命中，而 template/.gitignore 早有这几条，属口径不齐；密钥推出去不可逆）'
 foreach ($k in @('cordis.patch.yml','lib\index.js','lib\client.js','skills\roadbook\SKILL.md','skills\roadbook-atlas\SKILL.md','test\skill-mirror.test.mjs','test\umbrella-contract.test.mjs','test\packaging.test.mjs')) { Check (Test-Path (Join-Path $root $k)) "伞包文件存在：$k" }
 $umbYml = [IO.File]::ReadAllText((Join-Path $root 'cordis.patch.yml'), [Text.Encoding]::UTF8)
 Check (($umbYml -match '(?m)^- insert:') -and ($umbYml -notmatch 'roadbook-bundle') -and ($umbYml -notmatch '(?m)^\s+group:\s*true\s*$')) '伞包 patch：- insert: 平铺（不再有 group 容器行 —— 容器行自己在面板上显示成「已关闭」）'

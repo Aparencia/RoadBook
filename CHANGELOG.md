@@ -52,11 +52,15 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 - **工程**：新增 `.github/workflows/ci.yml`（口径与 `_qc/check.ps1` 完全一致，禁 `continue-on-error`——设计文档 §16 第 6 行早就这么要求，仓库此前没有 CI）；`.gitignore` 补 `.dsh-code-index/`（DSH 代码索引的本地缓存，未忽略会直接破坏 5-1 卡的「工作树必须干净」判据）。
 - **就绪自检换代**：`missingBundledFiles()` 从手写清单改为「显式运行时清单 + 三个宿主入口模块的静态相对 import 闭包」。起因是事故复盘——手写清单与打包白名单**同时**漏了 `host-fallback.js`，两个本该互相兜底的机制一起失明。闭包扫描先剥注释再匹配（本文件注释里就写着 `import x from './a.js'` 这种例子，不剥会报一个不存在的文件：假红比不检查更坏），且支持多行 import。
 
+### 推送前自检发现的一处（母版自身，补记）
+
+- **母版 `.gitignore` 从未挡 `.env` / `*.pem` / `*.key`**：设计 §14 第 5 行把「首推/推送前用 `git check-ignore -v .env` 确认敏感文件确实被挡住」写成推送前置动作，照这条在推送前跑了一次自检——在母版仓库自己身上**一条都不命中**（`check-ignore` 退出码 1），而 `template/.gitignore` 早就挡着，属口径不齐。已按 template 同口径补齐四条规则，并给 `_qc/check.ps1` 加断言防回归。注意 `security.ps1` 只能扫工作树里**已存在**的密钥，挡不住「新建的 `.env` 被 `git add` 带进历史」——密钥推出去不可逆，这属于「文档说要挡、实际没挡」的假绿，与上面七处同一类。
+
 ### 测试与验收
 
 - `node --test "test/*.test.mjs"`：**40/40**（`client-contract` 新增 6 例钉住预览 URL 算法/语言快照字段/目录指纹/规格过期判定/双语表注册，后又新增 3 例把「字节数走生产路径折算」「UTF-8 折算与 TextEncoder 逐个一致」「三态判据」钉死；`umbrella-contract` 新增 3 例钉住 import 闭包与 YAML 表达式同口径，后又新增 2 例钉住剥注释的假绿与假红两个方向；新增 `packaging.test.mjs` 6 例）。
 - `node --test "plugin/roadbook-autoload/test/*.test.mjs"`：**66/66**（新增 `banner.test.mjs` 7 例：常驻提示的注册形状/门控/关闭三态；`trigger.test.mjs` 新增 7 例钉住空转判据的三条边界；`index.test.mjs` 新增 5 例钉住空转观测只记账、不改行为；复核后又把这些用例的假 session 改成真实 `snapshotEvents()` 形状，并补上「回扫只在窗口 + 1 条内、结论与全量一致」等例）。
-- `_qc/check.ps1`：**315 项全绿、退出码 0**（新增发布白名单、CI、`.gitignore` 三组断言；复核后把「逐个点名测试文件」改为「跑整套件 glob」并补 `banner.test.mjs` 入清单；BOM 与 PS 5.1 解析均 [OK]）。
+- `_qc/check.ps1`：**316 项全绿、退出码 0**（新增发布白名单、CI、`.gitignore` 三组断言——`.gitignore` 那组同时管 `.dsh-code-index/` 与密钥三条；复核后把「逐个点名测试文件」改为「跑整套件 glob」并补 `banner.test.mjs` 入清单；BOM 与 PS 5.1 解析均 [OK]）。
 - 版本升 `0.3.0`（加能力 → 次版本；三处事实源同步，见下）。
 
 ## [0.2.3] - 2026-10-04
