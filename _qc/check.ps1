@@ -460,12 +460,21 @@ if (Test-Path $umbUpd) {
     $umbUpdTxt = [IO.File]::ReadAllText($umbUpd, [Text.Encoding]::UTF8)
     Check (($umbUpdTxt -match "state:\s*'unknown'") -and ($umbUpdTxt -match "'no-upstream'") -and ($umbUpdTxt -match 'update-available')) '更新判定是三态以上（读不到 = unknown，不许退化成「已是最新」）'
     Check (($umbUpdTxt -match 'trustedLocalRequest') -and ($umbUpdTxt -match 'sec-fetch-site') -and ($umbUpdTxt -match 'loopbackAuthority')) '本机请求守卫在位（DNS rebinding：Host 必须是 loopback、跨站与不同源 Origin 一律拒）'
+    # 0.7.0：升级是否真的生效 = 「重启后的运行版本 ↔ 观测文件里最后一条 apply-finish 的目标版本」对账。
+    # 断言锚到**代码行**：只写 -match 'upgradeOutcome' 会被 import 行与 JSDoc 满足（恒真空断言，复核实测过）。
+    Check (($umbUpdTxt -match 'export function lastApplyTarget') -and ($umbUpdTxt -match 'export function upgradeOutcome') -and ($umbUpdTxt -match "state: order > 0 \? 'newer' : 'pending'") -and ($umbUpdTxt -match 'entry\.exitCode !== 0') -and ($umbUpdTxt -match 'after === before') -and ($umbUpdTxt -match 'function readableVersion')) '升级生效对账在位（四态；只认最后一条「真换了版本的成功安装」：失败 / 空转 / 读不到都不算落地）'
 }
 $umbLineTxt = [IO.File]::ReadAllText((Join-Path $root 'lib\index.js'), [Text.Encoding]::UTF8)
 Check (($umbLineTxt -match '/roadbook/update/status') -and ($umbLineTxt -match '/roadbook/update/apply') -and ($umbLineTxt -match 'candidateInstallers')) '主行注册两条更新路由并走命令探测（找不到可用命令就拒绝，不许随便挑一条）'
+Check (($umbLineTxt -match 'upgrade: upgradeInfo\(\)') -and ($umbLineTxt -match 'before: landed\?\.before')) '状态路由把升级对账发出去且带上 before（界面那句「已生效：v{before} → v{target}」靠它，缺了恒显示 v?）'
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match '自动更新') '根 README 写明主插件自带自动更新（可发现）'
 $umbCli = [IO.File]::ReadAllText((Join-Path $root 'lib\client.js'), [Text.Encoding]::UTF8)
 Check (($umbCli -match 'id:\s*"roadbook"') -and ($umbCli -match 'roadbook:gallery') -and ($umbCli -match 'roadbook:evolve') -and ($umbCli -notmatch 'roadbook-atlas:gallery')) '客户端半 id = 包名、标签页 id = roadbook:gallery + roadbook:evolve（旧 id 不许残留）'
+# 0.7.0：插件详情页（DSH 侧栏「插件」→ roadbook 组合包详情）的检查更新入口。三条断言各挡一个方向：
+#   ① slot 名/注册行写错 = 静默不出现；② 把 slots 写进 inject = 服务缺席时本行「未激活」（0.4.1 那类事故）；
+#   ③ 不按 subject 认领 = 跑到别人的插件详情页上说话（三个 slot 在每个插件的详情页上都会渲染）。
+Check (($umbCli -match '\[DETAIL_ACTION_SLOT, "roadbook-update-action"') -and ($umbCli -match '\[DETAIL_BADGE_SLOT, "roadbook-update-badge"') -and ($umbCli -match '\[DETAIL_SECTION_SLOT, "roadbook-update-section"')) '客户端半把三处贡献注册进插件详情页三个 slot（锚到注册表那一行；只 match slot 名会被注释满足 = 恒真）'
+Check (($umbCli -match 'var inject = \["betterSidebar"\];') -and ($umbCli -match "ctx\.inject\(\[.slots.\]") -and ($umbCli -match 'detailIsOurs\(props\.subject\)')) '详情页贡献走作用域注入且 inject 未被污染、按 subject 认领（inject 被写进 slots = 服务缺席即「未激活」）'
 $umbAtlas = [IO.File]::ReadAllText((Join-Path $root 'plugin\roadbook-atlas\package.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
 Check (((-not $umbAtlas.dsh.bundle) -and (-not $umbAtlas.dsh.client)) -and (@($umbAtlas.exports.PSObject.Properties.Name) -contains './package.json')) 'atlas 子插件已降级：无 dsh.bundle / dsh.client（不单独安装，避免第二个状态源）'
 # ── 2026-10-05：自进化行 roadbook-evolve ────────────────────────────────────────

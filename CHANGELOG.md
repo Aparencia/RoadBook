@@ -15,8 +15,54 @@
 `git tag`（由agent 打 tag）。改完从仓库根跑：
 
 ```bash
-node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
+node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
+
+## [0.7.0] - 2026-10-05
+
+**更新入口升为一等公民 + 升级生效对账**：更新能力此前只有「侧栏图册标签页页脚」一个落点——不看图册的用户永远不知道有新版本，而且「安装命令退出码 0」与「新版本真的在跑」混为一谈（界面只能说一句「重启 DSH 后生效」，永远没有下文）。按「加能力 → 次版本」走 **0.7.0**。
+
+### 新能力
+
+- **插件详情页的「检查更新」入口**（用户裁决 Q1=A / Q2=A）：注册进 DSH 内置插件页（侧栏「插件」→ roadbook 组合包详情）声明的三个 list slot —— `plugins.detail.actions`（页头控件，在页面自己的开关与卸载**之前**）、`plugins.detail.badge`（标题旁一枚标签）、`plugins.detail.section`（页面内容之下的区块：状态一句话 + 运行/磁盘/上游三个版本 + 升级对账 + 上次检查时间）。每个条目都按页面的 `subject` 门控：**只认 `{ kind: 'bundle', pkg.name === 'roadbook' }`，其余一律返回 null** —— 这三个 slot 在**每一个**插件的详情页上都会渲染，不做门就等于跑到别人的页面上说话。
+- **接线走作用域注入，`export const inject` 一个字符都不动**（仍是 `['betterSidebar']`）：`ctx.inject(['slots'], …)`，服务缺席或 slot 永不被声明就什么都不发生。把 `slots` 写进 `inject` 会让服务缺席时本行停在「未激活」，而 DSH 的 web boot 把任一未激活条目判成致命错误 —— 那是 0.4.1 那次「应用无法启动」的同一类事故（`_qc/check.ps1` 现在按这条口径加了断言）。
+- **升级生效对账（闭环）**：`lib/update.js` 新增两个纯函数 —— `lastApplyTarget()` 从观测文件里取最后一次 `apply-finish` 的**目标版本**（`after` 为空串的那次不算：`pnpm` 的 "Already up to date" 没换掉任何东西），`upgradeOutcome()` 把「目标版本」与「本进程加载时的版本」（`bootVersion`）对成四态：`applied` / `pending`（还没重启）/ `newer`（此后被别的版本盖过，不对这次更新下结论）/ `unknown`（读不到）。状态路由把它作为 `status.upgrade` 发出；界面据此把徽标切成「待重启」并如实报出两个版本。
+- **三个版本号分开报**：运行版本（`bootVersion`，重启才会变）／磁盘版本（`installedNow`）／上游版本（`latest`）。装完没重启时磁盘已是新版、内存里还是旧的 —— 合成一个数字就是把这件最容易被误读的事藏起来。
+
+### 优化（对照本轮方案 O1–O5）
+
+- **O1 手动检查穿透冷却**：详情页按钮一律走 `?force=1`（宿主冷却只约束自动轮询），请求在飞时按钮置灰（`detail.checking`），并发仍由宿主的 `state.checking` 单飞兜住。
+- **O2 版本单一来源**：更新相关的界面文案只读**宿主 status** 的版本字段，不再拿客户端编译进 bundle 的常量当「当前版本」。
+- **O3 提示不再依赖「打开图册」**：徽标进插件详情页标题旁。
+- **O4 升级生效可见**（见上「升级生效对账」）。
+- **O5 拒绝原因可见**：`agents-busy` / `no-applier` / `mode-off` 等宿主拒绝理由随状态进区块，不再只进日志。
+
+### 边界与代价（明说）
+
+- **客户端半整体仍 gated on `betterSidebar`**：`inject` 保持不动是有意的（见上），代价是**没有 better-sidebar 的部署上，这两个标签页与详情页贡献都不会出现**。代码里、README 与本节都写明这条耦合。
+- **三个 slot 名是 DSH 内置插件页声明的**：DSH 若改名，本贡献**静默不出现**（`slots.inject` 只是在等），不会报错也不会降级显示 —— 这是它的失败形态，排查时先看 `plugins.detail.*` 是否还在。
+- **详情页贡献随 `roadbook` 主行同生共死**：`dsh-client-modules` 只把一个包的浏览器半挂在说明符恰为包名的那一行 Loader 行上；关闭主行 = 这三处贡献一起消失（这是设计，不是缺陷）。
+- **手动「检查更新」是真的打远端**：穿透冷却意味着每点一次就发一次请求，界面用「检查中」态与单飞合并兜住连点，不额外加静默冷却窗口（静默窗口会让用户点了没反应，正是本次要修的那类体验）。
+
+### 提交后独立复核（只读对抗式，两条 P1 + 三条 P2，逐条已修）
+
+复核对象 = 提交 `27a8958`；复核者不参与写，只交结论。**它打穿了本批自己的两处「假绿」**：
+
+- **P1① 空转的安装被算成「已生效」**（`lib/update.js`）：`lastApplyTarget` 原来只挡 `after === ''`，而 `pluginVersion()` **永不返回空串**（读不到时回 `unknown（…）`），`pnpm` 的 "Already up to date" 落的是 `after === before`（非空）⇒ 界面会说「上次更新已生效：v0.7.0 → v0.7.0」，而盘上什么都没换 —— 正是图册更新条专门拦掉的那句假话。修法：只认**最后一条** `apply-finish`，且它必须 `exitCode === 0`、`after` 可读（非空且非 `unknown…`）、`after !== before`；不合格就到此为止，**不用更早的一条冒充这次**。
+- **P1② `before` 从不进状态，文案恒显 `v?`**（`lib/index.js` + `lib/client.js`）：`upgradeOutcome` 只回 `state/target/running`，而界面那句「已生效：v{before} → v{target}」要用 `before` ⇒ 永远显示 `v? → v0.7.0`；而测试夹具自造了 `before` 字段，所以测不出来（**夹具比生产宽松 = 假绿**，与 0.4.1 那次同一个病）。修法：状态补 `before: landed?.before`，夹具改用宿主真实形状。
+- **P2① 三条门禁断言是恒真空断言**（`_qc/check.ps1`）：只 match 标识符会被注释、JSDoc 与 import 行满足 —— 复核实测「把 `upgradeOutcome` 的 return 改成 `'unknown'`」「删掉 `upgrade:` 字段」都仍然判绿。修法：锚到代码行（`export function …` / `state: order > 0 ? 'newer' : 'pending'` / `upgrade: upgradeInfo()` / `[DETAIL_ACTION_SLOT, "roadbook-update-action"`），并逐条做变异验证。
+- **P2② 读不到被算成「已生效」**：`upgradeOutcome` 的字面相等兜底会把两个相同的 `unknown…` 降级串判成 `applied`。修法：`readableVersion()` 先把 `unknown…` 归成「读不到」⇒ `unknown`。
+- **P2③ 警告文案指错对象**：`warnRegistration` 固定写「标签页 X 注册失败」，详情页 slot 失败也走它。修法：文案去掉「标签页」。
+
+**复核确认没问题的**：三个 slot 名 / `({t, subject})` 形参 / `subject` 三种形状 / 按 `order` 排序 / 对无话可说的 subject 返回 null，与 DSH 内置实现逐条一致；`inject` 仍只有 `betterSidebar`；外壳不调 hook、别人的详情页零请求；`updateStripText` 与旧内联实现逐字等价。**复核留的一处不确定已按证据消解**：`order: 20` 是官方 slot 文档明写的注册项（「带 `id`、`order` 和本地化的 `label` 注册」），内置插件页自己也用 `entry.options.order ?? 0` 读它，故保留。
+
+### 测试与验收
+
+- `node --test "test/*.test.mjs"`：**141/141**（`update.test.mjs` 38 → 41：新增 `lastApplyTarget` 尾部取值与空 `after` 不计、`upgradeOutcome` 四态 + 读不懂版本串时退回字面相等、状态路由带 `upgrade` 对账；`client-contract.test.mjs` 35 → 41：新增三个 slot 的注册形状与 `inject` 未被污染、`ctx.inject` 读属性即抛时标签页照注册、subject 门（别人的页面返回 null）、**壳在别人的页面上一个 hook 都不调**、能力关闭时三处一起不出现、有新版/待重启两档判定）。
+- `node --test "plugin/roadbook-autoload/test/*.test.mjs"`：**93/93**；`node --test "plugin/roadbook-evolve/test/*.test.mjs"`：**33/33**。
+- `powershell -NoProfile -File _qc/check.ps1` 见本次提交的粘贴输出。
+- 版本口径：根 `package.json` = `0.7.0` = `lib/client.js` 的 `PLUGIN_VERSION`（`client-contract` 逐字核对）。
+- **真机验收需要人在场**（装新版本 + 重启 DSH 属不可委托）：本机 profile 装的是 0.4.1，上游 0.6.1 —— 这条链本身要等装到 0.7.0 之后才能在真实插件详情页上看到三处贡献。
 
 ## [0.6.1] - 2026-10-05
 

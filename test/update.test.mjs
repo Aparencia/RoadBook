@@ -13,7 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +29,8 @@ import {
   isCertificateError,
   lastCheckAt,
   lastCheckEvent,
+  lastApplyTarget,
+  upgradeOutcome,
   lockCommitOf,
   loopbackAuthority,
   normalizeConfig,
@@ -355,6 +357,45 @@ test('观测文件尾部读取：坏行跳过、只认最后一条 check、大�
   assert.equal(lastCheckEvent(readFileSync(file, 'utf8')).state, 'up-to-date');
 });
 
+test('更新落地目标：只认最后一条「真换了版本的成功安装」，四条守卫各挡一种假结论', () => {
+  // 夹具按**生产形状**写：writeReport 会补 time，settle() 落的是 exitCode/before/after
+  const line = (extra) => JSON.stringify({ time: new Date(1_700_000_000_000).toISOString(), event: 'apply-finish', exitCode: 0, before: '0.6.0', after: '0.6.1', ...extra });
+
+  assert.equal(lastApplyTarget(''), null, '读不到 = 没有可对账的更新');
+  assert.equal(lastApplyTarget('{"event":"apply-start","label":"pnpm"}\n'), null, 'apply-start 不是落地证据');
+
+  // ① 装失败：after 照样是当时盘上的版本 —— 没换就是没换
+  assert.equal(lastApplyTarget(line({ exitCode: 1, before: '0.6.0', after: '0.6.0' })), null, '失败那次不算落地');
+  // ② 空转（pnpm 的 Already up to date）：装成功了，但盘上什么都没换
+  assert.equal(lastApplyTarget(line({ before: '0.6.1', after: '0.6.1' })), null, '空转不是一次更新');
+  // ③ 读不到版本：pluginVersion() 读不到时回 `unknown（…）`，那是「没测出来」、不是「换成了它」
+  assert.equal(lastApplyTarget(line({ after: 'unknown（package.json 读不到：xxx）' })), null);
+  assert.equal(lastApplyTarget(line({ after: '   ' })), null);
+
+  // ④ 只看最后一条：最后一条不合格就到此为止，绝不用更早的一条冒充这次更新
+  const stale = [line({ before: '0.5.0', after: '0.6.0' }), line({ before: '0.6.0', after: '0.6.0' })].join('\n');
+  assert.equal(lastApplyTarget(stale), null, '最后一条是空转 ⇒ 这一次没有可对账的落地（更早那条不许顶上来）');
+
+  const good = [line({ before: '0.5.0', after: '0.6.0' }), '{ 坏行', line({ before: '0.6.0', after: '0.6.1' })].join('\n');
+  assert.deepEqual(lastApplyTarget(good), { at: 1_700_000_000_000, before: '0.6.0', after: '0.6.1' }, '最后一条合格就用它，坏行跳过');
+});
+
+test('升级生效对账：四态，且读不到一律 unknown（不许把「判不了」显示成「已生效」）', () => {
+  assert.equal(upgradeOutcome({}).state, 'unknown', '两边都没有 = 判不了');
+  assert.equal(upgradeOutcome({ target: '0.7.0' }).state, 'unknown', '缺运行版本 = 判不了');
+  assert.equal(upgradeOutcome({ running: '0.7.0' }).state, 'unknown', '缺目标版本 = 判不了');
+  // `pluginVersion()` 的两种降级串：两边一模一样也不等于「已生效」——它们是「没测出来」
+  assert.equal(upgradeOutcome({ target: 'unknown', running: 'unknown' }).state, 'unknown');
+  assert.equal(upgradeOutcome({ target: 'unknown（读不到：x）', running: 'unknown（读不到：y）' }).state, 'unknown');
+
+  assert.equal(upgradeOutcome({ target: '0.7.0', running: '0.7.0' }).state, 'applied', '重启后换过来了');
+  assert.equal(upgradeOutcome({ target: '0.7.0', running: '0.6.1' }).state, 'pending', '还没重启');
+  assert.equal(upgradeOutcome({ target: '0.6.1', running: '0.7.0' }).state, 'newer', '此后被别的版本盖过，不对这次更新下结论');
+  // 读不懂版本串时退回字面相等：仍然只在这三态里，不会因为读不懂就升级成 applied
+  assert.equal(upgradeOutcome({ target: 'custom-build', running: 'custom-build' }).state, 'applied');
+  assert.equal(upgradeOutcome({ target: 'custom-build', running: 'other-build' }).state, 'pending');
+});
+
 // ── 命令探测 ─────────────────────────────────────────────────────────────────
 
 test('命令探测阶梯：配置模板优先，其次是自身 CLI 入口，再是自带运行时，最后是 PATH', () => {
@@ -564,6 +605,38 @@ test('服务：状态路由给出五态判定，并把检查写进观测文件',
   const lines = readFileSync(reportPath, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
   assert.ok(lines.some((entry) => entry.event === 'loaded'));
   assert.ok(lines.some((entry) => entry.event === 'check' && entry.state === 'update-available'));
+  service.dispose();
+});
+
+test('服务：状态里带「升级生效」对账 —— 目标与运行版本一致才算生效，读不到就是 unknown', async (t) => {
+  const { service, reportPath } = serviceBox(t, { latest: '9.9.9' });
+  const running = pluginVersion(ROOT);
+
+  // 从没落地过更新：判不了 —— 不是「已生效」，也不是「待重启」
+  assert.equal(service.status().upgrade.state, 'unknown');
+  assert.equal(service.status().upgrade.target, null);
+
+  const land = (before, after) =>
+    appendFileSync(reportPath, `${JSON.stringify({ time: new Date().toISOString(), event: 'apply-finish', exitCode: 0, before, after })}\n`, 'utf8');
+
+  // 目标就是当前在跑的版本 → 重启后确实换过来了
+  land('0.0.1', running);
+  assert.equal(service.status().upgrade.state, 'applied');
+  assert.equal(service.status().upgrade.target, running);
+  // `before` 必须一起发出去：界面那句「已生效：v{before} → v{target}」缺了它就恒显示 v?
+  assert.equal(service.status().upgrade.before, '0.0.1', '落地记录里的 before 要进状态');
+
+  // 装完了但没重启（运行版本落后于目标）→ 待重启，且两个版本都要如实报出来
+  land(running, '99.0.0');
+  const pending = service.status().upgrade;
+  assert.equal(pending.state, 'pending', '磁盘换了、内存没换 = 待重启');
+  assert.equal(pending.target, '99.0.0');
+  assert.equal(pending.running, running);
+  assert.equal(pending.before, running);
+
+  // 空转的最后一次安装（before === after）→ 这一次没有可对账的落地，退成 unknown 而不是「已生效」
+  land('99.0.0', '99.0.0');
+  assert.equal(service.status().upgrade.state, 'unknown', '空转不许说成「上次更新已生效」');
   service.dispose();
 });
 

@@ -77,7 +77,7 @@ function loadBundle(options = {}) {
     const requested = [];
     const exports = config.factory((id) => {
         requested.push(id);
-        if (id === 'react') return fakeReact();
+        if (id === 'react') return options.react ?? fakeReact();
         throw new Error(`客户端半 require 了非基线模块：${id}`);
     });
     return { config, exports, requested };
@@ -1053,3 +1053,213 @@ test('自进化标签页：首帧渲染「正在读取信号…」，根节点�
     assert.ok(labels.includes('正在读取信号…'), `首帧应显示读取中，实际：${labels.join(' | ')}`);
     assert.ok(labels.some((label) => label.endsWith(`v${exports.PLUGIN_VERSION}`)), '页脚应显示当前版本');
 });
+
+// ── 插件详情页三处贡献（DSH 侧栏「插件」→ roadbook 组合包详情） ────────────────
+//
+// 这一组钉的是三件只能靠真机肉眼验的事：
+//   ① 注册走**作用域注入**（`ctx.inject(['slots'], …)`），`export const inject` 一个字符都不动
+//      —— 把 slots 写进 inject，服务缺席时本行会停在「未激活」，而 DSH 把未激活条目判成致命错误；
+//   ② 三个 slot 各注册一条，且**对不属于本包的 subject 返回 null**（这三个 slot 在每一个插件的
+//      详情页上都会渲染，不做门就等于跑到别人的页面上说话）；
+//   ③ 能力关闭 / 宿主路由不在时，三处**一起**不出现（页头不许留一个点了必然报错的死按钮）。
+
+/** 一个只记账的假 slots 服务：`inject` 立刻回调（等同 slot 已被页面声明）。 */
+function fakeSlots(log) {
+    return {
+        inject(name, callback) {
+            log.push({ kind: 'inject', name });
+            const disposer = callback();
+            return () => log.push({ kind: 'dispose', name, disposer });
+        },
+        register(options) {
+            log.push({ kind: 'register', slot: options.name, id: options.id, order: options.order, locale: options.locale });
+            return () => {};
+        },
+    };
+}
+
+test('详情页贡献：走作用域注入注册三个 slot，且 inject 仍然只有 betterSidebar', () => {
+    const { exports } = loadBundle();
+    // 跨 vm 边界的数组原型不同，`deepStrictEqual` 会因此判不等 —— 先搬回本 realm 再比。
+    assert.deepEqual(Array.from(exports.inject), ['betterSidebar'], 'inject 不许被 slots 污染 —— 缺席即「未激活」，那是 DSH 打不开的那类事故');
+
+    const log = [];
+    const slots = fakeSlots(log);
+    const injected = [];
+    const ctx = {
+        inject(names, callback) {
+            injected.push(names);
+            return callback({ slots });
+        },
+    };
+    exports.__internals.registerPluginDetailSlots(ctx);
+    assert.equal(injected.length, 1, '只按作用域要一次服务');
+    assert.deepEqual(Array.from(injected[0]), ['slots'], '只按作用域要 slots，不写进 fiber 依赖');
+    assert.deepEqual(
+        log.filter((entry) => entry.kind === 'register').map((entry) => [entry.slot, entry.id, entry.order, entry.locale]),
+        [
+            ['plugins.detail.actions', 'roadbook-update-action', 20, 'roadbook'],
+            ['plugins.detail.badge', 'roadbook-update-badge', 20, 'roadbook'],
+            ['plugins.detail.section', 'roadbook-update-section', 20, 'roadbook'],
+        ],
+        '三个 slot 各一条，名称与 id 都不许漂'
+    );
+});
+
+test('详情页贡献：slots 服务不可用 / inject 抛错时都不上抛，标签页照常注册', () => {
+    // 两种恶劣 ctx 各起一个**新的 bundle**：同一个 bundle 里 apply 跑第二次时，模块级的幂等标记
+    // 会让 registerTab 不再被调用（这是设计，不是缺陷），拿它当失败会误伤。
+    const hostile = loadBundle().exports;
+    const registered = [];
+    hostile.apply({
+        get inject() {
+            throw new Error('cannot get property "inject" without inject');
+        },
+        locale: 'zh-CN',
+        betterSidebar: { registerTab: (descriptor) => (registered.push(descriptor.id), () => {}) },
+        effect: (fn) => fn(),
+    });
+    assert.deepEqual(registered, [TAB_ID, EVOLVE_TAB_ID], 'ctx.inject 读属性就抛（严格代理）：详情页接线放弃，标签页必须照注册');
+
+    // inject 在、但 slots 永远不到位（回调不被调用）：什么都不注册，也绝不抛
+    const second = [];
+    loadBundle().exports.apply({
+        inject: () => () => {},
+        locale: 'zh-CN',
+        betterSidebar: { registerTab: (descriptor) => (second.push(descriptor.id), () => {}) },
+        effect: (fn) => fn(),
+    });
+    assert.deepEqual(second, [TAB_ID, EVOLVE_TAB_ID]);
+});
+
+test('详情页贡献：subject 门只认本组合包（别人的页面必须返回 null）', () => {
+    const { exports } = loadBundle();
+    const ours = exports.__internals.detailIsOurs;
+    assert.equal(ours({ kind: 'bundle', pkg: { name: 'roadbook', version: '0.7.0' } }), true);
+    assert.equal(ours({ kind: 'bundle', pkg: { name: 'dsh-plugin-mgr' } }), false, '别人的组合包不许说话');
+    assert.equal(ours({ kind: 'row', pkg: { name: 'roadbook' }, row: { rowId: 'roadbook' } }), false, '行页不是本包的主页');
+    assert.equal(ours({ kind: 'item', id: 'ui-chat' }), false, '官方插件页更不是');
+    assert.equal(ours(null), false);
+    assert.equal(ours({ kind: 'bundle' }), false, '缺 pkg 不许抛');
+
+    const t = (key) => key;
+    const foreign = { kind: 'bundle', pkg: { name: 'other' } };
+    const internals = exports.__internals;
+    for (const name of ['RoadbookUpdateAction', 'RoadbookUpdateBadge', 'RoadbookUpdateSection']) {
+        assert.equal(internals[name]({ t, subject: foreign }), null, `${name} 在别人的页面上必须是 null`);
+    }
+});
+
+test('详情页判定：能力关闭 / 宿主路由不在时三处一起不出现', () => {
+    const { exports } = loadBundle();
+    const views = exports.__internals.detailViews;
+    assert.equal(views({ ok: true, mode: 'off' }, false), null, 'update: off = 三处都不出现');
+    assert.equal(views({ ok: false, unavailable: true, reason: 'x' }, false), null, '旧宿主没有这两条路由');
+    assert.equal(views(null, false).section.running, '?', '读不到版本给问号，不给 undefined');
+});
+
+test('详情页壳：别人的页面**一个 hook 都不调**（列表 slot 在每个插件的详情页上都会渲染）', () => {
+    let hooks = 0;
+    const base = fakeReact();
+    const counting = {
+        createElement: base.createElement,
+        useState(initial) {
+            hooks += 1;
+            return base.useState(initial);
+        },
+        useEffect(...args) {
+            hooks += 1;
+            return base.useEffect(...args);
+        },
+        useCallback(fn) {
+            hooks += 1;
+            return base.useCallback(fn);
+        },
+    };
+    const { exports } = loadBundle({ react: counting });
+    const t = (key) => key;
+    const internals = exports.__internals;
+    const shells = ['RoadbookUpdateAction', 'RoadbookUpdateBadge', 'RoadbookUpdateSection'];
+
+    hooks = 0;
+    for (const name of shells) {
+        assert.equal(internals[name]({ t, subject: { kind: 'bundle', pkg: { name: 'other' } } }), null);
+    }
+    // 外壳一旦在门控之前挂 hook（订阅 + 取数），打开**任何一个**插件的详情页都会替 roadbook 发请求
+    assert.equal(hooks, 0, '别人的页面：壳必须直接返回 null，不许订阅、不许取数');
+
+    const ours = { kind: 'bundle', pkg: { name: 'roadbook' } };
+    const element = internals.RoadbookUpdateAction({ t, subject: ours });
+    assert.ok(element && typeof element.type === 'function', '本包自己的页面：壳把实体委托给内层组件');
+    element.type(element.props); // 假 React 不会自己渲染子组件，手动挂一次
+    assert.ok(hooks > 0, 'hooks 住在内层组件里');
+});
+
+test('详情页判定：有新版时出徽标、能更新；待重启单列一档', () => {
+    const { exports } = loadBundle();
+    const views = exports.__internals.detailViews;
+    const available = views(
+        {
+            ok: true,
+            mode: 'notify',
+            state: 'update-available',
+            latest: '0.7.0',
+            bootVersion: '0.6.1',
+            installedNow: '0.6.1',
+            checkedAt: '2026-10-05T10:00:00.000Z',
+            applier: { available: true },
+            upgrade: { state: 'unknown', target: null, running: null },
+        },
+        false
+    );
+    assert.equal(available.badge.key, 'detail.badgeUpdate');
+    assert.equal(available.action.canApply, true, '有可用安装命令时页头要能直接更新');
+    assert.equal(available.action.labelKey, 'detail.check');
+    assert.equal(available.section.upgrade, null, '没有落地记录时不许编一句升级结论');
+    assert.equal(available.section.running, '0.6.1');
+
+    // 装完没重启：徽标改成「待重启」，区块如实报出目标与运行版本
+    // （`before` 由宿主的状态一起发出来 —— 夹具按宿主真实形状写，不自造字段）
+    const pending = views(
+        {
+            ok: true,
+            mode: 'notify',
+            state: 'up-to-date',
+            latest: '0.7.0',
+            bootVersion: '0.6.1',
+            installedNow: '0.7.0',
+            applier: { available: true },
+            upgrade: { state: 'pending', target: '0.7.0', running: '0.6.1', before: '0.6.1' },
+        },
+        false
+    );
+    assert.equal(pending.badge.key, 'detail.badgeRestart');
+    assert.equal(pending.section.upgrade.key, 'detail.upgradePending');
+    assert.equal(pending.section.upgrade.tone, 'warn');
+    assert.equal(pending.section.onDisk, '0.7.0', '磁盘版本与运行版本必须分开报');
+
+    // 重启后生效：文案要用落地记录里的 before，缺了它就恒显示「v? → v0.7.0」
+    const applied = views(
+        {
+            ok: true,
+            mode: 'notify',
+            state: 'up-to-date',
+            latest: '0.7.0',
+            bootVersion: '0.7.0',
+            installedNow: '0.7.0',
+            applier: { available: true },
+            upgrade: { state: 'applied', target: '0.7.0', running: '0.7.0', before: '0.6.1' },
+        },
+        false
+    );
+    assert.equal(applied.badge, null, '已生效且无新版：标题旁不留东西');
+    assert.equal(applied.section.upgrade.key, 'detail.upgradeApplied');
+    assert.equal(applied.section.upgrade.values.before, '0.6.1', 'before 不许落成 v?');
+    assert.equal(applied.section.upgrade.values.target, '0.7.0');
+
+    // 检查进行中：按钮锁住，不许连点
+    const checking = views({ ok: true, mode: 'notify', state: 'up-to-date', bootVersion: '0.6.1' }, true);
+    assert.equal(checking.action.canCheck, false);
+    assert.equal(checking.action.labelKey, 'detail.checking');
+});
+
