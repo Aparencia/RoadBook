@@ -34,7 +34,7 @@ After receiving the start instruction, first receipt the following six items:
 powershell -NoProfile -File check.ps1
 ```
 
-**The only legal definition of done: exit code 0 + the complete real output pasted.**
+Expected: **The only legal definition of done: exit code 0 + the complete real output pasted.**
 Everything else — "it is done / it should be fine" — does not count as done.
 ❌ Counter-example: "type-check is clean, so verification passes" (type-check ≠ verification)
 ✅ Good example: paste check.ps1's complete output with "all passed" on the last line, exit code 0
@@ -69,6 +69,7 @@ Tool cannot be installed / offline / no permission → write "no external opinio
 gitleaks detect --source . --report-format json --report-path gitleaks-baseline.json
 gitleaks detect --source . --baseline-path gitleaks-baseline.json --exit-code 1
 ```
+Expected: the baseline file is written; the diff command exits 0 with 0 new hits (existing hits only go into the baseline, which does not count as a pass).
 - **"I ran a scan" must never be treated as evidence**: paste all three — command + exit code + hit count; missing one is handled as unverified.
 
 **Action 2.5: scenario walkthrough (tiers M/L; every scenario must carry evidence — no output/JSON/assertion pasted = it was never walked)**
@@ -129,7 +130,7 @@ git commit -m "4-3 docs(verify): 验证收尾——回执已出，等用户验�
 powershell -NoProfile -File check.ps1
 ```
 
-The exit code must be 0; if it is 2 (`$STEPS` not configured) or non-zero → stop and ask the user; declaring verification complete is forbidden.
+Expected: the exit code must be 0; if it is 2 (`$STEPS` not configured) or non-zero → stop and ask the user; declaring verification complete is forbidden.
 
 The acceptance checklist is ready; please click through it item by item. Next step: 5-1 archive (reply "continue" to execute it).
 

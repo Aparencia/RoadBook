@@ -32,6 +32,7 @@ After receiving the start instruction, first receipt:
 ```powershell
 Select-String -Path <files this task touched> -Pattern 'ceiling:|upgrade:|no-trigger'
 ```
+Expected: the last line reads `<N> markers, <M> with no trigger.` (N/M are real numbers), copied into the receipt verbatim together with the disposition counts (registered TD x / into open questions y / closed this batch z).
   Each hit must either land in `docs/TECH_DEBT.md` this batch or be written into the `open questions` field of STATE.md; **`no-trigger` (the ones with no upgrade trigger written) come first** — a concession without a trigger never resurfaces on its own and is the first to rot silently. Copy the script's final `<N> markers, <M> with no trigger.` line into the receipt + the disposition counts (registered TD x / into open questions y / closed this batch z).
   ❌ Counter-example: at archive time just say "there are some TODOs in the code" without a count or an account (next round nobody can find them) ｜ ✅ Good example: `7 markers, 3 with no trigger.` → all 3 no-trigger ones registered as TD-021~023, the other 4 into STATE.md open questions.
 
@@ -43,6 +44,7 @@ $budget = @{ 'AGENTS.md' = 240; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' 
 foreach ($f in $budget.Keys) { "$f = $(@(Get-Content $f).Count) lines (limit $($budget[$f]))" }
 Select-String -Path README.md -Pattern 'powershell'
 ```
+Expected: one `<file> = <actual line count> lines (limit <limit>)` line per budgeted file first, then the `powershell` hits in README.md.
    - AGENTS.md has stale rules → delete them (hard limit 240 lines: before adding one, first ask "which real rework did this rule prevent?")
    - Run every README startup/check/test command for real; anything that does not run = fix it on the spot
    - Does docs/ARCHITECTURE.md's module diagram match the real directories in `git ls-files`?
@@ -54,6 +56,7 @@ Select-String -Path README.md -Pattern 'powershell'
 @(Get-ChildItem docs/decisions -Filter *.md).Count
 @(Get-ChildItem docs/specs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) }).Name
 ```
+Expected: three numbers — the lessons count, the decisions count, and the names of specs directories untouched for over 30 days (empty when there are none).
    - lessons/ and decisions/ each over 30 cards → move the oldest with no references for 90 days into `docs/archive/`
    - **The 6 seed lesson cards do not take part in this 30-card ranking elimination** (seeds are only proposed for promotion by the 6-6 card when they recur across projects)
    - Task directories under specs/ untouched for over 30 days → prompt the user to archive them
@@ -72,6 +75,7 @@ $closed  = @($rows | Where-Object { $_ -match '\|\s*closed\s*\|' }).Count
 $keyItem = ($rows | Where-Object { $_ -match '\|\s*open\s*\|' } | Select-Object -First 1)
 Set-Content -Path "$dest/tech-debt.md" -Encoding UTF8 -Value @("# 债务快照 $date", "open $open ｜ carried $carried ｜ closed $closed", "关键项：$keyItem")
 ```
+Expected: `$dest/tech-debt.md` has 3 lines (title / `open x ｜ carried y ｜ closed z` / the key item); the three counts come from the `状态` column of TECH_DEBT.md via the command above.
 The debt snapshot is written to `$dest/tech-debt.md` (3 lines: title / the three counts / the key item). The counts **must be derived by the command above from the `状态` column of `docs/TECH_DEBT.md`** (assign `$open`/`$carried`/`$closed`/`$keyItem` before writing the file; referencing an unassigned variable silently writes empty numbers, which is no measurement at all). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
    - ❌ Counter-example: writing `docs/archive/2026-10-03/` (no slug; two tasks on the same day overwrite each other)
    - ✅ Good example: `docs/archive/2026-10-03_export-limit/` (date + slug, unique and searchable)
@@ -82,6 +86,7 @@ The debt snapshot is written to `$dest/tech-debt.md` (3 lines: title / the three
 powershell -NoProfile -File orphans.ps1
 git ls-files | Measure-Object -Line | Select-Object -ExpandProperty Lines
 ```
+Expected: orphans.ps1's summary line (the five class counts) is pasteable verbatim; the second line is only a reference count.
 (The second line is only a reference count; the measurement standard is orphans.ps1's summary line, and **the summary line is pasted into the receipt verbatim**.)
 
    - a. `[孤儿]` file level: files in `git ls-files` with zero references (their file name cannot be found in any .md/.ps1/.json/source file, and they are not in the entry list)
@@ -105,6 +110,7 @@ $branch = git rev-parse --abbrev-ref HEAD
 git remote -v
 git check-ignore -v .env
 ```
+Expected: the current branch name + the remote list (empty when there is no remote) + the ignore-rule hit line for `.env` (output present = correctly ignored).
    - With a remote → push at close-out `git push origin HEAD` (to pin the upstream, `git push -u origin $branch`); without a remote → record one line "local-only"
    - A rejected `git push` = the remote has moved ahead (someone else pushed): **stop and report to the user** and check `git log --oneline origin/$branch..HEAD`; **`--force` is forbidden** ("rejected, so force it" is wrong); a force push requires an explicit request from the user
    - **Reverse secret check**: `.env` / `*.key` / `*.pem` must be **ignored** (`git check-ignore -v` producing output = correct; an ignored file can never appear in porcelain); if `git status --porcelain` does list one of them = it is not ignored, **stop and report a red light**; committing and pushing are forbidden
@@ -114,7 +120,7 @@ git check-ignore -v .env
 ```powershell
 powershell -NoProfile -File security.ps1
 ```
-   - The definition of "this archive is complete" is **exit code 0** here: exit code 1 = something was blocked, stop and fix it and then re-run; exit code 2 = an environment error (the script is missing / wrong arguments), fix the environment first. ❌ "commit first and fix it afterwards" while it is non-zero ｜ ✅ commit and push only once it is 0.
+   - Expected: The definition of "this archive is complete" is **exit code 0** here: exit code 1 = something was blocked, stop and fix it and then re-run; exit code 2 = an environment error (the script is missing / wrong arguments), fix the environment first. ❌ "commit first and fix it afterwards" while it is non-zero ｜ ✅ commit and push only once it is 0.
    - **The reverse secret check is measured by the script**: `.env` / `*.key` / `*.pem` must be ignored and a hit is red; the `git check-ignore -v` of item 10 is the manual cross-check, the script is the machine judge, and both must pass. ❌ treating item 10 "producing output" as the security gate having passed (that only proves those three file names are ignored, not that there are no plaintext secrets or dangerous execution chains) ｜ ✅ paste the script's complete output + exit code 0 into the §③ receipt, side by side with item 10.
 
 **Close-out order (this section performs no commit or push; it only declares the numbering so that §③ can reference it number by number)**:

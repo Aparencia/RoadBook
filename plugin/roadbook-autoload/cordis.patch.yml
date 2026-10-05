@@ -8,7 +8,9 @@
 #   mode=keyword、skills=['roadbook']、requireGitRoot=true、oncePerSession=true、note=true、
 #   includeSubagents=false、report=true（观测写 <os.tmpdir()>/roadbook-autoload.jsonl，
 #   report: false 可整体关掉）、reportMaxBytes=2097152（超了就轮转到 .jsonl.1）、
-#   banner=true（system prompt 里的常驻铁律微提示，false 即不显示）、skillDigest=''（B 环基线）。
+#   banner=true（system prompt 里的常驻铁律微提示，false 即不显示）、skillDigest=''（B 环基线）、
+#   gate=deny（动作闸：warn = 只回执不拦，off = 连监听器都不注册）、stateCheck=true（STATE.md 必填字段校验）。
+# 注意：Team 策略不在这里 —— 它归 roadbook-team 行的 policy，本行只消费它（同一个旋钮不许两处）。
 - insert:
     - id: roadbook-autoload
       name: roadbook-autoload

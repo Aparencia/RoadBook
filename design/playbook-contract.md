@@ -155,3 +155,28 @@
 - ❌ 用否定式堆砌规则（"不要 X""别 Y""避免 Z"）——禁令会把被禁行为拉进上下文；能正说就正说，硬护栏才写禁令并配正面目标
 - ❌ 写 no-op 句子（删掉后 agent 行为不变）——删掉，或改写成可执行判据
 - ❌ 同一分支写多个同义触发词——一个分支一个触发词，同义改写 = 同一分支写两遍
+
+## 7. 规则归属表（规则唯一化之后的裁判依据；2026-10-05 补）
+
+> **背景**：硬规则原本在五处各写一遍（`template/AGENTS.md` 宪法 / `SKILL.md` 铁律 / `0-1` 卡硬规则 / 卡内判据 / `design/`）。
+> 2026-10-05 起**规则唯一正文 = 项目根 `AGENTS.md`**（DSH 每会话自动加载）；`SKILL.md` 只做路由与门禁**点名**，`0-1` 卡只做意图路由与回执，两处都**不复述判据正文**。
+> 本表回答"这条重叠的规则**以哪份文件为准**"。两处打架时按下表判，判完回来删掉输的那处（信息阶梯：同一事实只写一处）。
+
+| 规则域 | 唯一正文（以此为准） | 指向它的文件 | 机械校验 |
+| :-- | :-- | :-- | :-- |
+| A 类 · 不可委托（执行 SQL / 发布部署 / 打 tag / 门禁裁决 / 验收确认 / 改宪法与 STATE 裁决字段 / 装第三方件） | `template/AGENTS.md` A 类 | `SKILL.md`「规则在哪」表逐条点名；`0-1` 卡【规则在哪】；卡内只写业务动作 | `node --test test/rule-parity.test.mjs` |
+| B 类 · 机械判据（完成的唯一定义、母版验收口径、双语同批、SKILL.md 镜像、T1 字面近似层、文件数预算、命令形态、随包白名单、工作树干净、STATE 字段、索引对齐、上线闭包、Expected 标注） | `template/AGENTS.md` B 类 | 各判据的脚本/测试本身；`SKILL.md` 只点名 | 判据自带的命令退出码 |
+| C 类 · 门禁（红灯 = 停、同一错误第二次、红线域五类、轻确认 vs 裁决、不许跨会话推断批准、意图模糊、未按卡开工） | `template/AGENTS.md` C 类 | `SKILL.md`「红灯 / 回执 / 不许从上一会话推断批准」点名；`0-1` 卡只保留路由分支 | `test/rule-parity.test.mjs` + 阶段 5 插件闸 |
+| D 类 · 行为纪律（开工确认、四段、红旗表、防幻觉三查、外部内容、范围四禁、产物寿命、上下文预算、交接条、子 agent 边界、生成多删除少、写作教义、回写义务、代码生成硬标准、密钥卫生、已读声明） | `template/AGENTS.md` D 类 | `0-1` 卡、`SKILL.md`、卡内仅保留业务判据 | `test/rule-parity.test.mjs` |
+| **卡内业务判据**（每张卡的检查清单、阈值、命令） | `playbook/<卡>.md`（中文权威源）；执行读 `playbook_EN/<卡>.md` | —（卡片是判据的最终落点，不再上收） | `_qc/check.ps1` 逐卡 needle + 双语逐张对齐 |
+| **怎么写卡**（形态选择、写作教义、四段要求） | 本文件 `design/playbook-contract.md` | 建卡者读 | `_qc/check.ps1` 契约 needle |
+| **英文唯一写法**（术语、结构映射、硬规则英文锚点） | `design/glossary-en.md` | `playbook_EN/` 全部卡片 | `_qc/check.ps1` 术语 needle + `test/rule-parity.test.mjs` en 锚点 |
+| **卡号与文件名**（哪张卡存在、英文叫什么） | `design/v6-design.md` §4 / §4.1 表 | `SKILL.md` 路由表、`playbook/`、`playbook_EN/` | `_qc/check.ps1` 解析 §4/§4.1 后逐张比对 |
+| **状态字段**（STATE.md 有哪些字段） | `template/STATE.md` | `AGENTS.md` 回写义务、各卡 ④ 段 | `_qc/check.ps1` 行首字段断言 |
+| **索引 ↔ 正文**（哪条规则在哪个 id 下） | `rules/rules.json`（只装标识与机械钩子，**不装判据散文**） | `template/AGENTS.md` 的 `- **<id>**` 条目、`glossary-en.md` §6 | `node --test test/rule-parity.test.mjs` |
+
+**三条裁判细则**：
+
+1. **判据散文永远不在 `rules.json` 里**——它只放 `id / class / trigger / predicate / judge / renderedIn / anchors`。发现有人往索引里写判据正文 = 制造第三处真相，按 4-2 卡越界处理。
+2. **`0-1` 卡与 `SKILL.md` 不做判据的"第二作者"**——它们只能**点名**（规则名 + 机械后果 + 指向 `AGENTS.md` 的 id），不能改写、放宽或收紧判据。想改判据 = 改 `AGENTS.md` + 同批改 `rules.json` 的 `anchors`，由 parity 测试判定。
+3. **卡内仍可写业务判据**（阈值、命令、清单）——本表只收走"跨卡通用的硬规则"，不收走"这张卡干什么"。卡与宪法打架时以宪法为准，并回来修卡。

@@ -10,6 +10,10 @@
  *
  * 分工：门控与文案等纯逻辑在 ./trigger.js（不 import dsh 包，可离线单测）；
  * 本文件只做 Host 侧接线：读会话、查技能、注入消息、落观测。
+ * 另外三块纯逻辑各有自己的文件，本文件只负责把它们接到宿主扩展点上：
+ *   ./gate.js  动作闸判据（`tools/pre-execute`，A 类红线 + C7 未按卡开工 + Team 策略 off）
+ *   ./state.js STATE.md 必填字段（B10，字段逐字取自 template/STATE.md）
+ *   ./team.js  Team 消费层（消费 roadbook-team 行提供的可选服务 `roadbookTeam`，只解释不判断）
  *
  * 依赖：@deepseek-ai/dsh-llm / dsh-skill / schemastery 由宿主提供，见本目录与仓库根
  * package.json 的 peerDependencies —— 插件内不下载、不打包，宿主大版本升级后要重新核对。
@@ -28,11 +32,14 @@
 import { appendFileSync, existsSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { decideGate } from './gate.js'
 import {
   createUserMessage as fallbackCreateUserMessage,
   isUserInvocable as fallbackIsUserInvocable,
   renderSkillContent as fallbackRenderSkillContent,
 } from './host-fallback.js'
+import { parseState } from './state.js'
+import { resolveTeamPolicy } from './team.js'
 import {
   DEFAULT_KEYWORDS,
   DEFAULT_SUPPRESS,
@@ -158,6 +165,16 @@ function buildConfig(schema) {
       reportMaxBytes: z.number().default(DEFAULT_REPORT_MAX_BYTES),
       /** 自进化 B 环：SKILL.md 指纹基线，对不上就在说明里提示技能已更新。 */
       skillDigest: z.string().default(''),
+      /**
+       * 动作闸（`tools/pre-execute`）：deny = 拦（默认）；warn = 只回执不拦；off = 不注册监听器。
+       * 为什么默认拦：强引用取动作闸（用户裁决 4）——提醒不算机械后果，`deny` 才算。
+       */
+      gate: z.union([z.const('off'), z.const('warn'), z.const('deny')]).default('deny'),
+      /**
+       * STATE.md 必填字段校验（B10）：只在「文件在、但缺必填键」或「读不动」时落一条观测。
+       * 没有 STATE.md 的 git 项目是常态（没接 RoadBook 的项目到处都是），不刷观测。
+       */
+      stateCheck: z.boolean().default(true),
     })
   } catch (error) {
     hostFallbacks.push({
@@ -175,12 +192,18 @@ export function apply(ctx, config = {}, runtime = {}) {
   const gitRoots = new Map()
   const digests = new Map()
   const reportedSkips = new Set()
+  /** 动作闸的拦下回执去重表：会话 + 工具 + 规则（同一会话反复撞同一条规则只记一行，不刷屏）。 */
+  const reportedGates = new Set()
+  /** 项目 STATE.md 的位置缓存：cwd → 文件路径（'' = 一路找到家目录都没有）。 */
+  const stateFiles = new Map()
   /** 空转观测的观察簿：sessionId → { steps, settled }（同样走 remember 的有界 FIFO）。 */
   const idleWatch = new Map()
   /** 观察对象：配置里的第一个技能名（与真正会注入的那个一致）。 */
   const idleSkillName = Array.isArray(config?.skills) && typeof config.skills[0] === 'string' ? config.skills[0] : ''
   const home = typeof runtime?.home === 'string' && runtime.home.length > 0 ? runtime.home : homedir()
   const reportEnabled = config?.report !== false
+  /** 动作闸档位：非法取值按最严的 deny 处理（配置写错不许静默变成「不设防」）。 */
+  const gateMode = config?.gate === 'off' || config?.gate === 'warn' ? config.gate : 'deny'
   const reportFile =
     typeof config?.reportPath === 'string' && config.reportPath.trim().length > 0
       ? config.reportPath.trim()
@@ -452,6 +475,200 @@ export function apply(ctx, config = {}, runtime = {}) {
 
   registerBanner()
 
+  /**
+   * 动作闸回执：只记**拦下的**决策 —— 放行是常态，每次都记等于把观测文件变成流水账。
+   * 同一会话 + 工具 + 规则只记一行；落盘的是规则 id 与静态说明，**不含命令原文**
+   * （命令行里可能有连接串/密钥，而观测文件在共享临时目录、跨会话、永不清理）。
+   */
+  const reportGate = (verdict, exec, sessionId) => {
+    if (verdict.decision === 'allow') return
+    const tool = typeof exec?.name === 'string' ? exec.name : ''
+    const key = `${sessionId}|${tool}|${verdict.rule}`
+    if (reportedGates.has(key)) return
+    remember(reportedGates, key)
+    writeReport({
+      event: 'gate',
+      decision: verdict.decision,
+      rule: verdict.rule,
+      tool,
+      note: verdict.note,
+      mode: gateMode,
+      session: sessionId,
+    })
+  }
+
+  /**
+   * Team 探针：消费 `roadbook-team` 行提供的可选服务 `roadbookTeam`。
+   *
+   * 为什么不写进 `export const inject`：那里少一个服务，cordis 会把整行插件判成面板上的「未运行」
+   * （理由与常驻提示那段完全相同）。取服务同样走**作用域注入**：服务一可用就回调一次；
+   * 官方 Agent Team 没挂载 ⇒ 那一行根本不加载 ⇒ 回调一次都不跑 ⇒ 本插件照常按单线程工作。
+   *
+   * 这一层的结论**只用于回执与降级说明**：门在装配层（`disabled: !!js "!ctx.get('agentTeams')"`），
+   * 本插件不做「允不允许」的判断，只回答「本轮到底怎么跑」。唯一的例外见 gate.js 的 team-off 分支
+   * （那是「装了不用」这条**用户显式策略**的机械落点，不是自建开关）。
+   */
+  const teamVerdict = { ...resolveTeamPolicy({}) }
+
+  const settleTeam = (service) => {
+    Object.assign(teamVerdict, resolveTeamPolicy({ service }))
+    writeReport({
+      event: 'team',
+      state: teamVerdict.state,
+      active: teamVerdict.active,
+      blocked: teamVerdict.blocked,
+      note: teamVerdict.note,
+    })
+    try {
+      if (teamVerdict.active) ctx.logger?.info?.(`[roadbook-autoload] ${teamVerdict.note}`)
+      else ctx.logger?.warn?.(`[roadbook-autoload] ${teamVerdict.note}`)
+    } catch {
+      /* 日志是旁路 */
+    }
+  }
+
+  const registerTeamProbe = () => {
+    if (typeof ctx.inject === 'function') {
+      let settled = false
+      try {
+        ctx.inject(['roadbookTeam'], (scope) => {
+          settled = true
+          let service
+          try {
+            service = scope?.roadbookTeam
+          } catch (error) {
+            writeReport({ event: 'team', state: 'error', message: errorText(error) })
+            return
+          }
+          settleTeam(service)
+        })
+      } catch (error) {
+        writeReport({ event: 'team', state: 'error', message: errorText(error) })
+        return
+      }
+      // 回调也可能同步就跑完了（这一行已经挂载）：那就不补这一行，免得读观测的人以为还没结论。
+      if (!settled) {
+        writeReport({
+          event: 'team',
+          state: 'deferred',
+          note: '已交给作用域注入，等 roadbookTeam 服务：一直不来 = roadbook-team 行未挂载，本轮单线程走',
+        })
+      }
+      return
+    }
+
+    // 兜底：ctx 上没有 inject（老宿主 / 精简 ctx）时退回一次性 ctx.get —— 读不到就是未挂载。
+    let service
+    try {
+      service = typeof ctx.get === 'function' ? ctx.get('roadbookTeam') : undefined
+    } catch (error) {
+      writeReport({ event: 'team', state: 'error', message: errorText(error) })
+      return
+    }
+    settleTeam(service)
+  }
+
+  registerTeamProbe()
+
+  /**
+   * 动作闸接线：`tools/pre-execute` 是瀑布式事件 `(exec, next) => 决策`。
+   * 三条纪律：
+   *   ① 先 `next()`，且**不覆盖**下游已有的 deny/ask（别人已经拦下的原样返回）——
+   *      自己不 owning 决策时返回 next() 是本仓与 DSH 文档的共同口径；
+   *   ② 只回 `deny` 或放行：`allow` 不预审批、`defer`/`updatedInput` 不生效，不依赖被忽略的能力；
+   *   ③ 插件自身出任何意外都不许打断会话：兜底返回下游决策（失败即放行，与注入路径同口径）。
+   */
+  if (gateMode !== 'off') {
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      let downstream
+      try {
+        downstream = await next()
+      } catch (error) {
+        reportError('gate-next', { message: errorText(error) }, '')
+        throw error
+      }
+      try {
+        const session = exec?.agent?.session
+        const verdict = decideGate({
+          tool: exec?.name,
+          args: exec?.arguments,
+          session,
+          skill: idleSkillName,
+          // requireGitRoot 关掉时那道门就不存在（与注入路径同一口径），不该当成「不在项目里」。
+          inProject: config.requireGitRoot === false ? true : inGitProject(session?.header?.cwd),
+          team: teamVerdict,
+          intentConfig: config,
+        })
+        const sessionId = typeof session?.header?.id === 'string' ? session.header.id : ''
+        reportGate(verdict, exec, sessionId)
+        if (verdict.decision === 'allow') return downstream
+        if (downstream?.kind !== 'allow') return downstream
+        if (gateMode === 'warn') {
+          try {
+            ctx.logger?.warn?.(`[roadbook-autoload] 动作闸（warn 档：只回执不拦）：${verdict.note}`)
+          } catch {
+            /* 日志是旁路 */
+          }
+          return downstream
+        }
+        return { kind: 'deny', reason: verdict.reason }
+      } catch (error) {
+        reportError('gate', { message: errorText(error) }, '')
+        return downstream
+      }
+    })
+  }
+
+  /**
+   * B10：STATE.md 缺必填字段 = 下一轮从错的地方开始。
+   * 只在「文件在、但缺键」或「读不动」时落观测 —— 没有 STATE.md 的 git 项目是常态
+   * （本插件不只服务 RoadBook 项目），不刷观测。字段口径见 ./state.js（逐字取自 template/STATE.md）。
+   */
+  const stateFileFor = (cwd) => {
+    if (typeof cwd !== 'string' || cwd.length === 0) return ''
+    if (stateFiles.has(cwd)) return stateFiles.get(cwd)
+    const homeKey = normalizePath(home)
+    let found = ''
+    let dir = cwd
+    for (;;) {
+      // 与 inGitProject 同一口径：家目录自身不算项目根，也不越过家目录继续向上找。
+      if (normalizePath(dir) === homeKey) break
+      const candidate = join(dir, 'STATE.md')
+      if (existsSync(candidate)) {
+        found = candidate
+        break
+      }
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
+    }
+    remember(stateFiles, cwd, found)
+    return found
+  }
+
+  const checkState = (cwd, sessionId) => {
+    if (config.stateCheck === false) return
+    const file = stateFileFor(cwd)
+    if (file.length === 0) return
+    let text
+    try {
+      text = readFileSync(file, 'utf8')
+    } catch (error) {
+      reportSkip('state-unreadable', { file, message: errorText(error) }, sessionId)
+      return
+    }
+    const { missing } = parseState(text)
+    if (missing.length === 0) return
+    reportSkip('state-missing', { file, missing, missingCount: missing.length }, sessionId)
+    try {
+      ctx.logger?.warn?.(
+        `[roadbook-autoload] STATE.md 缺必填字段：${missing.join(' / ')}（B10；字段口径见 template/STATE.md）`,
+      )
+    } catch {
+      /* 日志是旁路 */
+    }
+  }
+
   const handle = async ({ agent, messages, signal } = {}, decision, sessionId) => {
     if (decision?.kind === 'reject') {
       reportSkip('rejected', {}, sessionId)
@@ -497,6 +714,8 @@ export function apply(ctx, config = {}, runtime = {}) {
       reportSkip('not-git', { cwd: header.cwd }, sessionId)
       return decision
     }
+    // B10：开发会话顺路核一次 STATE.md 必填字段（只观测与告警，绝不改行为、绝不注入）
+    checkState(header.cwd, sessionId)
 
     const names = Array.isArray(config.skills) ? config.skills : []
     if (names.length === 0) {

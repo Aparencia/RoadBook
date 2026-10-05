@@ -1,11 +1,12 @@
 # RoadBook 主插件（组合包 patch）
 #
-# 一个组合包 = 一份 patch + 若干 Loader 行。这里**平铺四条顶层行**，每条都是 DSH 插件面板里
+# 一个组合包 = 一份 patch + 若干 Loader 行。这里**平铺五条顶层行**，每条都是 DSH 插件面板里
 # 一条可独立开关的项：
 #   roadbook            主行：版本号与随包文件自检（lib/index.js）
 #   roadbook-skills     技能根：把包内 skills/ 交给 skill 子系统（roadbook + roadbook-atlas 两个技能）
 #   roadbook-autoload   自动加载：命中触发词时把流程正文注入当前回合（宿主半在 plugin/roadbook-autoload）
 #   roadbook-atlas      图纸工作台：宿主半 + 侧栏「图册」标签页（客户端半在 lib/client.js）
+#   roadbook-team        Team 策略行：只在官方 Agent Teams 已挂载时存在（宿主半在 plugin/roadbook-team）
 #
 # 为什么不用 `group: true` 容器行包一层（2026-10-04 用户裁决改为平铺）：容器行只承载子行、
 # 自身没有 fiber，而宿主 inventory 会跳过 group 行（`dsh-host-plugin-inventory` 的
@@ -37,3 +38,14 @@
       name: roadbook/atlas
       config:
         diagrams: docs/diagrams
+    # Team 策略行：**未挂载官方 Agent Teams 时这一行不加载**（面板里设了也不生效）。
+    # 门写法的两条硬约束：
+    #   ① 只许 `ctx.get('…')` 形式——`disabled: !!js` 求值抛异常时宿主按「不当作已禁用」处理
+    #      （fail-open，会反向生效），所以表达式必须不可能抛；
+    #   ② 探不到就禁用是本行的**唯一目的**：RoadBook 不自建「允许/不允许」开关，
+    #      权威开关就是官方那一行，这里只跟随。
+    - id: roadbook-team
+      name: roadbook/team
+      disabled: !!js "!ctx.get('agentTeams')"
+      config:
+        policy: follow

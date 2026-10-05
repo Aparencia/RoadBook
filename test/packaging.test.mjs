@@ -101,6 +101,8 @@ const REQUIRED_RUNTIME_PATHS = [
   'playbook_EN/0-1-driver-card.md',
   // 项目模板（1-2 / 1-3 卡整套复制它生成项目骨架）
   'template/check.ps1',
+  // 硬规则索引：CLI 与插件机制读它；漏进包 = 装出来的机制没有规则源
+  'rules/rules.json',
   // 技能与 CLI
   'skills/roadbook/SKILL.md',
   'skills/roadbook-atlas/SKILL.md',
@@ -111,6 +113,8 @@ const REQUIRED_RUNTIME_PATHS = [
   'plugin/roadbook-autoload/trigger.js',
   'plugin/roadbook-autoload/host-fallback.js',
   'plugin/roadbook-atlas/lib/index.js',
+  // Team 策略行：只在官方 Agent Teams 已挂载时存在（装配层 disabled 门控）
+  'plugin/roadbook-team/index.js',
   // 宿主半与客户端半
   'lib/index.js',
   'lib/update.js',

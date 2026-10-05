@@ -107,7 +107,7 @@ git add STATE.md $spec
 git commit -m "2-2 docs(spec): add export scope"
 powershell -NoProfile -File check.ps1
 ```
-`git status --porcelain` empty + check.ps1 exit code 0 = wrap-up complete.
+Expected: `git status --porcelain` empty + check.ps1 exit code 0 = wrap-up complete.
 
 Fixed closing line:
 `SCOPE ready. Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

@@ -47,12 +47,13 @@ test('根 package.json 是组合包：声明 dsh.bundle.patch，且客户端半�
   assert.ok(Array.isArray(manifest.dsh.client.inject) && manifest.dsh.client.inject.length > 0);
 });
 
-test('四个子行的模块入口都在 exports 里，且文件真的存在', () => {
+test('五个子行的模块入口都在 exports 里，且文件真的存在', () => {
   const expected = {
     '.': './lib/index.js',
     './autoload': './plugin/roadbook-autoload/index.js',
     './atlas': './plugin/roadbook-atlas/lib/index.js',
     './client': './lib/client.js',
+    './team': './plugin/roadbook-team/index.js',
   };
   for (const [subpath, target] of Object.entries(expected)) {
     assert.equal(manifest.exports[subpath], target, `exports["${subpath}"] 应为 ${target}`);
@@ -64,7 +65,7 @@ test('四个子行的模块入口都在 exports 里，且文件真的存在', ()
   }
 });
 
-test('cordis.patch.yml：平铺四个顶层行，id 与模块名都与文档一致，且没有 group 容器行', () => {
+test('cordis.patch.yml：平铺五个顶层行，id 与模块名都与文档一致，且没有 group 容器行', () => {
   assert.match(patch, /^- insert:/m);
   assert.doesNotMatch(patch, /roadbook-bundle/, '不该再有 group 容器行（面板会把它显示成「已关闭」）');
   assert.doesNotMatch(patch, /^\s+group:\s*true\s*$/m, '平铺后没有任何 group 行');
@@ -74,6 +75,7 @@ test('cordis.patch.yml：平铺四个顶层行，id 与模块名都与文档一�
     ['roadbook-skills', /^\s+name:\s*'@deepseek-ai\/dsh-skill-filesystem'\s*$/m],
     ['roadbook-autoload', /^\s+name:\s*roadbook\/autoload\s*$/m],
     ['roadbook-atlas', /^\s+name:\s*roadbook\/atlas\s*$/m],
+    ['roadbook-team', /^\s+name:\s*roadbook\/team\s*$/m],
   ];
   for (const [id, namePattern] of rows) {
     const row = rowBlock(id);
@@ -90,6 +92,18 @@ test('cordis.patch.yml：平铺四个顶层行，id 与模块名都与文档一�
   const bundle = manifest.exports['./bundle'];
   assert.equal(bundle, undefined, 'group 容器已删：exports 不该还留 ./bundle');
   assert.ok(!existsSync(new URL('../lib/bundle.js', import.meta.url)), 'lib/bundle.js 已删');
+});
+
+test('roadbook-team 行的 disabled 门：必须写成不会抛的形式（求值抛错是 fail-open，门会反向生效）', () => {
+  const row = rowBlock('roadbook-team');
+  assert.match(row, /^\s+disabled:\s*!!js\s+"/m, 'team 行必须带 !!js disabled 门（未挂载官方 Agent Teams 时该行不加载 = 开关设了也不生效）');
+  assert.match(row, /ctx\.get\('agentTeams'\)/, '门必须探 agentTeams 服务');
+  assert.doesNotMatch(
+    row,
+    /ctx\.agentTeams/,
+    '门里禁止点号取属性：宿主文档写明 `disabled: !!js` 求值抛异常时**不把条目当作已禁用**（fail-open），门会反向生效',
+  );
+  assert.match(row, /policy:\s*(follow|off)\s*$/m, 'team 行必须显式声明 policy（follow / off 二选一）');
 });
 
 test('子行模块可 import，且导出面符合 cordis 插件契约', async () => {
@@ -122,7 +136,7 @@ test('主行的就绪自检：随包文件当前全在，版本号与 package.js
 
 test('就绪自检按静态 import 闭包推导：宿主入口的相对依赖一个都不能漏', async () => {
   const main = await import('../lib/index.js');
-  assert.deepEqual(main.HOST_ENTRY_MODULES, ['lib/index.js', 'plugin/roadbook-autoload/index.js', 'plugin/roadbook-atlas/lib/index.js']);
+  assert.deepEqual(main.HOST_ENTRY_MODULES, ['lib/index.js', 'plugin/roadbook-autoload/index.js', 'plugin/roadbook-atlas/lib/index.js', 'plugin/roadbook-team/index.js']);
 
   const closure = main.relativeImportClosure(ROOT, 'plugin/roadbook-autoload/index.js');
   assert.ok(closure.includes('plugin/roadbook-autoload/index.js'), '闭包含入口自身');

@@ -1,8 +1,10 @@
 ﻿# doctor.ps1 · 环境自检（每个必需工具输出版本号，并与 .tool-versions 的期望版本比对）
 # 判词：绿 = 工具在位且与期望版本同 major；红 = 缺工具/版本不符/占位符待填/版本解析不到（exit 1）；灰 = 未被要求的探测项。
+# 运行前提另查 DSH（宿主环境变量，三态；`-RequireDsh` 可把"缺宿主"升级为红）。
 # 唯一事实源是根目录 `.tool-versions`（两种写法都认：「工具 = 版本」与「工具 版本」）——1-2 / 1-3 卡把占位符 <...> 换成真实版本，
 # 所以"必需工具清单为空"不再等于"没有要求"：清单空 = 无人接线 = 红灯。
-# 用法：powershell -NoProfile -File doctor.ps1
+# 用法：powershell -NoProfile -File doctor.ps1 [-RequireDsh]
+param([switch]$RequireDsh)   # param 必须是第一条语句（注释不算语句）；-RequireDsh = 缺 DSH 宿主环境时判红
 chcp 65001 > $null
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $PROBE = @('git','node','python','pip','pnpm','docker','uv','go','cargo','java','dotnet','psql')   # 探测池：谁必需由 .tool-versions 决定
@@ -53,9 +55,26 @@ foreach ($t in $names) {
     if ($mjw -eq $mja) { Write-Host "[OK] $t : $v（要求 $need，同 major）" -ForegroundColor Green }
     else { Write-Host "[FAIL] 版本不符：$t 期望 major $mjw（$need）实际 $mja（$v）——统一版本或更新 .tool-versions" -ForegroundColor Red; $miss++ }
 }
+# ── 运行前提：DSH（见 AGENTS.md §10）——由宿主提供，故不查 PATH、不写进 .tool-versions，
+# 只查宿主注入的环境变量。三态：① 有宿主变量 = 全能力；② 只有 dsh 命令 = 疑似裸 CLI；
+# ③ 都没有 = Agent Teams / goal / plan / 动作闸 不可用，其余转人工。读不到不显示成通过。
+$dshHome = [string]$env:DSH_HOME
+$dshShell = [string]$env:DSH_SHELL
+$dshCmd = Get-Command dsh -ErrorAction SilentlyContinue
+if ($dshHome -ne '' -or $dshShell -ne '') {
+    $dshProfile = [string]$env:DSH_PROFILE
+    Write-Host "[OK] 运行前提 DSH：宿主环境在位（DSH_HOME=$dshHome；profile=$dshProfile）" -ForegroundColor Green
+} elseif ($null -ne $dshCmd) {
+    Write-Host "[WARN] 找到 dsh 命令（$($dshCmd.Source)）但没有宿主环境变量：疑似裸 CLI——Agent Teams / goal / plan / 动作闸 的能力以宿主实际提供的为准" -ForegroundColor Yellow
+    if ($RequireDsh) { $miss++ }
+} else {
+    Write-Host "[WARN] 未检测到 DSH 宿主环境：Agent Teams / goal / plan / 动作闸 不可用；其余步骤按 AGENTS.md §10 转人工手跑（加 -RequireDsh 可把本条升级为红）" -ForegroundColor Yellow
+    if ($RequireDsh) { $miss++ }
+}
+
 if ($miss -gt 0) {
-    Write-Host "环境自检未通过：$miss 项问题（缺工具/版本不符/占位符待填/解析不到）。" -ForegroundColor Red
+    Write-Host "环境自检未通过：$miss 项问题（缺工具/版本不符/占位符待填/解析不到/缺 DSH 宿主）。" -ForegroundColor Red
     exit 1
 }
-Write-Host "环境自检通过（.tool-versions 要求的工具全部在位且同 major）。" -ForegroundColor Green
+Write-Host "环境自检通过（.tool-versions 要求的工具全部在位且同 major；DSH 与其它要求在判词里逐条列出）。" -ForegroundColor Green
 exit 0

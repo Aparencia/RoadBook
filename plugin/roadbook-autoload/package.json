@@ -13,6 +13,9 @@
   "files": [
     "index.js",
     "trigger.js",
+    "gate.js",
+    "state.js",
+    "team.js",
     "host-fallback.js",
     "cordis.patch.yml",
     "icon.svg",

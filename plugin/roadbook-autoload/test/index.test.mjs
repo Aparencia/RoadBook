@@ -35,10 +35,13 @@ const readAll = (file) =>
 /**
  * 读观测文件里的**会话事件**。
  * `apply()` 会先写一行就绪回执（`event: 'loaded'`，面板之外的「本行真的跑起来了」自证），
- * 再写一行常驻提示注册回执（`event: 'banner'`）；两者都不是会话事件，
- * 分别由「就绪回执」与 banner.test.mjs 断言。
+ * 再写一行常驻提示注册回执（`event: 'banner'`），最后写一行 Team 探针回执（`event: 'team'`，
+ * 例如「Team 未挂载，本轮单线程走」）；三者都不是会话事件，分别由「就绪回执」、
+ * banner.test.mjs 与 team.test.mjs 断言 —— 任何一条会话事件的计数都不该被它们掺进来。
  */
-const readReport = (file) => readAll(file).filter((entry) => entry.event !== 'loaded' && entry.event !== 'banner')
+const LIFECYCLE_EVENTS = ['loaded', 'banner', 'team']
+
+const readReport = (file) => readAll(file).filter((entry) => !LIFECYCLE_EVENTS.includes(entry.event))
 
 /** 观测文件里常驻提示（banner）的注册回执。 */
 const bannerLines = (file) => readAll(file).filter((entry) => entry.event === 'banner')
@@ -779,4 +782,207 @@ test('空转观测不改行为：读数出现的那一步，注入与去重判�
   const later = []
   for (let index = 0; index < 4; index += 1) later.push(await step(handler, { id: 'session-noop', session, decide: async () => decision }))
   for (const result of later) assert.equal(result, decision, 'C 环只在旁边记账，不改任何决策')
+})
+
+// ── 阶段 5：动作闸与 Team 探针的**接线**（判据本身在 gate.test.mjs / team.test.mjs 离线钉住） ──
+// 这一段存在的理由：判据全绿也可能根本没挂上钩子 —— 接线要有自己的断言，否则「装了没生效」
+// 会一路装成绿的（本仓出过同型事故：host-fallback 漏进 files，面板只显示「未运行」）。
+
+/** 同时拿到两条接线的假 ctx：agent/pre-step（注入）与 tools/pre-execute（动作闸）。 */
+const setupCtx = ({ config = {}, inject: injectImpl } = {}) => {
+  const handlers = new Map()
+  const ctx = {
+    on: (event, handler) => handlers.set(event, handler),
+    skills: { get: async (name) => (name === 'roadbook' ? skill() : undefined) },
+    logger: {},
+  }
+  if (injectImpl !== undefined) ctx.inject = injectImpl
+  apply(ctx, { requireGitRoot: false, report: true, skills: ['roadbook'], ...config }, { home: TMP })
+  return handlers
+}
+
+/** 造一次工具调用：`next` 默认返回 allow（DSH 的 default 就是这个）。 */
+const callTool = (handler, { name = 'write', args = {}, session, downstream = async () => ({ kind: 'allow' }) } = {}) =>
+  handler({ name, arguments: args, agent: session === undefined ? undefined : { session } }, downstream)
+
+/**
+ * 开发意图 + 注入过 + 注入之后有事件但没读卡：动作闸「未按卡开工」的标准材料。
+ * 最后那条 assistant 事件不能省：`cardReadState()` 对「注入之后还没有事件」返回 unknown
+ * （判不了就不猜），那条路径是**放行**，拿它当材料会把这个用例测成假的。
+ */
+const gateEvents = () => [
+  { type: 'user/message', data: { source: { kind: 'user' }, content: [{ type: 'text', text: '帮我重构登录模块' }] } },
+  { type: 'user/message', data: { source: { kind: 'skill-invocation', name: 'roadbook' }, content: [{ type: 'text', text: '看 playbook_EN/0-1' }] } },
+  { type: 'assistant/message', data: { text: '我这就改' } },
+]
+
+test('动作闸接线：默认档位挂 tools/pre-execute，无卡回执的写侧调用被拦下', async () => {
+  const file = join(TMP, 'gate-wiring.jsonl')
+  const handlers = setupCtx({ config: { reportPath: file } })
+  const handler = handlers.get('tools/pre-execute')
+  assert.equal(typeof handler, 'function', 'gate: deny（默认）必须真的挂上 tools/pre-execute')
+
+  const session = loggedSession({ id: 'session-gate', cwd: TMP, events: gateEvents() })
+  const decision = await callTool(handler, { session })
+  assert.deepEqual(decision.kind, 'deny', '开发对话里没读卡就动写侧工具 = 拦下')
+  assert.match(decision.reason, /未按卡开工/)
+
+  const line = readReport(file).find((entry) => entry.event === 'gate')
+  assert.equal(line.decision, 'deny')
+  assert.equal(line.rule, 'no-card-receipt')
+  assert.equal(line.tool, 'write')
+  assert.equal(line.mode, 'deny')
+  for (const key of ['command', 'text', 'reason']) {
+    assert.equal(key in line, false, `动作闸观测里不许出现 ${key}（命令行可能带密钥，理由含用户内容）`)
+  }
+})
+
+test('动作闸接线：下游已经拦下的决策原样返回，自己绝不覆盖', async () => {
+  const handlers = setupCtx({ config: { reportPath: join(TMP, 'gate-downstream.jsonl') } })
+  const handler = handlers.get('tools/pre-execute')
+  const session = loggedSession({ id: 'session-gate-2', cwd: TMP, events: gateEvents() })
+
+  const denied = { kind: 'deny', reason: 'downstream-owns-it' }
+  assert.equal(await callTool(handler, { session, downstream: async () => denied }), denied)
+  const asked = { kind: 'ask', reason: 'needs-a-human' }
+  assert.equal(await callTool(handler, { session, downstream: async () => asked }), asked)
+
+  // 本闸放行时返回的必须是**下游那个决策对象本身**（不是新造的 allow）：瀑布式事件里
+  // 不 owning 决策的监听器返回 next()，下游可能还挂着别的监听器/守卫。
+  const read = loggedSession({
+    id: 'session-gate-3',
+    cwd: TMP,
+    events: [...gateEvents(), { type: 'tool/call', data: { name: 'read', input: { file_path: 'playbook/0-1-驱动卡.md' } } }],
+  })
+  const allow = { kind: 'allow' }
+  assert.equal(await callTool(handler, { session: read, downstream: async () => allow }), allow)
+})
+
+test('动作闸接线：gate: off 完全不挂监听器；warn 档只回执不拦', async () => {
+  const off = setupCtx({ config: { gate: 'off', reportPath: join(TMP, 'gate-off.jsonl') } })
+  assert.equal(off.get('tools/pre-execute'), undefined, 'gate: off = 连监听器都不注册')
+
+  const file = join(TMP, 'gate-warn.jsonl')
+  const warn = setupCtx({ config: { gate: 'warn', reportPath: file } })
+  const session = loggedSession({ id: 'session-gate-warn', cwd: TMP, events: gateEvents() })
+  const allow = { kind: 'allow' }
+  assert.equal(await callTool(warn.get('tools/pre-execute'), { session, downstream: async () => allow }), allow, 'warn 档不许拦')
+  const line = readReport(file).find((entry) => entry.event === 'gate')
+  assert.equal(line.mode, 'warn', 'warn 档的产物就是这行回执：拦不拦先记下来')
+  assert.equal(line.decision, 'deny')
+})
+
+test('动作闸接线：插件自身抛错不许打断会话（兜底返回下游决策）', async () => {
+  const file = join(TMP, 'gate-error.jsonl')
+  const handlers = setupCtx({ config: { reportPath: file } })
+  // 会话对象上的 snapshotEvents 抛错：读日志失败不许把工具调用一起带走。
+  const session = {
+    header: { id: 'session-gate-error', cwd: TMP },
+    snapshotEvents: () => {
+      throw new Error('session log exploded')
+    },
+  }
+  const allow = { kind: 'allow' }
+  assert.equal(await callTool(handlers.get('tools/pre-execute'), { session, downstream: async () => allow }), allow)
+  assert.equal(readReport(file).some((entry) => entry.event === 'gate'), false, '出错了就不写决策行，只留 error')
+})
+
+test('Team 探针接线：服务注入三态各落一行回执；未注入时按单线程走', () => {
+  const probes = []
+  const follow = setupCtx({
+    config: { reportPath: join(TMP, 'team-follow.jsonl') },
+    inject: (deps, callback) => {
+      assert.deepEqual(deps, ['roadbookTeam'], '只按需注入 roadbook-team 行提供的服务')
+      probes.push(() => callback({ roadbookTeam: { policy: 'follow', available: true, row: 'roadbook-team' } }))
+      return { dispose: () => {} }
+    },
+  })
+  assert.ok(follow.get('agent/pre-step'), '探针接线不影响注入那条线')
+  // 服务还没起来：先记一行 deferred（措辞同 banner 的「已交给作用域注入，等回调」）。
+  const deferred = readAll(join(TMP, 'team-follow.jsonl')).filter((entry) => entry.event === 'team')
+  assert.equal(deferred.length, 1)
+  assert.equal(deferred[0].state, 'deferred')
+  for (const run of probes) run()
+  const settled = readAll(join(TMP, 'team-follow.jsonl')).filter((entry) => entry.event === 'team')
+  assert.equal(settled.length, 2)
+  assert.equal(settled.at(-1).state, 'follow')
+  assert.equal(settled.at(-1).active, true)
+  assert.equal(settled.at(-1).blocked, false)
+
+  // 未注入（官方 Agent Team 没挂载 ⇒ roadbook-team 行不加载 ⇒ 服务不存在）
+  const missing = join(TMP, 'team-missing.jsonl')
+  setupCtx({ config: { reportPath: missing } })
+  const line = readAll(missing).filter((entry) => entry.event === 'team').at(-1)
+  assert.equal(line.state, 'unmounted')
+  assert.match(line.note, /单线程/)
+
+  // 装了不用：唯一会把 blocked 置真的那一态（动作闸据此拦 Team 类工具）
+  const off = join(TMP, 'team-off.jsonl')
+  setupCtx({
+    config: { reportPath: off },
+    inject: (deps, callback) => {
+      callback({ roadbookTeam: { policy: 'off', available: true, row: 'roadbook-team' } })
+      return { disposed: true }
+    },
+  })
+  const offLine = readAll(off).filter((entry) => entry.event === 'team').at(-1)
+  assert.equal(offLine.state, 'off')
+  assert.equal(offLine.blocked, true)
+})
+
+test('动作闸接线：team 策略 off 时 Team 类工具被拦（装了不用的机械落点）', async () => {
+  const handlers = setupCtx({
+    config: { reportPath: join(TMP, 'team-gate.jsonl') },
+    inject: (deps, callback) => {
+      callback({ roadbookTeam: { policy: 'off', available: true, row: 'roadbook-team' } })
+      return {}
+    },
+  })
+  const session = loggedSession({ id: 'session-team-gate', cwd: TMP, events: gateEvents() })
+  const decision = await callTool(handlers.get('tools/pre-execute'), { name: 'spawn_teammate', session })
+  assert.equal(decision.kind, 'deny')
+  assert.match(decision.reason, /policy 写着 off/)
+})
+
+test('STATE 字段校验接线：缺必填键落一行 skip/state-missing，齐备与「没有这个文件」都不落', async () => {
+  const project = join(TMP, 'state-project')
+  mkdirSync(project, { recursive: true })
+  const statePath = join(project, 'STATE.md')
+  const file = join(TMP, 'state-check.jsonl')
+  const handler = setup({
+    skills: { roadbook: skill() },
+    config: { reportPath: file, stateCheck: true },
+  })
+  const decision = { kind: 'continue', messages: [] }
+
+  // 缺字段：点名缺了哪几个（字段口径逐字来自 template/STATE.md）
+  writeFileSync(statePath, '# STATE\n- 当前阶段：功能开发\n', 'utf8')
+  await step(handler, { id: 'session-state-bad', cwd: project, decide: async () => decision })
+  const bad = readReport(file).find((entry) => entry.reason === 'state-missing')
+  assert.ok(bad, '缺字段必须落一行观测（B10：缺字段 = 下一轮从错的地方开始）')
+  assert.equal(bad.file, statePath)
+  assert.ok(bad.missing.includes('档位') && bad.missing.includes('起点锚点'))
+  assert.equal(bad.missingCount, bad.missing.length)
+
+  // 齐备：不落（无消息 = 无异常）
+  const good = join(TMP, 'state-good.jsonl')
+  const goodHandler = setup({ skills: { roadbook: skill() }, config: { reportPath: good, stateCheck: true } })
+  writeFileSync(statePath, readFileSync(new URL('../../../template/STATE.md', import.meta.url), 'utf8'), 'utf8')
+  await step(goodHandler, { id: 'session-state-ok', cwd: project, decide: async () => decision })
+  assert.equal(readReport(good).some((entry) => entry.reason === 'state-missing'), false)
+
+  // 没有 STATE.md 的项目（大多数 git 项目）：同样不落 —— 本插件不只服务 RoadBook 项目。
+  const plain = join(TMP, 'state-plain')
+  mkdirSync(plain, { recursive: true })
+  const none = join(TMP, 'state-none.jsonl')
+  const noneHandler = setup({ skills: { roadbook: skill() }, config: { reportPath: none, stateCheck: true } })
+  await step(noneHandler, { id: 'session-state-none', cwd: plain, decide: async () => decision })
+  assert.equal(readReport(none).some((entry) => entry.reason.startsWith('state-')), false)
+
+  // 关掉开关：缺字段也不再核（配置说了算）
+  const offFile = join(TMP, 'state-off.jsonl')
+  const offHandler = setup({ skills: { roadbook: skill() }, config: { reportPath: offFile, stateCheck: false } })
+  writeFileSync(statePath, '# STATE\n', 'utf8')
+  await step(offHandler, { id: 'session-state-off', cwd: project, decide: async () => decision })
+  assert.equal(readReport(offFile).some((entry) => entry.reason.startsWith('state-')), false)
 })

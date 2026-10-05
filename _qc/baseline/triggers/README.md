@@ -9,6 +9,8 @@
 
 **指错卡比不触发更坏**：不触发是没走流程，指错卡是 agent 拿着错卡的检查清单往前冲。所以两者必须分开计分，不许合并成一条「触发失败」。
 
+**第三个面（编排面：项目事实 → 卡链）不在本目录**：它由 `node --test test/route-cli.test.mjs` 零成本机械判定（题目在 `test/fixtures/route-scenarios.json`），**不需要 harness**，也不与上面两面合并计分——三面分工见 `../README.md`「编排面」一节。
+
 ## 怎么跑
 
 ```powershell

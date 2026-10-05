@@ -1,0 +1,335 @@
+{
+  "schema": "roadbook-route/scenarios@1",
+  "note": "「项目事实 → 卡片链」的场景与期望数据（B 类机械判据的冻结输入）。facts 只写关心的键，其余走 route.mjs 的默认值——默认值本身也在被这套场景测。expect.chain / expect.ledger 由 ROUTE_FIXTURE_UPDATE=1 node --test test/route-cli.test.mjs 再生成；红了先判断卡文本变化是不是预期的，再按 _qc/baseline/ledger.json 的 note 写一行理由。",
+  "closure": {
+    "note": "上线闭包：goLive=true ⇒ 链必含 4-5 / 5-2 / 5-4；goLive=false ⇒ 链与该集合交集为空。两组场景名都要在下面存在。",
+    "mustIncludeWhenGoLive": [
+      "4-5",
+      "5-2",
+      "5-4"
+    ],
+    "goLiveScenarios": [
+      "endpoint",
+      "endpoint-chart",
+      "public-saas",
+      "goLiveOn"
+    ],
+    "noGoLiveScenarios": [
+      "local-tool",
+      "goLiveOff"
+    ]
+  },
+  "scenarios": {
+    "endpoint": {
+      "note": "终点举例：喝水计数 + 本周柱状图（手写 CSS 条形）——S 档 + 上线 + 没 CI",
+      "facts": {
+        "greenfield": "new",
+        "hasUI": true,
+        "goLive": true,
+        "publicService": false,
+        "personalData": false,
+        "newDependency": false,
+        "redLine": false,
+        "team": false,
+        "vague": false,
+        "scale": "singlepage",
+        "hasCI": false
+      },
+      "expect": {
+        "tier": "S",
+        "effTier": "S",
+        "chain": [
+          "1-1",
+          "1-2",
+          "2-1",
+          "2-2",
+          "3-4",
+          "3-5",
+          "3-6",
+          "4-1",
+          "4-3",
+          "4-4",
+          "4-5",
+          "5-1",
+          "5-2",
+          "5-4"
+        ],
+        "ledger": {
+          "cards": 14,
+          "lines": 2169,
+          "chars": 92559,
+          "tokensApprox": 46280,
+          "checkboxes": 38,
+          "psBlocks": 46,
+          "stops": 20,
+          "actions": 110,
+          "missing": []
+        }
+      }
+    },
+    "endpoint-chart": {
+      "note": "同一件事，但装了图表库（npm i chart.js）——S 档特例作废，判 L",
+      "facts": {
+        "greenfield": "new",
+        "hasUI": true,
+        "goLive": true,
+        "newDependency": true,
+        "scale": "singlepage",
+        "hasCI": false
+      },
+      "expect": {
+        "tier": "L",
+        "effTier": "L",
+        "chain": [
+          "1-1",
+          "1-2",
+          "2-1",
+          "2-2",
+          "2-4",
+          "2-5",
+          "7-9",
+          "3-1",
+          "3-3",
+          "3-4",
+          "3-5",
+          "3-6",
+          "4-1",
+          "4-2",
+          "4-3",
+          "4-4",
+          "4-5",
+          "5-1",
+          "5-2",
+          "5-3",
+          "5-4",
+          "5-5"
+        ],
+        "ledger": {
+          "cards": 22,
+          "lines": 3293,
+          "chars": 135228,
+          "tokensApprox": 67614,
+          "checkboxes": 69,
+          "psBlocks": 66,
+          "stops": 32,
+          "actions": 157,
+          "missing": []
+        }
+      }
+    },
+    "public-saas": {
+      "note": "对外服务：公众可访问 + 收个人信息 + 登录 + 多方参与",
+      "facts": {
+        "greenfield": "new",
+        "hasUI": true,
+        "goLive": true,
+        "publicService": true,
+        "personalData": true,
+        "newDependency": true,
+        "redLine": true,
+        "team": true,
+        "vague": true,
+        "scale": "large",
+        "hasCI": false
+      },
+      "expect": {
+        "tier": "L",
+        "effTier": "L",
+        "chain": [
+          "1-1",
+          "1-2",
+          "2-1",
+          "2-3",
+          "2-2",
+          "2-4",
+          "2-5",
+          "7-9",
+          "3-1",
+          "3-2",
+          "3-3",
+          "3-4",
+          "3-5",
+          "3-6",
+          "7-5",
+          "7-6",
+          "4-1",
+          "4-2",
+          "4-3",
+          "4-4",
+          "4-5",
+          "5-1",
+          "5-2",
+          "5-3",
+          "5-4",
+          "5-5",
+          "7-7"
+        ],
+        "ledger": {
+          "cards": 27,
+          "lines": 3973,
+          "chars": 158272,
+          "tokensApprox": 79136,
+          "checkboxes": 107,
+          "psBlocks": 83,
+          "stops": 38,
+          "actions": 192,
+          "missing": []
+        }
+      }
+    },
+    "goLiveOn": {
+      "note": "只声明上线事实，其余全默认——测「默认值 + 上线闭包」的最小组合",
+      "facts": {
+        "goLive": true
+      },
+      "expect": {
+        "tier": "pending",
+        "effTier": "M",
+        "chain": [
+          "1-1",
+          "1-2",
+          "2-1",
+          "2-2",
+          "2-4",
+          "3-3",
+          "3-4",
+          "3-5",
+          "3-6",
+          "4-1",
+          "4-2",
+          "4-3",
+          "4-4",
+          "4-5",
+          "5-1",
+          "5-2",
+          "5-4"
+        ],
+        "ledger": {
+          "cards": 17,
+          "lines": 2582,
+          "chars": 110818,
+          "tokensApprox": 55409,
+          "checkboxes": 48,
+          "psBlocks": 53,
+          "stops": 24,
+          "actions": 122,
+          "missing": []
+        }
+      }
+    },
+    "local-tool": {
+      "note": "只给自己用的本地小工具，不发布；已有 CI",
+      "facts": {
+        "greenfield": "new",
+        "hasUI": true,
+        "goLive": false,
+        "scale": "tiny",
+        "hasCI": true
+      },
+      "expect": {
+        "tier": "S",
+        "effTier": "S",
+        "chain": [
+          "1-1",
+          "1-2",
+          "2-1",
+          "2-2",
+          "3-4",
+          "3-5",
+          "3-6",
+          "4-1",
+          "4-3",
+          "5-1"
+        ],
+        "ledger": {
+          "cards": 10,
+          "lines": 1686,
+          "chars": 73851,
+          "tokensApprox": 36926,
+          "checkboxes": 38,
+          "psBlocks": 33,
+          "stops": 16,
+          "actions": 86,
+          "missing": []
+        }
+      }
+    },
+    "goLiveOff": {
+      "note": "全默认事实（不上线）——与 goLiveOn 成对，测闭包的反面",
+      "facts": {
+        "goLive": false
+      },
+      "expect": {
+        "tier": "pending",
+        "effTier": "M",
+        "chain": [
+          "1-1",
+          "1-2",
+          "2-1",
+          "2-2",
+          "2-4",
+          "3-3",
+          "3-4",
+          "3-5",
+          "3-6",
+          "4-1",
+          "4-2",
+          "4-3",
+          "5-1"
+        ],
+        "ledger": {
+          "cards": 13,
+          "lines": 2099,
+          "chars": 92110,
+          "tokensApprox": 46055,
+          "checkboxes": 48,
+          "psBlocks": 40,
+          "stops": 20,
+          "actions": 98,
+          "missing": []
+        }
+      }
+    },
+    "redline": {
+      "note": "碰红线域（登录鉴权）但不发布——只升不降，强制 L + 威胁建模",
+      "facts": {
+        "goLive": false,
+        "redLine": true,
+        "scale": "normal"
+      },
+      "expect": {
+        "tier": "L",
+        "effTier": "L",
+        "chain": [
+          "1-1",
+          "1-2",
+          "2-1",
+          "2-2",
+          "2-4",
+          "2-5",
+          "3-1",
+          "3-2",
+          "3-3",
+          "3-4",
+          "3-5",
+          "3-6",
+          "4-1",
+          "4-2",
+          "4-3",
+          "5-1"
+        ],
+        "ledger": {
+          "cards": 16,
+          "lines": 2557,
+          "chars": 107370,
+          "tokensApprox": 53685,
+          "checkboxes": 58,
+          "psBlocks": 48,
+          "stops": 25,
+          "actions": 121,
+          "missing": []
+        }
+      }
+    }
+  }
+}

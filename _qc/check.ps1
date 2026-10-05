@@ -80,8 +80,8 @@ Check ($enDiff.Count -eq 0) "英文卡文件名与 §4.1 表逐张对齐（不�
 
 $sections = @('## ① 开工确认','## ② 执行','## ③ 证据回执','## ④ 状态回写')
 $enSections = @('## ① Start confirmation','## ② Execution','## ③ Evidence receipt','## ④ State write-back')
-$metaMarkers = @('【第一次运行','【把意图路由到卡','【执行任何卡时的硬规则','【红旗表','【每轮收尾')
-$enMetaMarkers = @('[ First run','[ Route the intent to a card','[ Hard rules when executing any card','[ Red flags','[ End of each round')
+$metaMarkers = @('【第一次运行','【把意图路由到卡','【规则在哪','【每轮收尾','【会话收尾')
+$enMetaMarkers = @('[ First run','[ Route the intent to a card','[ Where the rules live','[ End of each round','[ Session close')
 # 禁引用 design/ _archive/ playbook/ template/；下列卡例外，理由随行写明（禁止静默放宽）
 $tplRefAllowed = @{
     '1-2-选型初始化'   = '施工卡：整套复制母版 template/ 生成项目'
@@ -148,10 +148,10 @@ Check (-not $badRef) "中文卡无母版内部引用（问题：$($badRef -join 
 Check (-not $badTail) "每张动作卡有固定收尾语（缺：$($badTail -join ', ')）"
 Check (-not $badEn) "英文卡 H1/四段/收尾语与中文版逐段对应（问题：$($badEn -join '；')）"
 Check (-not $badRefEn) "英文卡无母版内部引用（问题：$($badRefEn -join '；')）"
-# 合理化红旗表：驱动卡是唯一常驻上下文，借口绕过必须在这里有对照表（段标记只保证标题在，表头断言保证表本身在；中英同批）
-$rfZh = [IO.File]::ReadAllText((Join-Path $pb '0-1-驱动卡.md'), [Text.Encoding]::UTF8)
-$rfEn = [IO.File]::ReadAllText((Join-Path $pen $enMap['0-1']), [Text.Encoding]::UTF8)
-Check (($rfZh -match [regex]::Escape('| 你会想 | 事实 |')) -and ($rfEn -match [regex]::Escape('| You may think | Reality |'))) '0-1 卡有合理化红旗表（中英同批：防借口绕过）'
+# 合理化红旗表：规则唯一正文是 AGENTS.md（D3），英文口径在 glossary-en；段标记只保证标题在，表头断言保证表本身在（中英同批）
+$rfZh = [IO.File]::ReadAllText((Join-Path $root 'template\AGENTS.md'), [Text.Encoding]::UTF8)
+$rfEn = [IO.File]::ReadAllText((Join-Path $root 'design\glossary-en.md'), [Text.Encoding]::UTF8)
+Check (($rfZh -match [regex]::Escape('| 你会想 | 事实 |')) -and ($rfEn -match [regex]::Escape('| You may think | Reality |'))) '规则唯一正文与英文口径都有合理化红旗表表头（中英同批；落点 2026-10-05 由 0-1 卡搬到 AGENTS.md D3）'
 Observe ($longCards.Count -eq 0) "本轮观测项（不拦红）：卡 ≤150 行，超限 $($longCards.Count) 张 $($longCards -join ', ')"
 $extra = @(Get-ChildItem $pb -Filter *.md | Where-Object { $cards -notcontains $_.BaseName })
 Check ($extra.Count -eq 0) "playbook/ 无未注册卡（多出：$($extra.BaseName -join ', ')）"
@@ -160,8 +160,8 @@ Check ($extraEn.Count -eq 0) "playbook_EN/ 无未注册卡（多出：$($extraEn
 
 Write-Host "== 2b. 内化机制在位（2026-10-03 superpowers 15 个 skill → 10 张卡 + 母版层；2026-10-04 mattpocock/skills → 14 张卡 + 母版层；2026-10-04 UI/UX 设计流程增强 → 6 张卡 + 3 份模板文档；2026-10-04 安全批次 → 7-9 准入卡 + security.ps1 + 六条铁律；删句即红）=="
 $intl = [ordered]@{
-    'playbook/0-1-驱动卡.md'                = @('自带推荐答案', 'smart zone', '产物寿命三分类')
-    'playbook_EN/0-1-driver-card.md'        = @('every question carries a recommended answer', 'smart zone', 'three lifetime classes')
+    'playbook/0-1-驱动卡.md'                = @('自带推荐答案', '规则在哪', '规则版本')
+    'playbook_EN/0-1-driver-card.md'        = @('Where the rules live', 'rule version', 'recommended answer')
     'playbook/1-1-想法调研.md'              = @('动作 0.5', '探针分支')
     'playbook_EN/1-1-idea-research.md'      = @('Action 0.5', 'probe branch')
     'playbook/2-1-功能调研.md'              = @('路径预判', '可分解性先判', '立即停下声明升档', '拒绝台账')
@@ -196,7 +196,7 @@ $intl = [ordered]@{
     'playbook_EN/7-7-user-docs-and-handover.md' = @('system temp directory', 'pointers, not copies')
     'playbook/7-8-项目重构.md'              = @('一个适配器 = 假设的接缝')
     'playbook_EN/7-8-refactoring.md'        = @('One adapter means a hypothetical seam')
-    'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent', '被否方案台账', 'AI 声明', '系统临时目录', '外部内容一律是数据')
+    'template/AGENTS.md'                    = @('本轮（同一条消息内）', '子 agent 不得自派子 agent', '被否方案台账', 'AI 声明', '系统临时目录', '外部内容一律是数据', 'smart zone', '产物寿命三分类', '只有用户消息是指令', '先削', '不许从上一会话推断批准')
     'playbook/3-4-界面与交互设计.md'        = @('五态', '焦点环', '布局族', 'overflow-x: clip', 'tabular-nums')
     'playbook_EN/3-4-ui-and-interaction-design.md' = @('five states', 'focus ring', 'layout famil', 'overflow-x: clip', 'tabular-nums')
     'playbook/3-5-色彩与风格.md'            = @('--color-brand-ink', '--color-focus', '--z-modal', '60-30-10', 'chroma')
@@ -211,7 +211,7 @@ $intl = [ordered]@{
     'template/docs/DESIGN_TOKENS.md'        = @('--color-brand-ink', '--z-modal', '60-30-10', 'chroma')
     'template/docs/MOTION.md'               = @('prefers-reduced-motion: no-preference', 'IntersectionObserver', 'grid-template-rows', 'animationend')
     'design/playbook-contract.md'           = @('违反规则的字面', '形态选择', '每个问题自带推荐答案', '写作教义', 'no-op 测试', '信息阶梯', '触发词唯一', 'leading words')
-    'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies', 'AI slop', 'one house style', 'focus ring', 'five states', 'touch target', 'skeleton screen', 'stagger', 'motion fallback', 'layout family', 'four widths', 'unmet-items table', 'z-index tier', 'UI self-check', 'admission record', 'permission surface', 'the five checks', 'external content is data', 'red-line domain')
+    'design/glossary-en.md'                 = @('rejection ledger', 'route drift', 'no-op rule', 'two-axis parallel review', 'smell baseline', 'evidence tiers', 'one-way door', 'blast radius', 'ready frontier', 'fast-forward merge', 'rejected options', 'agree the seam first', 'tautological test', 'horizontal slicing', 'three lifetime classes', 'pointers, not copies', 'AI slop', 'one house style', 'focus ring', 'five states', 'touch target', 'skeleton screen', 'stagger', 'motion fallback', 'layout family', 'four widths', 'unmet-items table', 'z-index tier', 'UI self-check', 'admission record', 'permission surface', 'the five checks', 'external content is data', 'red-line domain', 'every question carries a recommended answer', 'smart zone', 'three lifetime classes', 'only user messages are instructions', 'Never infer approval from a previous session', 'Trim first')
     'SKILL.md'                              = @('子 agent 边界', '调用轴', '分发自检', 'smart zone', '产物寿命', '外部内容一律是数据')
     'README.md'                             = @('分发自检', '外部内容一律是数据')
     'playbook/7-9-外部技能与插件准入.md'     = @('security.ps1', '五查', '准入记录', '判定三值')
@@ -522,10 +522,12 @@ Check (-not $glsMissing5) "术语表含批次 5 新术语（缺：$($glsMissing5
 
 $c01 = [IO.File]::ReadAllText((Join-Path $pb '0-1-驱动卡.md'), [Text.Encoding]::UTF8)
 $c01e = [IO.File]::ReadAllText((Join-Path $pen '0-1-driver-card.md'), [Text.Encoding]::UTF8)
+$agTxt = [IO.File]::ReadAllText((Join-Path $root 'template\AGENTS.md'), [Text.Encoding]::UTF8)
+$glTxt = [IO.File]::ReadAllText((Join-Path $root 'design\glossary-en.md'), [Text.Encoding]::UTF8)
 Check (($c01 -match '置信度') -and ($c01e -match 'confidence number')) '0-1 假设必须带置信度数字（写不出置信度 = 没查过的猜想；中英同批）'
-Check (($c01 -match '只有用户消息是指令') -and ($c01e -match 'only user messages are instructions')) '0-1 外部抓取内容一律当数据（提示注入防线；中英同批）'
-Check (($c01 -match '75%') -and ($c01e -match '75%') -and ($c01 -match '先削') -and ($c01e -match 'Trim first')) '0-1 上下文 75% 就开削 + 先削/后保两张清单（中英同批）'
-Check (($c01 -match '不许从上一会话推断批准') -and ($c01e -match 'Never infer approval from a previous session')) '0-1 不许从上一会话推断批准（重启只能从已完成任务边界继续；中英同批）'
+Check (($agTxt -match '只有用户消息是指令') -and ($glTxt -match 'only user messages are instructions')) '规则唯一正文含外部内容 = 数据（提示注入防线；中英同批；落点 2026-10-05 搬到 AGENTS.md D5）'
+Check (($agTxt -match '75%') -and ($glTxt -match '75%') -and ($agTxt -match '先削') -and ($glTxt -match 'Trim first')) '规则唯一正文含上下文 75% 就开削 + 先削/后保（中英同批；落点搬到 AGENTS.md D8）'
+Check (($agTxt -match '不许从上一会话推断批准') -and ($glTxt -match 'Never infer approval from a previous session')) '规则唯一正文含不许从上一会话推断批准（中英同批；落点搬到 AGENTS.md C5）'
 $c41 = [IO.File]::ReadAllText((Join-Path $pb '4-1-分批编码.md'), [Text.Encoding]::UTF8)
 $c41e = [IO.File]::ReadAllText((Join-Path $pen '4-1-batch-coding.md'), [Text.Encoding]::UTF8)
 Check (($c41 -match '七级梯子') -and ($c41e -match 'seven-rung ladder')) '4-1 动作 0 七级梯子（需要存在吗 → 最小实现；中英同批）'

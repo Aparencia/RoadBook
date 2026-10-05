@@ -29,6 +29,8 @@ Also declare the pause rule (execute this sentence; no improvising): **tier S: w
 $anchor = git rev-parse HEAD
 ```
 
+Expected: `$anchor` = the commit hash of HEAD, identical to the output of `git rev-parse HEAD`.
+
 Write `$anchor`'s output into the `起点锚点` field of STATE.md. Losing it = 4-2 cannot review the diff and problems cannot be rolled back precisely.
 
 **Action 0: the seven-rung ladder (run it after you understand the problem; it does not replace understanding)**
@@ -61,6 +63,8 @@ $slug = 'checkout'; $what = '实现购物车结算接口'   # scope short name +
 git commit -m "4-1 feat($slug): $what"
 ```
 
+Expected: `git add` stages only the files in the `$batchFiles` list; `git commit` exits 0 with the message `4-1 feat(<slug>): <what>` verbatim.
+
 After committing, send a one-line **progress notice** (batch number + a summary of the six-check results + the registry write-back status), then follow the pause rule declared above (tier S: one report at the end; tiers M/L: wait for the user to say "continue").
 
 **Batch completion line (fixed format; write the verbatim text into the notice and `STATE.md`)**: `本批 N：complete（提交 <prevBatch 短哈希7>..<HEAD 短哈希7>，测试：<命令原文> → <输出末行>）`; **if the test/build command was not run or did not pass → do not write the word "complete", write only "not complete + where it is stuck"**.
@@ -77,7 +81,7 @@ powershell -NoProfile -File gate.ps1 -Anchor $anchor -ScopeFiles ($scopeFiles -j
 powershell -NoProfile -File security.ps1
 ```
 
-Red (exit 1) → stop and fix (**an over-limit line count and a lockfile change are also red**); amber (renamed entries, empty change list) → relay it to the user with the notice, still exit 0.
+Expected: Red (exit 1) → stop and fix (**an over-limit line count and a lockfile change are also red**); amber (renamed entries, empty change list) → relay it to the user with the notice, still exit 0.
 **security.ps1 criterion**: it must be run for every batch, and a non-zero exit code = stop (constants/secrets/dangerous execution chains/a `.ps1` without a BOM are machine-checked by it).
 
 **Action 3: net-increment ledger (computed on the spot after each batch commit; saving it up until close-out and reconstructing from memory is forbidden)**
@@ -97,6 +101,8 @@ $c = git diff --numstat "$anchor..HEAD" -- .; if (@($c).Count -eq 0) { throw "�
 $ca=0;$cd=0; foreach ($l in $c) { $p = $l -split "`t"; if ($p[0] -eq '-') { continue }; $ca += [int]$p[0]; $cd += [int]$p[1] }
 "任务累计 $anchor..HEAD ｜新增 $ca 行｜删除 $cd 行｜净 $($ca-$cd) 行（范围蔓延触发线对照用）"
 ```
+
+Expected: the last two output lines are 「本批 <prev>..HEAD ｜文件 N（二进制 B）｜新增 A 行｜删除 D 行｜净 X 行」 and 「任务累计 <anchor>..HEAD ｜新增 A 行｜删除 D 行｜净 X 行」 (the script prints these field names in Chinese); the red-light criteria follow below.
 
 Red-light criteria (inlined; explanatory exemptions are forbidden): **this-batch line "lines deleted = 0 and lines added > 50" → red light**, stop and add the deletions before committing; batches of purely new files are exempt, but the receipt must say "this batch is purely additive". `$prev..HEAD` covers every commit in this batch; looking only at `HEAD~1` misses the earlier commits of this batch, which equals faking the ledger.
 
@@ -183,7 +189,7 @@ git commit -m "4-1 docs(state): 分批编码收尾——基线未动，当前文
 powershell -NoProfile -File check.ps1
 ```
 
-The exit code must be 0; if it is 2 (`$STEPS` not configured) or non-zero → stop and ask the user; declaring coding complete is forbidden.
+Expected: The exit code must be 0; if it is 2 (`$STEPS` not configured) or non-zero → stop and ask the user; declaring coding complete is forbidden.
 
 Fixed closing line (the receipt's last line first states "Coding complete, N batches in total (of which M are parallel units)", then this sentence):
 `Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`

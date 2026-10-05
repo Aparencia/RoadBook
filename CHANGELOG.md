@@ -18,6 +18,23 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
 ```
 
+## [0.5.0] - 2026-10-05
+
+**硬规则唯一化 + DSH 强锁定 + Team 跟随官方行 + 动作闸**（用户裁决四项：真重写 / 优先保证 DSH / Team 与官方开关同步 / 强引用取动作闸）。
+
+### 新能力
+
+- **`roadbook-team` 子行（第五行）**：只在官方 Agent Teams 已挂载时存在——`cordis.patch.yml` 里这一行带 `disabled: !!js "!ctx.get('agentTeams')"`，官方行关掉 → 本行不加载 → **面板里设了也不生效**。RoadBook **不自建**「允许 / 不允许」Team 的开关：权威开关是官方那一行，本行只跟随（`policy: follow | off`）。装配入口 `plugin/roadbook-team/index.js` 提供 `roadbookTeam` 服务，消费方走**可选服务注入**（写进 `inject` 会让缺服务时整行被判「未运行」）。
+- **`rules/rules.json` + `skills/roadbook/bin/rules.mjs`**：硬规则的机器可读索引（43 条，按**违反后果**分 A 不可委托 / B 机械判据 / C 门禁 / D 行为纪律）。`--audit` 检查标识唯一、分类与判定钩子匹配、落点与命令引用在磁盘上真实存在、触发词无冲突；反向对照在 `test/rules-audit.test.mjs`（**6 条"改坏副本必须判红"**，防止审计退化成恒真空函数）。
+- **`doctor.ps1` 三态探测 DSH 运行前提**：有宿主环境变量 / 疑似裸 CLI / 都没有；`-RequireDsh` 把「缺宿主」升级为红。**读不到不许显示成通过**（沿用母版对 unknown 的一贯口径）。
+
+### 破坏性变更（已装用户需要动作）
+
+- **硬规则搬家**：唯一正文改为项目根 `AGENTS.md`（母版 `template/AGENTS.md`），带 `规则版本：` 行；`SKILL.md` 与 0-1 驱动卡只做**路由与门禁**，不再重复规则正文。**旧项目里的副本需要重新同步 `AGENTS.md`**——副本版本落后或整行缺失按「缺字段」处理，不许拿旧副本当授权。
+- **第五个子行**：装主插件后插件面板会多出 `roadbook-team` 一行；官方 Agent Teams 未挂载时它是禁用态（设了也不生效）。
+- 根 `package.json` 的 `files` 新增 `rules/`，并有对应运行时自检（漏进包 = 装出来的机制没有规则源）。
+- **`git tag` 由人打**（agent 不打 tag）。
+
 ## [0.4.1] - 2026-10-05
 
 **一次把 DSH 打不开的升级事故**：0.4.0 装上去、重启 DSH 之后弹「应用无法启动或已意外停止」，诊断报告里只有一行
