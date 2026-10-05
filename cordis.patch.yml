@@ -1,20 +1,21 @@
 # RoadBook 主插件（组合包 patch）
 #
-# 一个组合包 = 一份 patch + 若干 Loader 行。这里**平铺五条顶层行**，每条都是 DSH 插件面板里
-# 一条可独立开关的项：
+# 一个组合包 = 一份 patch + 若干 Loader 行。这里**平铺六条顶层行**（1 条主行 + 5 条子行），
+# 每条都是 DSH 插件面板里一条可独立开关的项：
 #   roadbook            主行：版本号与随包文件自检（lib/index.js）
 #   roadbook-skills     技能根：把包内 skills/ 交给 skill 子系统（roadbook + roadbook-atlas 两个技能）
 #   roadbook-autoload   自动加载：命中触发词时把流程正文注入当前回合（宿主半在 plugin/roadbook-autoload）
 #   roadbook-atlas      图纸工作台：宿主半 + 侧栏「图册」标签页（客户端半在 lib/client.js）
-#   roadbook-team        Team 策略行：只在官方 Agent Teams 已挂载时存在（宿主半在 plugin/roadbook-team）
+#   roadbook-team       Team 策略行：只在官方 Agent Teams 已挂载时存在（宿主半在 plugin/roadbook-team）
+#   roadbook-evolve     自进化信号表：S1–S6 六条读数 + 侧栏「自进化」标签页（宿主半在 plugin/roadbook-evolve）
 #
 # 为什么不用 `group: true` 容器行包一层（2026-10-04 用户裁决改为平铺）：容器行只承载子行、
 # 自身没有 fiber，而宿主 inventory 会跳过 group 行（`dsh-host-plugin-inventory` 的
 # `readPluginInventory` 里 `if (entry.options.group) continue`），于是面板那一格只能照 patch
-# 里的字面值显示 —— 「已关闭」恒亮，看起来像整个主插件被关掉。平铺之后四行状态各自如实显示。
+# 里的字面值显示 —— 「已关闭」恒亮，看起来像整个主插件被关掉。平铺之后六行状态各自如实显示。
 #
 # 两处开关：① 插件面板里关某一行；② profile 的 cordis.patch.yml 里写 `- id: <行 id>` + `disabled: true`。
-# 平铺后没有「关一行连停四行」的祖先门了 —— 想整包一起关，就给四条 id 各写一行。
+# 平铺后没有「关一行连停多行」的祖先门了 —— 想整包一起关，就给六条 id 各写一行。
 #
 # 只列与默认值不同的项。改配置直接改下面的 config，改完重新启用或刷新生效。
 - insert:

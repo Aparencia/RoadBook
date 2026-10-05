@@ -6,7 +6,7 @@
 
 | 能力 | 做 | 不做 |
 | :-- | :-- | :-- |
-| 采集 | 读两份观测 JSONL、`git status --porcelain`、两个既有 audit CLI 的退出码 | 不新增落盘产物、不写仓库文件 |
+| 采集 | 读两份观测 JSONL、`git status --porcelain`、两个既有 audit CLI 的退出码 | 不写仓库文件（本行自己的观测落 `<os.tmpdir()>/roadbook-evolve.jsonl`，见「自身活性」） |
 | 判定 | 折算成 S1–S6 六条信号，三态（`ok` / `hit` / `unknown`） | 不复刻 `rules.mjs` / `route.mjs` / `check.ps1` 的判据 |
 | 反馈 | 两条**只读**本机路由 + 侧栏「自进化」标签页 | 不自动开 GitHub issue、不自动改卡 |
 
@@ -14,7 +14,7 @@
 
 | id | 信号 | 读数 | 越界判据 | 首次实现时的本机实测 |
 | :-: | :-- | :-- | :-- | :-- |
-| **S1** | 观测臂污染 | 命中测试痕量的记录数 / 总记录数 | > 0 | 65/468（`fake-installer.mjs`、哨兵版本 `9.9.9`） |
+| **S1** | 观测臂污染 | 命中测试痕量的**记录数** ÷ 两份观测文件的**记录总数** | > 0 | `130/632`（2026-10-05 实测：65 对 `apply-start/apply-finish` **各计一条** = 130 条；`fake-installer.mjs`、哨兵版本 `9.9.9`） |
 | **S2** | 注入活性 | `inject` 事件数 / `loaded` 事件数 | `inject = 0` 且 `loaded ≥ 10` | 0/35 |
 | **S3** | banner 可用率 | `state:registered` / banner 总数 | < 50% | 4/33 = 12% |
 | **S4** | 工作树状态 | `git status --porcelain` 行数 | > 0 | 0 |

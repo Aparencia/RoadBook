@@ -196,6 +196,22 @@ test('【核心不变量】空输入不得被读成「一切正常」', () => {
   assert.equal(tally(empty.signals).unknown, SIGNALS.length);
 });
 
+test('【核心不变量】读数来源形状不对（既无 text 也无 error）判 unknown，不许当成「空文件」', () => {
+  // 独立复核指出：原实现把「调用方忘了传」和「文件是空的」当成同一件事。
+  const wrong = evaluateSignals({ autoload: {}, update: {} });
+  for (const id of ['S1', 'S2', 'S3']) {
+    assert.equal(verdictOf(wrong, id), 'unknown', `${id} 在来源形状不对时必须 unknown`);
+    assert.equal(wrong.signals.find((s) => s.id === id).reading, null, `${id} 不许有读数`);
+  }
+  assert.match(wrong.signals.find((s) => s.id === 'S2').detail, /形状不对|未提供/);
+});
+
+test('空文件与没给来源是两件事（text 为空串走「文件是空的」分支）', () => {
+  const emptyFile = evaluateSignals({ autoload: { text: '' }, update: { text: '' } });
+  assert.equal(verdictOf(emptyFile, 'S1'), 'unknown');
+  assert.match(emptyFile.signals.find((s) => s.id === 'S1').detail, /空的/);
+});
+
 // ── 自身活性 ───────────────────────────────────────────────────────────────
 
 test('自身活性：有新鲜 tick = ok，超期 = hit，没有 tick = unknown（静默死亡检测）', () => {

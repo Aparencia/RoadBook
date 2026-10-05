@@ -430,7 +430,7 @@ if ($null -ne $umb) {
     Check (($umb.dsh.client.platform -eq 'web') -and (@($umb.dsh.client.inject).Count -gt 0)) '主插件声明客户端半（platform: web + inject 非空）'
     $umbSub = [ordered]@{ '.' = './lib/index.js'; './autoload' = './plugin/roadbook-autoload/index.js'; './atlas' = './plugin/roadbook-atlas/lib/index.js'; './team' = './plugin/roadbook-team/index.js'; './evolve' = './plugin/roadbook-evolve/index.js'; './client' = './lib/client.js' }
     $umbMiss = @($umbSub.Keys | Where-Object { ([string]$umb.exports.$_) -ne $umbSub[$_] -or (-not (Test-Path (Join-Path $root ($umbSub[$_] -replace '^\./','')))) })
-    Check (-not $umbMiss) "伞包 exports 五个入口齐且文件存在（缺/错：$($umbMiss -join ', ')）"
+    Check (-not $umbMiss) "伞包 exports 六个入口齐且文件存在（缺/错：$($umbMiss -join ', ')）"
     Check ((-not $umb.exports.'./bundle') -and (-not (Test-Path (Join-Path $root 'lib\bundle.js')))) 'group 容器已删（exports 无 ./bundle、lib/bundle.js 不存在）'
     $umbFiles = @($umb.files)
     Check (($umbFiles -contains 'lib') -and ($umbFiles -contains 'skills') -and ($umbFiles -contains 'plugin')) '伞包 files 白名单含 lib/ skills/ plugin/（随包分发不漏）'
@@ -447,7 +447,7 @@ $umbYml = [IO.File]::ReadAllText((Join-Path $root 'cordis.patch.yml'), [Text.Enc
 Check (($umbYml -match '(?m)^- insert:') -and ($umbYml -notmatch 'roadbook-bundle') -and ($umbYml -notmatch '(?m)^\s+group:\s*true\s*$')) '伞包 patch：- insert: 平铺（不再有 group 容器行 —— 容器行自己在面板上显示成「已关闭」）'
 $umbRows = [ordered]@{ 'roadbook' = 'roadbook'; 'roadbook-skills' = '@deepseek-ai/dsh-skill-filesystem'; 'roadbook-autoload' = 'roadbook/autoload'; 'roadbook-atlas' = 'roadbook/atlas'; 'roadbook-team' = 'roadbook/team'; 'roadbook-evolve' = 'roadbook/evolve' }
 $umbRowBad = @($umbRows.Keys | Where-Object { ($umbYml -notmatch ("(?m)^\s{4}-\s*id:\s*" + [regex]::Escape($_) + '\s*$')) -or ($umbYml -notmatch ("(?m)^\s+name:\s*'?" + [regex]::Escape($umbRows[$_]) + "'?\s*$")) })
-Check (-not $umbRowBad) "五个子行是 - insert: 的直接子项（缩进 4 空格；id/模块名缺或缩进错：$($umbRowBad -join ', ')）"
+Check (-not $umbRowBad) "六行（1 主行 + 5 子行）都是 - insert: 的直接子项（缩进 4 空格；id/模块名缺或缩进错：$($umbRowBad -join ', ')）"
 Check (($umbYml -match 'bundledSkillDir') -and ($umbYml -match "createRequire\(baseUrl\)\.resolve\('roadbook/package\.json'\)") -and ($umbYml -match 'includeDefaultRoots:\s*false')) '技能行按伞包 npm 身份解析 bundledSkillDir，且不与默认根重复'
 Check ((Get-FileHash (Join-Path $root 'SKILL.md') -Algorithm SHA256).Hash -eq (Get-FileHash (Join-Path $root 'skills\roadbook\SKILL.md') -Algorithm SHA256).Hash) 'skills/roadbook/SKILL.md 是根 SKILL.md 的逐字节镜像（改一份必须同步另一份）'
 # ── 2026-10-05：主插件自动更新（判定 / 取证 / 执行 / 两条本机路由） ──────────────

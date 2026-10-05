@@ -115,6 +115,9 @@ const REQUIRED_RUNTIME_PATHS = [
   'plugin/roadbook-atlas/lib/index.js',
   // Team 策略行：只在官方 Agent Teams 已挂载时存在（装配层 disabled 门控）
   'plugin/roadbook-team/index.js',
+  // 自进化行：入口静态 import ./signals.js 与伞包 lib/update.js
+  'plugin/roadbook-evolve/index.js',
+  'plugin/roadbook-evolve/signals.js',
   // 宿主半与客户端半
   'lib/index.js',
   'lib/update.js',

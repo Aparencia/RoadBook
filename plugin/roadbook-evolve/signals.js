@@ -9,10 +9,12 @@
  * 输出是信号表；副作用全在调用方。这样测试不需要造文件系统。
  *
  * 两条口径（沿用母版一贯做法，勿省）：
- *   1) **读不到 ≠ 通过**：文件读不到、命令跑不起来、样本不足，一律判 `unknown` 并把原因写进
- *      detail，绝不显示成 `ok`（假绿比不检查更坏）。
- *   2) **怀疑不等于事实**：观测记录分三态 `prod` / `suspect` / `unknown`，只把命中测试痕量的
- *      记为 suspect 并**单独报数**；判不了的记 unknown，绝不并进 prod。
+ *   1) **读不到 ≠ 通过**：文件读不到、命令跑不起来、样本不足、读数来源形状不对，一律判 `unknown`
+ *      并把原因写进 detail，绝不显示成 `ok`（假绿比不检查更坏）。这条由 `signal()` 与
+ *      `readSource()` **强制**，不靠调用点自觉。
+ *   2) **怀疑不等于事实**：观测记录分三态 `prod` / `suspect` / `unknown`——命中测试标记的记
+ *      `suspect` 并**单独报数**；**非记录形状**（非对象）的记 `unknown`；其余按 `prod`，因为这两份
+ *      文件本身就是生产观测口（provenance 由文件名 + 内容标记共同决定，不靠猜）。
  */
 
 /** 信号 id 与标题（对外契约：标签页、路由、README 三处引用同一份）。 */
@@ -174,10 +176,28 @@ export function summarizeEvolve(records, now = Date.now()) {
   return { ticks: ticks.length, lastTickAt: last, ageMinutes, verdict };
 }
 
-/** 组装一条信号。reading 为 null 一律判 unknown —— 「没有读数」不许被读成「读数是 0」。 */
+/**
+ * 组装一条信号。
+ *
+ * **「没有读数」不许被读成任何结论**——这条不变量在这里**强制**，而不是靠六个调用点自觉
+ * （独立复核指出：原注释这么写、代码却没这么做，属「文档与实现不符」，且调用点一旦写错
+ * 就会静默产生一条没有读数的 `ok`）。
+ */
 function signal(id, reading, threshold, verdict, detail) {
   const meta = SIGNALS.find((s) => s.id === id);
-  return { id, title: meta.title, unit: meta.unit, reading, threshold, verdict, detail };
+  const settled = reading === null || reading === undefined ? 'unknown' : verdict;
+  return { id, title: meta.title, unit: meta.unit, reading, threshold, verdict: settled, detail };
+}
+
+/**
+ * 归一一路读数来源。**既没有 `text` 也没有 `error` 的形状一律按「读不到」处理**：
+ * 调用方忘了传，不该被读成「文件是空的」（空文件与没给来源是两件事）。
+ */
+function readSource(raw) {
+  if (raw === undefined || raw === null) return { error: '未提供读数来源' };
+  if (raw.error !== undefined) return raw;
+  if (typeof raw.text !== 'string') return { error: '读数来源形状不对（text 必须是字符串或缺 error）' };
+  return raw;
 }
 
 /**
@@ -194,14 +214,16 @@ function signal(id, reading, threshold, verdict, detail) {
  */
 export function evaluateSignals(input = {}) {
   const now = typeof input.now === 'number' ? input.now : Date.now();
-  const autoload = summarizeAutoload(input.autoload?.text === undefined ? [] : parseJsonl(input.autoload.text).records);
-  const update = summarizeUpdate(input.update?.text === undefined ? [] : parseJsonl(input.update.text).records);
+  const autoloadSource = readSource(input.autoload);
+  const updateSource = readSource(input.update);
+  const autoload = summarizeAutoload(autoloadSource.text === undefined ? [] : parseJsonl(autoloadSource.text).records);
+  const update = summarizeUpdate(updateSource.text === undefined ? [] : parseJsonl(updateSource.text).records);
 
   const out = [];
 
   // ── S1 观测臂污染：命中测试痕量的记录占比 ──────────────────────────────────
-  if (input.autoload?.error !== undefined || input.update?.error !== undefined) {
-    out.push(signal('S1', null, '> 0', 'unknown', `观测文件读不到（${input.autoload?.error ?? input.update?.error}）`));
+  if (autoloadSource.error !== undefined || updateSource.error !== undefined) {
+    out.push(signal('S1', null, '> 0', 'unknown', `观测文件读不到（${autoloadSource.error ?? updateSource.error}）`));
   } else {
     const total = autoload.total + update.total;
     const suspect = autoload.arms.suspect + update.arms.suspect;
@@ -212,8 +234,8 @@ export function evaluateSignals(input = {}) {
   }
 
   // ── S2 注入活性：注入了没有？样本不足判 unknown，不判「有病」 ─────────────
-  if (input.autoload?.error !== undefined) {
-    out.push(signal('S2', null, `inject = 0 且 loaded ≥ ${MIN_LOADED_SAMPLE}`, 'unknown', `观测文件读不到（${input.autoload.error}）`));
+  if (autoloadSource.error !== undefined) {
+    out.push(signal('S2', null, `inject = 0 且 loaded ≥ ${MIN_LOADED_SAMPLE}`, 'unknown', `观测文件读不到（${autoloadSource.error}）`));
   } else if (autoload.loaded < MIN_LOADED_SAMPLE) {
     out.push(signal('S2', `${autoload.inject}/${autoload.loaded}`, `inject = 0 且 loaded ≥ ${MIN_LOADED_SAMPLE}`, 'unknown', `样本不足（loaded=${autoload.loaded}）`));
   } else {
@@ -224,8 +246,8 @@ export function evaluateSignals(input = {}) {
 
   // ── S3 banner 可用率：补「关键词没命中」的那块补丁在不在岗 ─────────────────
   const bannerTotal = Object.values(autoload.bannerStates).reduce((a, b) => a + b, 0);
-  if (input.autoload?.error !== undefined) {
-    out.push(signal('S3', null, `< ${BANNER_OK_RATIO * 100}%`, 'unknown', `观测文件读不到（${input.autoload.error}）`));
+  if (autoloadSource.error !== undefined) {
+    out.push(signal('S3', null, `< ${BANNER_OK_RATIO * 100}%`, 'unknown', `观测文件读不到（${autoloadSource.error}）`));
   } else if (bannerTotal === 0) {
     out.push(signal('S3', null, `< ${BANNER_OK_RATIO * 100}%`, 'unknown', '没有 banner 记录'));
   } else {

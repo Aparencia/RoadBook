@@ -447,7 +447,7 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 
 **版本口径**：`V6` 是**世代号**（第 6 代流程），**自 2026-10-05 起不再用于打 tag**（用户裁决：世代号只作流程代际标识，标签线唯一）。发布一律用插件版 semver，唯一事实源 = 根 `package.json` 的 `version`；当前标签线 `v0.4.1 → v0.5.0 → v0.6.0`。判据变更必须重新打 tag——**打 tag 自 `2026-10-05.2` 起由 agent 在发布流程内执行**（用户裁决；见 §4 的 5-6 卡与 5-2 卡），**已发布的 tag 不许移动或删除**（禁 `git tag -f`）。
 
-> **唯一例外（2026-10-05，用户裁决，记录在案）**：历史世代号 tag `v0.6.0`（2026-10-03 世代首发，带 GitHub Release）**被删除并改指插件线 v0.6.0**。理由：它已被裁决为「不再作版本号参考」，却仍占着插件 semver 线马上要用的号；删除优于让插件线永久跳过 0.6.0。**这是一次性例外，不是新的通行做法**——上一条「已发布 tag 不许移动或删除」继续对今后每一个 tag 生效；本节的记录与 `CHANGELOG.md` [0.6.0] 节「tag 例外」互为印证，防止后人看到「规则说不许删、历史上却删过一个」时误判规则已废。
+> **唯一例外（2026-10-05，用户裁决，记录在案）**：历史世代号 tag `v0.6.0`（2026-10-03 世代首发，带 GitHub Release）**被删除并改指插件线 v0.6.0**。理由：它已被裁决为「不再作版本号参考」，却仍占着插件 semver 线马上要用的号；删除优于让插件线永久跳过 0.6.0。**这是一次性例外，不是新的通行做法**——上一条「已发布 tag 不许移动或删除」继续对今后每一个 tag 生效；本节的记录与 `CHANGELOG.md` [0.6.1] 节「tag 例外」互为印证，防止后人看到「规则说不许删、历史上却删过一个」时误判规则已废。
 
 ## 14. 版本管理主动性（2026-10-03 增补）
 
@@ -552,6 +552,7 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 | ├ roadbook-skills | 把包内 `skills/` 分发给 DSH（`roadbook` 与 `roadbook-atlas` 两个技能，一个 provider） | §13 分发 |
 | ├ roadbook-autoload | 命中触发词自动加载本流程 | §15（三层门控与关闭方式） |
 | ├ roadbook-atlas | 图纸工作台：typed JSON 规格 → 自包含交互式 HTML，成品进 better-sidebar「图册」标签页（渲染器随包 vendored） | `plugin/roadbook-atlas/README.md`（回执契约、退出码口径、三种关闭粒度） |
+| ├ roadbook-team | Team 策略行（0.5.0）：只在官方 Agent Teams 已挂载时加载（装配层 `disabled: !!js "!ctx.get('agentTeams')"`），**不自建**允许/不允许开关，只跟随官方那一行 | `plugin/roadbook-team/index.js`、`design/dsh-lockdown-plan.md` |
 | └ roadbook-evolve | **自进化信号表**（0.6.0）：S1 观测臂污染 / S2 注入活性 / S3 常驻提示可用率 / S4 工作树 / S5 规则索引 / S6 路由完整性，三态判定（读不到 = `unknown`，不许显示成 `ok`），两条只读路由 + 侧栏「自进化」标签页 | §17.5、`plugin/roadbook-evolve/README.md` |
 | gitbash-shell | 命令解释器差异 | 契约 §2② 正斜杠 + PowerShell 5.1 兼容（`Select-String` 无 `-Recurse`） |
 
@@ -597,9 +598,11 @@ git -C "$env:USERPROFILE\.dsh\skills\roadbook" pull --ff-only                   
 
 **六条信号（三态判定，阈值常量在 `signals.js`、README、测试三处同值）**：
 
-| id | 信号 | 越界判据 | 首次实现时的本机读数 |
+> 下表右列是**带时点的实测快照**，不是恒定值——它与本机观测文件的长度同增（S1 的读数 = 命中测试痕量的**记录数** ÷ 两份文件的**记录总数**；65 对 `apply-start/apply-finish` **各计一条**，故是 130 而不是 65）。
+
+| id | 信号 | 越界判据 | 首次实现时的本机读数（2026-10-05 实测） |
 | :-: | :-- | :-- | :-- |
-| S1 | 观测臂污染 | 命中测试痕量的记录占比 > 0 | 65/468 |
+| S1 | 观测臂污染 | 命中测试痕量的记录占比 > 0 | 130/632（autoload 140 条 + update 492 条） |
 | S2 | 注入活性 | `inject = 0` 且 `loaded ≥ 10` | 0/35 |
 | S3 | banner 可用率 | `registered/banner < 50%` | 4/33 = 12% |
 | S4 | 工作树状态 | `git status --porcelain` 行数 > 0 | 0 |
