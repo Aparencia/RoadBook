@@ -16,11 +16,16 @@
  * 三者都是**守卫式动态 import**：解析不到就退回 ./host-fallback.js 的等价实现，绝不让
  * 整行插件因为缺宿主包而静默变成面板上的「未运行」（原因见 host-fallback.js 顶部注释）。
  *
+ * 常驻微提示：关键词门控必须命中才注入正文，没命中的会话此前整轮没有任何流程约束。
+ * 所以另外注册一段极短的 system prompt section（不是注入 user message）：它每轮都在、
+ * 不占对话历史、不受压缩影响；服务读不到就不显示，绝不让整行插件变成「未运行」。
+ *
  * 观测：自进化 A 环默认开启 —— 每个分支（inject / skip / error）都往
  * <os.tmpdir()>/roadbook-autoload.jsonl 追加一行 JSONL；观测是旁路，写失败只吞自己，
- * 绝不影响会话（同理，渲染或建消息失败也只跳过该技能）。
+ * 绝不影响会话（同理，渲染或建消息失败也只跳过该技能）。文件超上限就轮转到 `<file>.1`，
+ * 且**只记用户文本的指纹与长度，不记原文**（共享临时目录、跨会话、永不清理）。
  */
-import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import {
@@ -33,6 +38,7 @@ import {
   DEFAULT_SUPPRESS,
   alreadyInjected,
   buildNote,
+  cardReadState,
   hasGesture,
   hasInjectedMessage,
   isSubagentHeader,
@@ -84,6 +90,39 @@ export const inject = ['agents', 'skills']
 /** 观测文件缺省名（放在 os.tmpdir() 下，任何系统都可写）。 */
 const DEFAULT_REPORT_FILE = 'roadbook-autoload.jsonl'
 
+/** 观测文件缺省字节上限（2 MiB）：文件在共享临时目录里、跨会话、永不清理，不轮转就是慢性泄漏。 */
+const DEFAULT_REPORT_MAX_BYTES = 2097152
+
+/** 常驻集合的 FIFO 上限：一次会话/跳过/项目根各一条，不设上限就是常驻宿主内存的慢性泄漏。 */
+const MAX_REMEMBERED = 512
+
+/**
+ * 空转观测（自进化 C 环）的观察门槛：注入之后至少再走这么多步才判。
+ * 太小会把「刚注入、还没轮到读卡」误报成空转；太大则长会话迟迟得不到读数。
+ */
+const IDLE_CHECK_STEPS = 4
+
+/**
+ * 常驻微提示文案（system prompt section，不是注入的 user message）。
+ * 为什么要有：关键词命中率只有五到八成，没命中的会话此前整轮没有任何流程约束。
+ * 为什么这么短：它每一轮都在上下文里，长正文交给命中后的全量注入，这里只留坐标与硬判据。
+ */
+const BANNER_TEXT =
+  '[roadbook] 本机装了 RoadBook 流程（路由 skills/roadbook/SKILL.md，卡片在 playbook/ 与 playbook_EN/）。涉及开发任务时按卡推进：红灯 = 停；「完成」= check.ps1 退出码 0 且粘贴真实输出；回执只认命令输出 / 文件路径 / 提交哈希。与本轮无关时忽略本段。要关掉：把插件行的 banner 设为 false。'
+
+/**
+ * 有界 FIFO 记忆：命中过的仍在（读取方先 has 再取值），超上限时淘汰最早写入的那条。
+ * 覆盖写入会把该键挪到队尾 —— 刚验证过的项目根/刚记过的跳过理由最不该先掉。
+ * Set 与 Map 通用：Set 走 add、Map 走 set，两者都有 has / delete / keys。
+ */
+function remember(store, key, value = true) {
+  if (store.has(key)) store.delete(key)
+  if (typeof store.set === 'function') store.set(key, value)
+  else store.add(key)
+  if (store.size > MAX_REMEMBERED) store.delete(store.keys().next().value)
+  return value
+}
+
 /**
  * 配置 schema：由宿主提供的 schemastery 构造。宿主没给（解析失败或构造抛错）时为 undefined ——
  * 此时 cordis 不校验行配置，schema 里的缺省值不生效，apply() 会打一条警告说明这件事。
@@ -109,10 +148,14 @@ function buildConfig(schema) {
       oncePerSession: z.boolean().default(true),
       /** 在技能正文后附一行透明说明（为什么加载、怎么关）。 */
       note: z.boolean().default(true),
+      /** 每轮常驻的极短微提示（system prompt section）；关掉设 false，本文本段即不贡献内容。 */
+      banner: z.boolean().default(true),
       /** 自进化 A 环：观测是否落盘，默认开（注入/跳过/报错都记一行）。 */
       report: z.boolean().default(true),
       /** 自进化 A 环：观测记录（JSONL）落盘路径，空 = <os.tmpdir()>/roadbook-autoload.jsonl。 */
       reportPath: z.string().default(''),
+      /** 自进化 A 环：观测文件字节上限，超了就轮转到 `<reportPath>.1`（覆盖旧的 .1）再继续写。 */
+      reportMaxBytes: z.number().default(DEFAULT_REPORT_MAX_BYTES),
       /** 自进化 B 环：SKILL.md 指纹基线，对不上就在说明里提示技能已更新。 */
       skillDigest: z.string().default(''),
     })
@@ -127,26 +170,61 @@ function buildConfig(schema) {
 }
 
 export function apply(ctx, config = {}, runtime = {}) {
+  // 四个常驻集合都会活到插件卸载为止：全部经 remember() 走有界 FIFO，避免长驻宿主内存只增不减。
   const injectedSessions = new Set()
   const gitRoots = new Map()
   const digests = new Map()
   const reportedSkips = new Set()
+  /** 空转观测的观察簿：sessionId → { steps, settled }（同样走 remember 的有界 FIFO）。 */
+  const idleWatch = new Map()
+  /** 观察对象：配置里的第一个技能名（与真正会注入的那个一致）。 */
+  const idleSkillName = Array.isArray(config?.skills) && typeof config.skills[0] === 'string' ? config.skills[0] : ''
   const home = typeof runtime?.home === 'string' && runtime.home.length > 0 ? runtime.home : homedir()
   const reportEnabled = config?.report !== false
   const reportFile =
     typeof config?.reportPath === 'string' && config.reportPath.trim().length > 0
       ? config.reportPath.trim()
       : join(tmpdir(), DEFAULT_REPORT_FILE)
+  const reportMaxBytes =
+    typeof config?.reportMaxBytes === 'number' && Number.isFinite(config.reportMaxBytes) && config.reportMaxBytes > 0
+      ? config.reportMaxBytes
+      : DEFAULT_REPORT_MAX_BYTES
   let advertised = false
+  // 已写字节在内存里累计，种子取现有文件大小：每行都 stat 一次等于把观测变成 I/O 热点。
+  // 读不到（首次运行、被别的进程占着）就从 0 起算，最多让本轮多写一个上限的量。
+  let reportBytes = 0
+  try {
+    reportBytes = statSync(reportFile).size
+  } catch {
+    reportBytes = 0
+  }
+
+  /**
+   * 观测轮转：超上限就把当前文件挪到 `<reportFile>.1`（覆盖旧的 .1）后从零继续写。
+   * 挪不动（被占用、目录只读）也照样把计数归零继续写：观测是旁路，轮转失败不许打断会话。
+   */
+  const rotateReport = () => {
+    try {
+      rmSync(`${reportFile}.1`, { force: true })
+      renameSync(reportFile, `${reportFile}.1`)
+    } catch {
+      /* 轮转失败只影响体积，不影响会话 */
+    }
+    reportBytes = 0
+  }
 
   /** 观测是旁路：任何失败都只吞自己，绝不打断会话。 */
   const writeReport = (entry) => {
     if (!reportEnabled) return
+    const line = `${JSON.stringify({ time: new Date().toISOString(), file: reportFile, ...entry })}\n`
+    const bytes = Buffer.byteLength(line, 'utf8')
     try {
-      appendFileSync(reportFile, `${JSON.stringify({ time: new Date().toISOString(), file: reportFile, ...entry })}\n`, 'utf8')
+      if (reportBytes + bytes > reportMaxBytes) rotateReport()
+      appendFileSync(reportFile, line, 'utf8')
     } catch {
       return
     }
+    reportBytes += bytes
     if (advertised) return
     advertised = true
     try {
@@ -160,7 +238,7 @@ export function apply(ctx, config = {}, runtime = {}) {
   const reportSkip = (reason, meta, sessionId) => {
     const key = `${sessionId}|${reason}`
     if (reportedSkips.has(key)) return
-    reportedSkips.add(key)
+    remember(reportedSkips, key)
     writeReport({ event: 'skip', reason, session: sessionId, ...meta })
   }
 
@@ -200,23 +278,179 @@ export function apply(ctx, config = {}, runtime = {}) {
       if (parent === dir) break
       dir = parent
     }
-    gitRoots.set(cwd, found)
+    remember(gitRoots, cwd, found)
     return found
   }
 
+  /**
+   * SKILL.md 内容指纹（sha256 前 8 位；读不到返回 ''），用于自进化 B 环对账。
+   * 缓存键带文件 stat 指纹（mtimeMs + size）：只按路径缓存的话，技能中途更新（git pull / 手改卡片）
+   * 之后对账永远看不到变化 —— B 环就空转了。
+   * 取证拿不到 stat（文件不存在、权限不足）时**不缓存**，直接读：这样「先缺后补」的 SKILL.md
+   * 下一次调用还会重新取证，不会被记成永久的 ''。
+   */
   const digestOf = (skill) => {
     const base = skill?.resourceBase
     if (base?.kind !== 'directory' || typeof base.path !== 'string') return ''
-    if (digests.has(base.path)) return digests.get(base.path)
-    let value = ''
+    const file = join(base.path, 'SKILL.md')
+    let stat
     try {
-      value = shortDigest(readFileSync(join(base.path, 'SKILL.md'), 'utf8'))
+      stat = statSync(file)
     } catch {
-      value = ''
+      try {
+        return shortDigest(readFileSync(file, 'utf8'))
+      } catch {
+        return ''
+      }
     }
-    digests.set(base.path, value)
-    return value
+    const cached = digests.get(file)
+    if (cached !== undefined && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.digest
+    let digest = ''
+    try {
+      digest = shortDigest(readFileSync(file, 'utf8'))
+    } catch {
+      digest = ''
+    }
+    remember(digests, file, { mtimeMs: stat.mtimeMs, size: stat.size, digest })
+    return digest
   }
+
+  /**
+   * 自进化 C 环：注入了流程正文，此后一路没读过卡 = 疑似空转（只观测，绝不改行为、绝不注入）。
+   *
+   * 为什么以前"暂不做"而现在能做：设计文档当年写的理由是「避免为观测再加钩子」——
+   * 但 `agent/pre-step` 本来就挂着（注入走的就是它），会话日志本来就读得到
+   * （`alreadyInjected` 已经在读），这一环缺的只是一个判据，零新增接线。
+   *
+   * 判据交 `cardReadState()`：只看最后一次同名注入**之后**的事件，注入正文自己写着的
+   * `playbook_EN/` 不会被算成"读过"。读不到日志或超出扫描窗口都返回 `unknown`，不猜。
+   * `report: false` 时整个观察不做（省钱，也与「观测开关」的语义一致）。
+   */
+  const observeIdle = (session, sessionId) => {
+    if (!reportEnabled || sessionId.length === 0 || idleSkillName.length === 0) return
+    const state = idleWatch.get(sessionId)
+    if (state === undefined || state.settled) return
+    state.steps += 1
+    if (state.steps < IDLE_CHECK_STEPS) return
+    const verdict = cardReadState(session, idleSkillName)
+    if (verdict === 'unknown') return // 判不了就下一步再问，绝不写一条猜出来的读数
+    state.settled = true
+    writeReport({
+      event: verdict === 'read' ? 'card-read' : 'idle',
+      session: sessionId,
+      skill: idleSkillName,
+      steps: state.steps,
+    })
+  }
+
+  /**
+   * 常驻微提示：补掉「关键词没命中 = 整轮不受流程约束」的洞（命中率只有五到八成）。
+   *
+   * 注册的是 system prompt section，不是注入 user message：它在每个组装点都贡献内容，
+   * 因此不占对话历史、不会被上下文压缩 shadow，也不受 oncePerSession 影响。
+   *
+   * systemPrompt 必须走**可选服务**：不能写进 `export const inject` —— 那里少一个服务，
+   * cordis 会把整行插件判成「未运行」（原因同顶部宿主包注释：症状会指向「没装」而不是「缺服务」）。
+   * 这里读不到服务只让本段不出现，整行插件照常工作。
+   */
+
+  /** 要注册的那一段（两条接线路径共用同一份文案与 order）。 */
+  const bannerSection = () => ({
+    name: 'roadbook',
+    // 700 的依据：DSH 的 SECTION_ORDERS 里 PLAN_POLICY = 500、TEAM_POLICY = 600、PTC_ONLY = 800，
+    // 700 正好落在策略段之间 —— 流程提示要排在三条策略之后、工具段（1000 起）之前。
+    order: 700,
+    // 关掉插值：本段是自己写死的中文提示，不含 {{变量}}，也不该被当模板解析（解析失败会抛在组装里）。
+    interpolate: false,
+    text: (context) => {
+      if (config.banner === false || config.mode === 'off') return ''
+      // 读不到 cwd 就不显示（与本插件「读不到就不猜」口径一致）：宁可少一段，也不给错坐标。
+      const cwd = context?.agent?.session?.header?.cwd
+      if (typeof cwd !== 'string' || cwd.length === 0) return ''
+      if (config.requireGitRoot && !inGitProject(cwd)) return ''
+      return BANNER_TEXT
+    },
+  })
+
+  /**
+   * 把 section 挂到服务上，disposer 交给**当前作用域**的 effect 保管。
+   * 服务返回的 disposer 只在自己作用域里有效：包进 effect 才会随作用域卸载（含插件卸载）一并撤销 ——
+   * 不包的话，服务重建一次就在 system prompt 里多留一段，越攒越多。
+   */
+  const mountBanner = (host, systemPrompt) => {
+    const section = bannerSection()
+    const attach = () => systemPrompt.section(section)
+    if (typeof host?.effect === 'function') {
+      host.effect(attach, 'roadbook-autoload: banner')
+      return
+    }
+    attach()
+  }
+
+  /** 服务形状不合格（没这个服务 / 还没起来）：只让本段不出现，绝不上抛。 */
+  const usableSectionService = (value) =>
+    value !== undefined && value !== null && typeof value.section === 'function'
+
+  /** 上面这一段的注册入口：有 inject 就交给作用域重试，没有才退回一次性 ctx.get。 */
+  const registerBanner = () => {
+    // 首选：作用域注入。一次性 ctx.get 读到 undefined 时，「宿主没有这个服务」与「服务还没起来」
+    // 长得一模一样 —— 前者该永久让路，后者只该等一等；读一次就写死 unavailable，微提示会在
+    // 服务晚于本插件装配的宿主上永远消失。交给 inject 的作用域 fiber：服务一可用就回调一次，
+    // 全程没这个服务就一次都不回调（本插件照常工作，export const inject 也保持 ['agents','skills']）。
+    if (typeof ctx.inject === 'function') {
+      let settled = false
+      try {
+        ctx.inject(['systemPrompt'], (scope) => {
+          settled = true
+          let systemPrompt
+          try {
+            systemPrompt = scope?.systemPrompt
+          } catch (error) {
+            writeReport({ event: 'banner', state: 'error', message: errorText(error) })
+            return
+          }
+          if (!usableSectionService(systemPrompt)) {
+            // 作用域起来了但这个服务仍不合格：如实记 unavailable，绝不写 registered。
+            writeReport({ event: 'banner', state: 'unavailable' })
+            return
+          }
+          try {
+            mountBanner(scope, systemPrompt)
+            writeReport({ event: 'banner', state: 'registered' })
+          } catch (error) {
+            writeReport({ event: 'banner', state: 'error', message: errorText(error) })
+          }
+        })
+      } catch (error) {
+        writeReport({ event: 'banner', state: 'error', message: errorText(error) })
+        return
+      }
+      // 回调也可能同步就跑完了（服务已经起来）：那就不补这一行，免得读观测的人以为还没注册。
+      if (!settled) writeReport({ event: 'banner', state: 'deferred' })
+      return
+    }
+
+    // 兜底：ctx 上没有 inject（老宿主 / 精简 ctx）时保留原样的一次性 ctx.get —— 读不到就不注册。
+    let systemPrompt
+    try {
+      systemPrompt = typeof ctx.get === 'function' ? ctx.get('systemPrompt') : undefined
+    } catch (error) {
+      writeReport({ event: 'banner', state: 'error', message: errorText(error) })
+      return
+    }
+    if (!usableSectionService(systemPrompt)) {
+      writeReport({ event: 'banner', state: 'unavailable' })
+      return
+    }
+    try {
+      mountBanner(ctx, systemPrompt)
+      writeReport({ event: 'banner', state: 'registered' })
+    } catch (error) {
+      writeReport({ event: 'banner', state: 'error', message: errorText(error) })
+    }
+  }
+
+  registerBanner()
 
   const handle = async ({ agent, messages, signal } = {}, decision, sessionId) => {
     if (decision?.kind === 'reject') {
@@ -238,6 +472,8 @@ export function apply(ctx, config = {}, runtime = {}) {
       reportSkip('subagent', { cwd: header.cwd }, sessionId)
       return decision
     }
+    // 自进化 C 环：本会话若注入过，就顺路看一眼「到底有没有读卡」（只观测，不影响任何决策）
+    observeIdle(session, sessionId)
     // 压缩把之前注入的消息 shadow 出可见面之后，oncePerSession 不许再拦：拦了会话后半程就没有流程卡。
     // 判据问「模型还能不能看到」，不问「历史上有没有注入过」；只有读不到可见面时才退回旧的保守行为。
     const surface = surfaceInjectionState(session, config.skills)
@@ -253,7 +489,8 @@ export function apply(ctx, config = {}, runtime = {}) {
     }
     const hit = matchIntent(text, config)
     if (hit === undefined) {
-      reportSkip('no-hit', { text: text.slice(0, 80) }, sessionId)
+      // 只记指纹与长度，不记原文：观测文件在共享临时目录、跨会话、永不清理，落原话等于把用户消息写在公共位置。
+      reportSkip('no-hit', { textDigest: shortDigest(text), textLength: text.length }, sessionId)
       return decision
     }
     if (config.requireGitRoot && !inGitProject(header.cwd)) {
@@ -267,7 +504,11 @@ export function apply(ctx, config = {}, runtime = {}) {
       return decision
     }
     if (hasGesture(text, names)) {
-      reportSkip('manual-gesture', { cwd: header.cwd, text: text.slice(0, 80) }, sessionId)
+      reportSkip(
+        'manual-gesture',
+        { cwd: header.cwd, textDigest: shortDigest(text), textLength: text.length },
+        sessionId,
+      )
       return decision
     }
 
@@ -294,7 +535,7 @@ export function apply(ctx, config = {}, runtime = {}) {
       // 日志兜底只在读不到可见面时生效：可见面已经说「被 shadow 掉了」时，日志里那条不算数。
       if (skillSurface === 'unavailable' && alreadyInjected(session, skillName)) via.push('session-log')
       if (via.length > 0) {
-        if (sessionId.length > 0) injectedSessions.add(sessionId)
+        if (sessionId.length > 0) remember(injectedSessions, sessionId)
         reportSkip('already-injected', { cwd: header.cwd, skill: skillName, via, surface: skillSurface }, sessionId)
         return decision
       }
@@ -330,7 +571,11 @@ export function apply(ctx, config = {}, runtime = {}) {
 
       // 第二次及以后还能走到注入，只该有一种理由：上一次注入已不在可见面上（被压缩 shadow 掉）。
       const reinjected = skillSurface === 'absent' && sessionId.length > 0 && injectedSessions.has(sessionId)
-      if (sessionId.length > 0) injectedSessions.add(sessionId)
+      if (sessionId.length > 0) {
+        remember(injectedSessions, sessionId)
+        // 起一个空转观察：从这一步开始数，看后面有没有真的读卡
+        remember(idleWatch, sessionId, { steps: 0, settled: false })
+      }
       writeReport({
         event: 'inject',
         reason: reinjected ? 'reinject-shadowed' : 'first',
@@ -343,7 +588,9 @@ export function apply(ctx, config = {}, runtime = {}) {
         drift:
           typeof config.skillDigest === 'string' && config.skillDigest.length > 0 && config.skillDigest !== digest,
         note: config.note !== false,
-        text: text.slice(0, 80),
+        // 同上：观测里只留用户文本的指纹与长度，原文不出本进程。
+        textDigest: shortDigest(text),
+        textLength: text.length,
       })
       try {
         ctx.logger?.info?.(

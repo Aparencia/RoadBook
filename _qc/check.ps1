@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 650) "行数 $selfN <= 650 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；上调须同时改本行与 design §8）"
+Check ($selfN -le 670) "行数 $selfN <= 670 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -373,7 +373,7 @@ Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）
 
 Write-Host "== 6. 自动加载插件 plugin/roadbook-autoload =="
 $plg = Join-Path $root 'plugin\roadbook-autoload'
-foreach ($k in @('package.json','cordis.patch.yml','index.js','trigger.js','host-fallback.js','icon.svg','README.md','locale\zh.json','locale\en.json','test\trigger.test.mjs','test\host-fallback.test.mjs')) {
+foreach ($k in @('package.json','cordis.patch.yml','index.js','trigger.js','host-fallback.js','icon.svg','README.md','locale\zh.json','locale\en.json','test\trigger.test.mjs','test\index.test.mjs','test\banner.test.mjs','test\host-fallback.test.mjs')) {
     Check (Test-Path (Join-Path $plg $k)) "插件文件存在：plugin/roadbook-autoload/$k"
 }
 $plgPkg = $null
@@ -418,10 +418,13 @@ if ($null -ne $umb) {
     Check ((-not $umb.exports.'./bundle') -and (-not (Test-Path (Join-Path $root 'lib\bundle.js')))) 'group 容器已删（exports 无 ./bundle、lib/bundle.js 不存在）'
     $umbFiles = @($umb.files)
     Check (($umbFiles -contains 'lib') -and ($umbFiles -contains 'skills') -and ($umbFiles -contains 'plugin')) '伞包 files 白名单含 lib/ skills/ plugin/（随包分发不漏）'
+    Check (($umbFiles -contains 'playbook') -and ($umbFiles -contains 'playbook_EN') -and ($umbFiles -contains 'template')) '伞包 files 白名单含 playbook/ playbook_EN/ template/（随包分发漏了它们 = 装出来的插件没有流程卡：skills/roadbook/SKILL.md 第一件事就是让 agent 读 playbook_EN/0-1-driver-card.md）'
+    Check ((@($plgPkg.files) -contains 'host-fallback.js')) '插件 files 白名单含 host-fallback.js（index.js 静态 import 它；漏包 = 解包后 import 报 ERR_MODULE_NOT_FOUND，面板显示未运行）'
 }
-foreach ($k in @('cordis.patch.yml','lib\index.js','lib\client.js','skills\roadbook\SKILL.md','skills\roadbook-atlas\SKILL.md','test\skill-mirror.test.mjs','test\umbrella-contract.test.mjs')) {
-    Check (Test-Path (Join-Path $root $k)) "伞包文件存在：$k"
-}
+$ciPath = Join-Path $root '.github\workflows\ci.yml'; $ciTxt = if (Test-Path $ciPath) { [IO.File]::ReadAllText($ciPath, [Text.Encoding]::UTF8) } else { '' }
+Check ((Test-Path $ciPath) -and ($ciTxt -match '_qc/check\.ps1') -and ($ciTxt -notmatch 'continue-on-error')) 'CI 工作流 .github/workflows/ci.yml 在位：只跑与本地相同的 _qc/check.ps1，且无 continue-on-error（口径唯一：design §16 第 6 行）'
+Check (([IO.File]::ReadAllText((Join-Path $root '.gitignore'), [Text.Encoding]::UTF8)) -match '\.dsh-code-index') '.gitignore 覆盖 .dsh-code-index/（DSH 代码索引本地缓存；未忽略会让工作树永远不干净，5-1 卡「工作树必须干净」判据失效）'
+foreach ($k in @('cordis.patch.yml','lib\index.js','lib\client.js','skills\roadbook\SKILL.md','skills\roadbook-atlas\SKILL.md','test\skill-mirror.test.mjs','test\umbrella-contract.test.mjs','test\packaging.test.mjs')) { Check (Test-Path (Join-Path $root $k)) "伞包文件存在：$k" }
 $umbYml = [IO.File]::ReadAllText((Join-Path $root 'cordis.patch.yml'), [Text.Encoding]::UTF8)
 Check (($umbYml -match '(?m)^- insert:') -and ($umbYml -notmatch 'roadbook-bundle') -and ($umbYml -notmatch '(?m)^\s+group:\s*true\s*$')) '伞包 patch：- insert: 平铺（不再有 group 容器行 —— 容器行自己在面板上显示成「已关闭」）'
 $umbRows = [ordered]@{ 'roadbook' = 'roadbook'; 'roadbook-skills' = '@deepseek-ai/dsh-skill-filesystem'; 'roadbook-autoload' = 'roadbook/autoload'; 'roadbook-atlas' = 'roadbook/atlas' }
@@ -631,10 +634,22 @@ $nodeExe = Get-Command node -ErrorAction SilentlyContinue
 if ($null -eq $nodeExe) {
     Write-Host "  [--] 未装 node，跳过插件离线单测"
 } else {
-    $pTest = Join-Path $plg 'test\trigger.test.mjs'
-    if (Test-Path $pTest) { & node $pTest *> $null; Check ($LASTEXITCODE -eq 0) '插件 trigger 离线单测通过（node test/trigger.test.mjs）' }
-    $iTest = Join-Path $plg 'test\index.test.mjs'
-    if (Test-Path $iTest) { & node $iTest *> $null; Check ($LASTEXITCODE -eq 0) '插件 Host 半区单测通过（node test/index.test.mjs）' }
+    # 跑整个套件（glob），**不逐个文件点名**：点名清单一定会漏掉新加的文件 ——
+    # banner.test.mjs 就是这么漏的（CI 跑得到、本地门禁跑不到，于是本地全绿也不算数）。
+    $suites = @(
+        @{ Glob = ((Join-Path $root 'test') -replace '\\', '/') + '/*.test.mjs'; Label = '仓库自测全绿（node --test "test/*.test.mjs"）' },
+        @{ Glob = ((Join-Path $plg 'test') -replace '\\', '/') + '/*.test.mjs'; Label = '插件离线单测全绿（node --test "plugin/roadbook-autoload/test/*.test.mjs"）' }
+    )
+    foreach ($suite in $suites) {
+        $out = & node --test $suite.Glob 2>&1
+        $code = $LASTEXITCODE
+        if ($code -ne 0) {
+            # 红了必须看得见是哪几条：只报「失败」等于把证据丢掉
+            $tail = @($out | Select-Object -Last 15)
+            foreach ($line in $tail) { Write-Host "    $line" -ForegroundColor DarkYellow }
+        }
+        Check ($code -eq 0) $suite.Label
+    }
 }
 
 Write-Host "== 8. 结论 =="

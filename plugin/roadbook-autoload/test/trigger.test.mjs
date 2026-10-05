@@ -7,16 +7,25 @@ import {
   DEFAULT_SUPPRESS,
   alreadyInjected,
   buildNote,
+  cardReadState,
   hasGesture,
   hasInjectedMessage,
   isSubagentHeader,
   matchIntent,
   pickUserText,
+  sessionEvents,
   shortDigest,
   surfaceInjectionState,
 } from '../trigger.js'
 
 const user = (text) => ({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
+
+/**
+ * 真实 Session 形状：内部日志是私有字段（`log`），公开读法**只有** snapshotEvents()，
+ * **没有 `events` 属性** —— 用 `{ events }` 造假会把「真实会话读不到日志」的分支测成绿的。
+ * 数组照真实实现冻结：真实 snapshotEvents() 返回的就是冻结快照，顺手钉住「不许就地改日志」。
+ */
+const snapshotSession = (events) => ({ snapshotEvents: () => Object.freeze(events) })
 
 test('命中开发意图关键词', () => {
   assert.equal(matchIntent('帮我重构一下登录模块', {}), '重构')
@@ -99,14 +108,35 @@ test('会话日志去重按 skill-invocation 形状（data.source 与 data.messa
     { type: 'user/message', data: { message: { source: { kind: 'agent-instructions' } } } },
     { type: 'user/message', data: { message: { source: { kind: 'skill-invocation', name: 'roadbook' } } } },
   ]
-  assert.equal(alreadyInjected({ events }, 'roadbook'), true)
-  assert.equal(alreadyInjected({ events }, 'other'), false)
+  assert.equal(alreadyInjected(snapshotSession(events), 'roadbook'), true)
+  assert.equal(alreadyInjected(snapshotSession(events), 'other'), false)
   // 真实形状：user/message 事件的 data 就是消息本身。
-  assert.equal(alreadyInjected({ events: [{ type: 'user/message', data: { source: { kind: 'skill-invocation', name: 'roadbook' } } }] }, 'roadbook'), true)
+  assert.equal(alreadyInjected(snapshotSession([{ type: 'user/message', data: { source: { kind: 'skill-invocation', name: 'roadbook' } } }]), 'roadbook'), true)
   assert.equal(alreadyInjected({}, 'roadbook'), false)
   assert.equal(alreadyInjected(undefined, 'roadbook'), false)
   assert.equal(hasInjectedMessage([{ source: { kind: 'skill-invocation', name: 'roadbook' } }], 'roadbook'), true)
   assert.equal(hasInjectedMessage([], 'roadbook'), false)
+})
+
+// 兼容兜底：**只有这一条**钉 `{ events: [...] }` 旧形状（真实 Session 没有这个属性，其余用例一律走 snapshotEvents()）。
+// 留着它是因为旧调用方/历史会话对象可能还在传旧形状；哪天有人删掉这条兼容分支，这条会红着提醒。
+test('兼容兜底：旧形状 { events } 仍认，sessionEvents() 两种形状都读得到', () => {
+  const events = [{ type: 'user/message', data: { source: { kind: 'skill-invocation', name: 'roadbook' } } }]
+  assert.equal(sessionEvents({ events }), events, '旧形状原样返回')
+  assert.equal(sessionEvents(snapshotSession(events)), events, '真实形状优先')
+  assert.deepEqual(sessionEvents(undefined), [], '读不到返回空数组，不抛')
+  assert.deepEqual(sessionEvents({ snapshotEvents: () => { throw new Error('boom') } }), [], '读失败 == 读不到')
+  assert.deepEqual(
+    sessionEvents({ snapshotEvents: () => 'not-an-array', events }),
+    events,
+    '真实读法给出非数组时退回旧形状',
+  )
+  assert.equal(alreadyInjected({ events }, 'roadbook'), true, '旧形状仍能去重')
+  assert.equal(
+    cardReadState({ events: [injected(), { type: 'tool/call', data: { input: { file_path: 'playbook/1.md' } } }] }, 'roadbook'),
+    'read',
+    '旧形状仍能判空转',
+  )
 })
 
 test('可见面判据：present / absent / unavailable 三态', () => {
@@ -155,4 +185,93 @@ test('加载面评估集：正样本命中 ≥8/10，负样本误命中 = 0', ()
   assert.ok(cases.some((c) => c.split === 'test'), '存在留出集 split=test')
   assert.ok(cases.some((c) => c.split === 'train'), '存在训练集 split=train')
   assert.equal(new Set(cases.map((c) => c.id)).size, cases.length, 'id 唯一')
+})
+
+// ── 自进化 C 环：空转判据（判据在纯逻辑层，可离线钉死） ──────────────────────
+// 这一环不做钩子：agent/pre-step 本来就挂着、会话日志本来就读得到，缺的只是「怎么算空转」。
+
+const injected = (content = 'ROADBOOK_BODY') => ({
+  type: 'user/message',
+  data: { source: { kind: 'skill-invocation', name: 'roadbook' }, content: [{ type: 'text', text: content }] },
+})
+
+test('空转判据：没有会话日志 / 没有注入痕迹时不判（unknown，绝不猜）', () => {
+  assert.equal(cardReadState(undefined, 'roadbook'), 'unknown', '读不到会话不判')
+  assert.equal(cardReadState({}, 'roadbook'), 'unknown', '没有日志读法不判')
+  assert.equal(cardReadState(snapshotSession([]), 'roadbook'), 'unknown', '空日志不判')
+  assert.equal(cardReadState(snapshotSession([{ type: 'assistant/message', data: {} }]), 'roadbook'), 'unknown', '找不到注入消息不判')
+  assert.equal(cardReadState(snapshotSession([injected()]), ''), 'unknown', '技能名没给不判')
+});
+
+test('空转判据：注入后一路没有读卡痕迹 = idle', () => {
+  const session = snapshotSession([injected(), { type: 'assistant/message', data: { text: '我先把代码看一遍' } }])
+  assert.equal(cardReadState(session, 'roadbook'), 'idle')
+})
+
+test('空转判据：注入正文自带的 playbook_EN/ 不算「读过」（只扫注入之后的事件）', () => {
+  // 注入正文里一定写着 playbook_EN/0-1-driver-card.md；从 0 开始扫会自己证明自己
+  const session = snapshotSession([
+    injected('任何一轮开始：playbook_EN/0-1-driver-card.md'),
+    { type: 'assistant/message', data: { text: '好' } },
+  ])
+  assert.equal(cardReadState(session, 'roadbook'), 'idle', '注入正文不能自证')
+})
+
+test('空转判据：注入之后出现读卡痕迹 = read（工具调用参数、工具结果、助手消息都算）', () => {
+  const needles = ['playbook/', 'playbook_EN/']
+  const toolCall = snapshotSession([
+    injected(),
+    { type: 'tool/call', data: { name: 'read', input: { file_path: 'playbook_EN/4-1-batch-coding.md' } } },
+  ])
+  assert.equal(cardReadState(toolCall, 'roadbook'), 'read', '工具调用参数里的路径算痕迹')
+  const toolResult = snapshotSession([injected(), { type: 'tool/result', data: { content: '……见 playbook/6-6-流程体检.md……' } }])
+  assert.equal(cardReadState(toolResult, 'roadbook'), 'read', '工具结果里的正文算痕迹')
+  const assistant = snapshotSession([injected(), { type: 'assistant/message', data: { text: '我读了 playbook_EN/0-1-driver-card.md' } }])
+  assert.equal(cardReadState(assistant, 'roadbook'), 'read', '助手自述也算痕迹（本环只观测，不判真假）')
+
+  // 自定义 needle 生效
+  assert.equal(cardReadState(assistant, 'roadbook', ['nope']), 'idle')
+  assert.equal(cardReadState(assistant, 'roadbook', 'playbook_EN/'), 'read', '字符串 needle 也认')
+})
+
+test('空转判据：只看最后一次注入之后的事件（被压缩后重新注入会重置基线）', () => {
+  const session = snapshotSession([
+    injected(),
+    { type: 'assistant/message', data: { text: '读过 playbook_EN/2-1-feature-research.md' } },
+    injected(), // 压缩后重注入：基线后移，之前读过不算这一轮
+    { type: 'assistant/message', data: { text: '继续' } },
+  ])
+  assert.equal(cardReadState(session, 'roadbook'), 'idle', '以最后一次注入为基线')
+})
+
+test('空转判据：注入之后还没有事件、或事件多到超出扫描窗口 = unknown', () => {
+  assert.equal(cardReadState(snapshotSession([injected()]), 'roadbook'), 'unknown', '还没有材料可判')
+  const many = [injected()]
+  for (let index = 0; index < 500; index += 1) many.push({ type: 'assistant/message', data: { text: `第 ${index} 步` } })
+  assert.equal(cardReadState(snapshotSession(many), 'roadbook'), 'unknown', '超出窗口不判，也不做全量序列化')
+})
+
+test('空转判据：不可序列化的事件被跳过，不影响其余事件的判定', () => {
+  const circular = { type: 'tool/result', data: {} }
+  circular.data.self = circular
+  const session = snapshotSession([injected(), circular, { type: 'assistant/message', data: { text: '见 playbook/0-1-驱动卡.md' } }])
+  assert.equal(cardReadState(session, 'roadbook'), 'read', '循环引用事件跳过，后面的痕迹照样认出来')
+})
+
+test('空转判据：回扫只在「窗口 + 1」条内找最后一次注入，边界结论与全量倒扫一致', () => {
+  // gap 正好 = 窗口上限：注入仍在回扫范围内，判据照常给结论。
+  const atLimit = [injected()]
+  for (let index = 0; index < 400; index += 1) atLimit.push({ type: 'assistant/message', data: { text: `第 ${index} 步` } })
+  assert.equal(cardReadState(snapshotSession(atLimit), 'roadbook'), 'idle', 'gap 等于窗口上限：仍要判')
+
+  // gap = 窗口 + 1：注入落在回扫范围之外 ⇒ 算出来的 gap 本来也 > 窗口，两种实现都给 unknown。
+  const overLimit = [injected()]
+  for (let index = 0; index < 401; index += 1) overLimit.push({ type: 'assistant/message', data: { text: `第 ${index} 步` } })
+  assert.equal(cardReadState(snapshotSession(overLimit), 'roadbook'), 'unknown', 'gap 超出窗口：判不了')
+
+  // 注入远在窗口之外、之后一路读过卡：宁可 unknown，也不许把很久以前那次注入的痕迹算进这一轮。
+  const far = [{ type: 'assistant/message', data: { text: '很久以前' } }, injected()]
+  for (let index = 0; index < 500; index += 1) far.push({ type: 'tool/call', data: { input: { file_path: 'playbook/1.md' } } })
+  far.push({ type: 'tool/call', data: { input: { file_path: 'playbook/2.md' } } })
+  assert.equal(cardReadState(snapshotSession(far), 'roadbook'), 'unknown', '回扫窗口之外 = 判不了')
 })

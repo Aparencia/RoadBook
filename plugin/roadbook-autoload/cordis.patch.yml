@@ -1,10 +1,14 @@
 # Roadbook 自动加载插件（组合包 patch）
 #
 # 本文件把包挂进宿主：row 加载本包 main（./index.js）作为 Host 半区。
-# 安装：Web 侧栏「插件」→ 添加插件 → 本地绝对路径 → 指向本目录（plugin/roadbook-autoload）→ 安装后「立即启用」。
+# 安装：推荐装主插件（仓库根 `roadbook`，本行是它平铺的四行之一）；也可单独装本目录——
+#       Web 侧栏「插件」→ 添加插件 → 本地绝对路径指向本目录 → 安装后「立即启用」。
 # 改配置：直接改下面 config 里的值（mode: off 即可整体关掉），改完重新启用或刷新生效。
-# 只列"与默认值不同"的项：其余默认 mode=keyword、requireGitRoot=true、oncePerSession=true、
-# note=true、report=true（观测写 <os.tmpdir()>/roadbook-autoload.jsonl，report: false 可关）。
+# 只列"与默认值不同"的项。其余默认值（全部可在这行 config 里覆盖）：
+#   mode=keyword、skills=['roadbook']、requireGitRoot=true、oncePerSession=true、note=true、
+#   includeSubagents=false、report=true（观测写 <os.tmpdir()>/roadbook-autoload.jsonl，
+#   report: false 可整体关掉）、reportMaxBytes=2097152（超了就轮转到 .jsonl.1）、
+#   banner=true（system prompt 里的常驻铁律微提示，false 即不显示）、skillDigest=''（B 环基线）。
 - insert:
     - id: roadbook-autoload
       name: roadbook-autoload

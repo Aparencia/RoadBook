@@ -1,6 +1,6 @@
 {
   "name": "roadbook-autoload",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Roadbook V6 开发流程母版的自动加载插件：开发意图命中时把 roadbook 技能注入当前回合。",
   "type": "module",
@@ -13,6 +13,7 @@
   "files": [
     "index.js",
     "trigger.js",
+    "host-fallback.js",
     "cordis.patch.yml",
     "icon.svg",
     "locale",

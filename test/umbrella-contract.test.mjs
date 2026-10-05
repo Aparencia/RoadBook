@@ -13,9 +13,10 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = dirname(fileURLToPath(new URL('../package.json', import.meta.url)));
 const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
@@ -112,4 +113,112 @@ test('主行的就绪自检：随包文件当前全在，版本号与 package.js
   assert.equal(main.name, 'roadbook');
   assert.deepEqual(main.missingBundledFiles(), [], '有随包文件缺失（装出来的插件会不可用）');
   assert.equal(main.pluginVersion(), manifest.version);
+});
+
+// ── 2026-10-05：就绪自检改为「显式清单 + 入口模块的静态 import 闭包」 ──────────────
+// 事故背景：`plugin/roadbook-autoload/package.json` 的 files 白名单漏了 host-fallback.js
+// （入口静态 import 它），装出来的插件在面板上显示「未运行」；而当时手写的自检清单恰好也漏了
+// 同一个文件 —— 两个本该互相兜底的机制一起失明。下面三条把闭包钉死，防止再漂。
+
+test('就绪自检按静态 import 闭包推导：宿主入口的相对依赖一个都不能漏', async () => {
+  const main = await import('../lib/index.js');
+  assert.deepEqual(main.HOST_ENTRY_MODULES, ['lib/index.js', 'plugin/roadbook-autoload/index.js', 'plugin/roadbook-atlas/lib/index.js']);
+
+  const closure = main.relativeImportClosure(ROOT, 'plugin/roadbook-autoload/index.js');
+  assert.ok(closure.includes('plugin/roadbook-autoload/index.js'), '闭包含入口自身');
+  // 这两个就是出过事的文件：多行 import 也必须被认出来
+  assert.ok(closure.includes('plugin/roadbook-autoload/host-fallback.js'), '必须认出多行 import 的 host-fallback.js');
+  assert.ok(closure.includes('plugin/roadbook-autoload/trigger.js'), '必须认出多行 import 的 trigger.js');
+
+  for (const entry of main.HOST_ENTRY_MODULES) {
+    const list = main.relativeImportClosure(ROOT, entry);
+    assert.ok(list.includes(entry), `${entry} 的闭包含自身`);
+    for (const relative of list) {
+      assert.ok(existsSync(join(ROOT, relative)), `闭包里的 ${relative} 在磁盘上不存在（自检会误报）`);
+    }
+  }
+});
+
+test('注释里的 import 例子不算依赖 —— 假红比不检查更坏', async () => {
+  const main = await import('../lib/index.js');
+  assert.equal(main.stripComments("import a from './x.js' // 例子\n"), "import a from './x.js' \n");
+  assert.equal(main.stripComments("/* import b from './y.js' */\nreal()"), '\nreal()');
+  // lib/index.js 自己的注释里就写着 `import x from './a.js'` 这种例子：
+  // 它没有任何相对依赖，闭包必须只有它自己，否则自检会报一个不存在的文件
+  assert.deepEqual(main.relativeImportClosure(ROOT, 'lib/index.js'), ['lib/index.js']);
+});
+
+// ── 2026-10-05：stripComments 从「两条正则」换成单趟状态机 ──────────────────────
+// 老实现先跑块注释正则、又不认识字符串与行注释：一个写在字符串 / 行注释里的块注释开头会把
+// 后面直到块注释结尾的真代码整段吞掉。方向是**假绿** —— 自检悄悄不再检查一个真的必需文件，
+// 正是这套自检要防的那一类错误。下面两条各钉一个方向：漏报真依赖（假绿）与幽灵依赖（假红）。
+
+test('假绿复现：字符串 / 行注释 / 模板里的注释符不再吞掉真 import', async () => {
+  const main = await import('../lib/index.js');
+  const box = mkdtempSync(join(tmpdir(), 'roadbook-strip-'));
+  try {
+    const cases = [
+      // [说明, 入口内容, 必须进闭包的真依赖]
+      ['字符串里的块注释开头', 'const s = "/* not a comment"; import a from \'./real.js\'; /* block */\n', 'real.js'],
+      ['行注释里的块注释开头', '// note: /* example\nimport b from \'./real2.js\';\n/* another */\n', 'real2.js'],
+      ['模板里的行注释', 'const p = `${a} // x`; import z from \'./real3.js\';\n', 'real3.js'],
+      ['与上一条语句同行的 import', 'const r = /a\\/b/; import t from \'./real7.js\';\n', 'real7.js'],
+    ];
+    for (const [label, source, real] of cases) {
+      writeFileSync(join(box, 'entry.js'), source);
+      writeFileSync(join(box, real), 'export default 1;\n');
+      const closure = main.relativeImportClosure(box, 'entry.js');
+      assert.ok(closure.includes(real), `${label}：真依赖 ${real} 没进闭包（自检对它失明 = 假绿）—— 闭包=${closure.join(', ')}`);
+    }
+  } finally {
+    rmSync(box, { recursive: true, force: true });
+  }
+});
+
+test('假红复现：写在注释 / 字符串 / 模板里的 import 变不成幽灵依赖', async () => {
+  const main = await import('../lib/index.js');
+  const box = mkdtempSync(join(tmpdir(), 'roadbook-phantom-'));
+  try {
+    writeFileSync(join(box, 'entry.js'), [
+      "// import n1 from './ghost1.js'",
+      "/* import n2 from './ghost2.js' */",
+      'const doc = `',
+      "import n3 from './ghost3.js';",
+      '`;',
+      'const text = "import n4 from \'./ghost4.js\'";',
+      "const tpl = `import n5 from './ghost5.js'`;",
+      "import ok from './real.js';",
+      '',
+    ].join('\n'));
+    writeFileSync(join(box, 'real.js'), 'export default 1;\n');
+    const closure = main.relativeImportClosure(box, 'entry.js');
+    // 幽灵文件都不在磁盘上：一旦被扫出来就会被 missingBundledFiles 报成「缺」（假红比不检查更坏）
+    assert.deepEqual(closure, ['entry.js', 'real.js'], `注释 / 字符串 / 模板里的 import 变成了幽灵依赖：${closure.join(', ')}`);
+  } finally {
+    rmSync(box, { recursive: true, force: true });
+  }
+});
+
+test('技能行的 bundledSkillDir YAML 表达式与 resolveSkillRoot() 同口径（用同一个模拟安装验两条路）', async () => {
+  const atlas = await import('../plugin/roadbook-atlas/lib/index.js');
+  const expression = /bundledSkillDir:\s*!!js\s+(.+)$/m.exec(rowBlock('roadbook-skills'));
+  assert.ok(expression, '技能行必须有 bundledSkillDir 的 !!js 表达式');
+
+  // 造一个「可解析到 roadbook 包」的模拟安装：两处实现喂同一个 baseUrl，必须给出同一个技能根
+  const box = mkdtempSync(join(tmpdir(), 'roadbook-skillroot-'));
+  try {
+    const packageDir = join(box, 'node_modules', 'roadbook');
+    mkdirSync(join(packageDir, 'skills'), { recursive: true });
+    writeFileSync(join(packageDir, 'package.json'), JSON.stringify({ name: 'roadbook', version: '0.0.0', type: 'module' }));
+    const baseUrl = pathToFileURL(join(box, 'package.json')).href;
+    const fromYaml = new Function('baseUrl', 'process', `return (${expression[1]});`)(baseUrl, process);
+    assert.equal(atlas.resolveSkillRoot(baseUrl), join(packageDir, 'skills'), '子插件解析出的技能根');
+    assert.equal(fromYaml, join(packageDir, 'skills'), 'YAML 表达式解析出的技能根');
+    assert.equal(fromYaml, atlas.resolveSkillRoot(baseUrl), '两处实现必须给出同一个技能根');
+  } finally {
+    rmSync(box, { recursive: true, force: true });
+  }
+
+  // 解析不到（link: 安装的常态）时退回文件位置推断 —— 两条路都要成立
+  assert.equal(atlas.resolveSkillRoot(pathToFileURL(join(tmpdir(), 'nope', 'package.json')).href), join(ROOT, 'skills'));
 });

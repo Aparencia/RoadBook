@@ -48,13 +48,12 @@ git clone https://github.com/Aparencia/RoadBook.git "$env:USERPROFILE/.dsh/skill
 
 ## DSH 插件（可选，让流程不靠模型自觉）
 
-**装一个主插件就有全部能力**：DSH 侧栏「插件」→「添加插件」→ Git 地址填 `https://github.com/Aparencia/RoadBook.git`（或本地绝对路径指向本仓库根）。装上后面板里出现四个**可独立开关**的子行（平铺，没有「关一行连停四行」的祖先开关）：`roadbook`（主行：版本与随包文件就绪自检）、`roadbook-skills`（把包内 `skills/` 交给 skill 子系统：流程技能 + 图纸技能）、`roadbook-autoload`（在 git 项目里一开口谈开发任务就注入流程正文——只注入一次、手打 `/roadbook` 让路、`mode: off` 整体关闭）、`roadbook-atlas`（说「画一张架构图 / 流程图 / 时序图 / 数据流图 / 状态机」→ typed JSON 规格 → 自包含交互式 HTML + 回执，成品在侧栏「图册」标签页预览 / 打开 / 导出）。
-
-细则与验证：自动加载见 [`plugin/roadbook-autoload/README.md`](plugin/roadbook-autoload/README.md)（触发规则、配置表、四条验证）；图纸见 [`plugin/roadbook-atlas/README.md`](plugin/roadbook-atlas/README.md)（目录约定、CLI、渲染器边界）。子插件只是宿主半，**不单独安装**。
+**装一个主插件就有全部能力**：DSH 侧栏「插件」→「添加插件」→ Git 地址填 `https://github.com/Aparencia/RoadBook.git`（或本地绝对路径指向本仓库根）。装上后面板里出现四个**可独立开关**的子行（平铺，没有「关一行连停四行」的祖先开关）：`roadbook`（主行：版本与随包文件就绪自检）、`roadbook-skills`（把包内 `skills/` 交给 skill 子系统：流程技能 + 图纸技能）、`roadbook-autoload`（在 git 项目里一开口谈开发任务就注入流程正文——只注入一次、手打 `/roadbook` 让路、`mode: off` 整体关闭；2026-10-05 起另有一段约 200 字的**常驻铁律微提示**走系统提示词，补掉「关键词没命中 = 整轮不受约束」的洞，`banner: false` 关）、`roadbook-atlas`（说「画一张架构图 / 流程图 / 时序图 / 数据流图 / 状态机」→ typed JSON 规格 → 自包含交互式 HTML + 回执，成品在侧栏「图册」标签页预览 / 打开 / 导出：预览走宿主 HTML 路由不再截断、新图纸自动出现、「规格已改」徽标、「打包导出」一次拿全部）。细则与验证：自动加载见 [`plugin/roadbook-autoload/README.md`](plugin/roadbook-autoload/README.md)（触发规则、配置表、四条验证）；图纸见 [`plugin/roadbook-atlas/README.md`](plugin/roadbook-atlas/README.md)（目录约定、CLI、渲染器边界、标签页能力）。子插件只是宿主半，**不单独安装**。
 
 ## 维护这套母版
 
 - 改流程 = 改对应卡（`playbook/` 与 `playbook_EN/` 同批改，只改一份 = 判红）+ `design/v6-design.md` 同步 → 跑 `powershell -NoProfile -File _qc/check.ps1`（退出码 0 才算改完）。
 - `design/v6-design.md` 是**唯一事实源**：卡、模板、脚本与它冲突时，一律以它为准。
+- **改 `package.json` 的 `files` 白名单先问一句：运行时真的会读的文件，都在白名单里吗？** 白名单只影响 git / npm 装出来的副本（本地路径安装直接指工作树，看不出问题），漏了就是「本机好好的、别人装出来是空壳」——`playbook/`、`playbook_EN/`、`template/` 与 `plugin/roadbook-autoload/host-fallback.js` 都这么漏过一次。`test/packaging.test.mjs` 与 `_qc/check.ps1` 现在会拦（口径：运行时引用路径 ⊆ 白名单）。
 - **改完必须 `git push`**：`~/.dsh/skills/roadbook` 是本仓库的 clone，不推 = 装成 skill 的机器永远停在旧版。
 - 命令一律用正斜杠路径（`_qc/check.ps1`）；2026-10 的 71 条缺陷修复、个人档与 DSH 0.2.0-rc2 适配的决策记录见 `design/v6-design.md` §17。

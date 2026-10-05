@@ -108,13 +108,27 @@ export function hasInjectedMessage(messages, name) {
 }
 
 /**
+ * 取会话事件日志。真实 Session 没有 `events` 属性：内部日志是私有字段，公开读法是
+ * snapshotEvents()（宿主自己的会话控制器也用它读快照）；读不到就返回空数组，不猜。
+ */
+export function sessionEvents(session) {
+  if (typeof session?.snapshotEvents === 'function') {
+    try {
+      const events = session.snapshotEvents()
+      if (Array.isArray(events)) return events
+    } catch { /* 读失败 == 读不到 */ }
+  }
+  return Array.isArray(session?.events) ? session.events : []
+}
+
+/**
  * 会话日志里已有同名注入（会话恢复、插件重载时兜底去重）。
  * 事件形状两种都认：`{ data: { source } }`（user/message 事件里 data 就是消息本身）
  * 与 `{ data: { message: { source } } }`（旧形状）；读不到就返回 false，不猜。
+ * 日志一律经 sessionEvents() 取：只认 `session.events` 时，真实会话永远读不到 ⇒ 兜底去重形同不存在。
  */
 export function alreadyInjected(session, name) {
-  const events = session?.events
-  if (!Array.isArray(events)) return false
+  const events = sessionEvents(session)
   return events.some((event) => {
     const source = event?.data?.source ?? event?.data?.message?.source
     return source?.kind === 'skill-invocation' && source?.name === name
@@ -165,4 +179,65 @@ export function buildNote({ skillName, hit, digest, expectedDigest }) {
     )
   }
   return lines.join('\n')
+}
+
+/** 判据用的「真的读过流程卡」痕迹：正文里的相对路径与目录名。 */
+export const DEFAULT_CARD_NEEDLES = ['playbook/', 'playbook_EN/']
+
+/**
+ * 一次空转判据最多回看多少条事件 —— 长会话里对每条事件做 JSON.stringify 是要花钱的。
+ * 超出窗口就返回 `unknown`（宁可少一条观测，也不做全量序列化）。
+ */
+const CARD_SCAN_WINDOW = 400
+
+/**
+ * 自进化 C 环：注入了流程正文，此后一路没有「真的读过卡」的痕迹 = 疑似空转。
+ *
+ * 为什么这一环不需要新钩子：`agent/pre-step` 本来就挂着（注入走的就是它），
+ * 会话日志也读得到（`sessionEvents()`，`alreadyInjected` 用的是同一个读法）—— 缺的只是一个判据。
+ *
+ * 三条边界（都会返回 `unknown`，绝不猜）：
+ *   ① 只看**最后一次同名注入之后**的事件：注入正文自己就写着 `playbook_EN/`，从 0 扫会自己证明自己；
+ *   ② 读不到会话日志（没有 snapshotEvents()/events、或读的时候抛了）不判；
+ *   ③ 注入之后的事件超过扫描窗口不判。
+ *
+ * @returns 'read' 有读卡痕迹 | 'idle' 注入后一路没有痕迹 | 'unknown' 判不了
+ */
+export function cardReadState(session, name, needles = DEFAULT_CARD_NEEDLES) {
+  const events = sessionEvents(session)
+  if (events.length === 0) return 'unknown'
+  const list = (typeof needles === 'string' ? [needles] : asList(needles, DEFAULT_CARD_NEEDLES)).filter(
+    (item) => typeof item === 'string' && item.length > 0,
+  )
+  if (list.length === 0 || typeof name !== 'string' || name.length === 0) return 'unknown'
+
+  let last = -1
+  // 倒扫最多回看 CARD_SCAN_WINDOW + 1 条：更早的注入算出来的 gap 必然 > CARD_SCAN_WINDOW，
+  // 下面那行本来就返回 unknown —— 结论一字不变，长会话却不必再为「有没有注入过」全量倒扫一遍。
+  const oldest = Math.max(0, events.length - (CARD_SCAN_WINDOW + 1))
+  for (let index = events.length - 1; index >= oldest; index -= 1) {
+    const source = events[index]?.data?.source ?? events[index]?.data?.message?.source
+    if (source?.kind === 'skill-invocation' && source?.name === name) {
+      last = index
+      break
+    }
+  }
+  if (last < 0) return 'unknown'
+  const gap = events.length - (last + 1)
+  // 注入之后还没有任何事件：没有可判的材料（调用方下一步再来问）
+  if (gap === 0 || gap > CARD_SCAN_WINDOW) return 'unknown'
+
+  for (let index = last + 1; index < events.length; index += 1) {
+    let text
+    try {
+      text = JSON.stringify(events[index])
+    } catch {
+      continue // 循环引用等无法序列化的事件：跳过，不影响其它事件
+    }
+    if (typeof text !== 'string') continue
+    for (const needle of list) {
+      if (text.includes(needle)) return 'read'
+    }
+  }
+  return 'idle'
 }

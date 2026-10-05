@@ -46,6 +46,17 @@ node skills/roadbook-atlas/bin/atlas.mjs doctor
 
 缺图纸 ⇒ `status: spec-only`；缺规格 ⇒ `status: orphan`。图册标签页只读这些文件，不写。
 
+## 标签页里有什么（2026-10-05 起）
+
+| 能力 | 怎么实现的 | 为什么 |
+|---|---|---|
+| 预览 | iframe 直接吃 better-sidebar 的 `/sidebar/html/<sessionId>/<绝对路径>` 预览路由 | 旧写法把整份 HTML 经 `fs.read` 搬进 `srcDoc`，而 `fs.read` 的 `readLimit` 默认 **512 KB**；实测五类产物 **608.4–611.7 KB** ⇒ 每次预览都只显示 83.9% 且没有任何报错。路由由服务端流式返回整份文件，且自带 `content-security-policy: sandbox …` |
+| 自动刷新 | 15 秒一次 `fs.tree` **名称指纹**轮询，指纹变了才重读元信息；`document.visibilityState === 'hidden'` 时不发请求 | agent 刚渲染完一张图，用户不该还要手点「刷新」；只看名称集合，代价是一次轻量请求 |
+| 「规格已改」徽标 | 回执里已存着规格的 `sha256` 与 `bytes`：先比字节数，相同再比 sha256；**算不出哈希时显示「规格无法比对」**，不装作没变 | 图纸与规格分叉是这套流程最怕的「两处真相」，回执本来就是判据载体。字节数由客户端按 UTF-8 自行折算——宿主 `fs.read` 的文本分支**不回 `size`**（只有二进制分支才有），若照抄 `value.size` 这条判据会永远是死代码；`crypto.subtle` 只在安全上下文存在，非 localhost 的 http 打开界面时哈希算不出来，此时必须明说判不了（静默回「没变」正是漏报过期图纸的方向） |
+| 打包导出 | `archive.build` → 每 250 ms `archive.status` → `ready` 后先 `fetch` 成 blob 再点锚点下载（**不**把顶层导航指到 `/sidebar/archive?id=…`：zip 有存活期，过期返回 404 JSON，一次下载失败会把整个应用导航到错误页）；失败时把宿主给的原因显示出来 | 一次拿全部图纸 + 规格 + 回执（回执是「这张图怎么来的」的唯一证据）。宿主对**每个**路径做 stat，一个读不到就整单失败，而列表快照可能是上一次轮询的旧数据（图纸刚被删/改名）——只显示「打包失败」等于把已经采到的证据丢掉 |
+| 元信息读取 | 有界并发 6（原为最多 40 次**串行** HTTP）；超过 40 张时在界面上明说只读了前 40 张 | 串行排队会把标签页开成转圈；静默截断会让人以为列表不全 |
+| 语言 | `ctx.locale.register/bind` + 订阅变化 | 旧代码读 `ctx.locale.current`，而真机的快照字段是 `getSnapshot().active` ⇒ 界面恒为中文 |
+
 ## 渲染器边界
 
 `skills/roadbook-atlas/vendor/archify/` 是上游 [tt-a1i/archify](https://github.com/tt-a1i/archify)（MIT）的 vendor 副本，**只读**：
@@ -58,13 +69,14 @@ node skills/roadbook-atlas/bin/atlas.mjs doctor
 
 ```bash
 cd <仓库根>
-node --test "test/*.test.mjs"                          # 9 项：CLI 端到端 3 + 契约 5 + 渲染冒烟 1（内含 5 类渲染）
-node --test "plugin/roadbook-autoload/test/*.test.mjs" # 自动加载子插件的离线测试
+node --test "test/*.test.mjs"                          # 34 项：CLI 端到端 3 + 客户端契约 15 + 渲染冒烟 1（内含 5 类渲染）+ 伞包契约 8 + 镜像 2 + 打包契约 5
+node --test "plugin/roadbook-autoload/test/*.test.mjs" # 自动加载子插件的离线测试（61 项）
 ```
 
 - `test/atlas-cli.test.mjs`：退出码纪律 + **项目根陷阱回归守卫**（本机 `%TEMP%` 里有游离 `.git`，`git rev-parse` 会把图纸写到项目外；CLI 拒绝家目录/临时目录做根，退回 cwd）。
-- `test/client-contract.test.mjs`：在 `vm` 里跑客户端 bundle，校验 ModuleLoader 形状、`ctx.effect` 注册、标签页根节点高度契约、双语。
+- `test/client-contract.test.mjs`：在 `vm` 里跑客户端 bundle，校验 ModuleLoader 形状、`ctx.effect` 注册、标签页根节点高度契约、双语；2026-10-05 起另钉预览 URL 算法（`/sidebar/html`、绝对路径、逐段编码）、语言快照字段、目录指纹、规格过期判定。
 - `test/render-smoke.test.mjs`：五类各渲染一次，断言 9/9 校验通过、`showcase:pass`、三次运行同 SHA-256。
+- `test/packaging.test.mjs`：**运行时引用的路径 ⊆ 发布白名单**（`playbook/`、`playbook_EN/`、`template/` 与 `host-fallback.js` 都漏过一次）。
 
 ## 版本
 

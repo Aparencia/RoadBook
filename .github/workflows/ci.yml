@@ -1,0 +1,27 @@
+# Roadbook（路书）· CI 门禁
+#
+# 口径唯一：CI 跑的命令与本地 check.ps1 完全一致，不许各自加料。
+#   依据 design/v6-design.md §16 第 6 行（4-4 持续集成卡）：CI 工作流**只跑与 `check.ps1` 完全相同的命令**，
+#   本地先预演同一命令；失败即红 —— 不许用「失败也放行」的开关（4-4 卡点名的那个 YAML 键）。
+#   注意：那个键的字面值在本文件里一律不许出现（_qc/check.ps1 按字符串判红）——要引用请写指针，不复述。
+# 因此这里只有两个步骤：① 与本地逐字相同的 `pwsh -NoProfile -File _qc/check.ps1`；
+# ② 仓库自带单测（与根 package.json 的 scripts.test 同口径，`&&` 串联保证前一个红了不放过）。
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  gate:
+    name: 母版一致性校验（与本地同口径）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 母版一致性校验（_qc/check.ps1，与本地同一命令）
+        shell: pwsh
+        run: pwsh -NoProfile -File _qc/check.ps1
+      - name: 仓库单测（与 package.json scripts.test 同口径）
+        shell: pwsh
+        run: node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
