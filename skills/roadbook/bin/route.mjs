@@ -120,7 +120,7 @@ export const STEPS = [
   { card: '4-4', anchor: '首次搭建 CI', optional: true, when: (f) => f.hasCI === false && f.goLive === true, why: '上线但没 CI → 至少把门禁接到每次提交' },
   { card: '4-5', anchor: '需要新环境', when: (f) => f.goLive === true, why: '上线 = 要有 prod 环境与配置/密钥来源' },
   { card: '7-7', anchor: '交付验收', when: (f) => f.team === true, why: '要交接给别人 → 用户文档与交接清单（在归档之前，产物才进得了这一轮的归档）' },
-  { card: '5-1', anchor: '验收通过后', when: () => true, why: '收尾入库（归档十一查 + 孤儿五张清单）' },
+  { card: '5-1', anchor: '验收通过后', when: () => true, why: '收尾入库（归档十一查 + 孤儿与文档七张清单）' },
   { card: '5-6', anchor: '要定版本号', when: (f) => tierOf(f).tier === 'L', why: 'L 档发版前先定版本号与升级注意（§4 L 线：基线先行）' },
   { card: '5-7', anchor: '同一事实在两处说法不一致', when: (f) => tierOf(f).tier === 'L', why: 'L 档把号与产物钉成基线（与 5-6 同批），**然后**才发布' },
   { card: '5-2', anchor: '上线/让别人用', when: (f) => f.goLive === true, why: '里程碑发版（tag 由人打）' },

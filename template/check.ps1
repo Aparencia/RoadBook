@@ -17,7 +17,7 @@ $STEPS = @()
 $fileBudgetGrowth = 20
 $fail = 0
 if (Test-Path (Join-Path $PSScriptRoot 'orphans.ps1')) { Write-Host "[OK] orphans.ps1 存在" -ForegroundColor Green }
-else { Write-Host "[FAIL] orphans.ps1 存在（项目根缺孤儿与幽灵五查工具）" -ForegroundColor Red; $fail++ }
+else { Write-Host "[FAIL] orphans.ps1 存在（项目根缺孤儿、幽灵与文档七查工具）" -ForegroundColor Red; $fail++ }
 $cnt = 0
 if (Get-Command git -ErrorAction SilentlyContinue) { $cnt = @(git -C $PSScriptRoot -c core.quotepath=false ls-files 2>$null | Where-Object { $_ }).Count }
 if ($cnt -eq 0) {

@@ -65,10 +65,10 @@ Each line = added / deleted / file; sum the "deleted" column and compare it with
 1. Reduction target met (the raw numstat comparison from P1)
 2. `powershell -NoProfile -File check.ps1` exit code 0
 3. Regression verification passed (card 4-3 / card 6-4)
-4. The summary line of the **five lists** of `powershell -NoProfile -File orphans.ps1` (orphan / zero-reference export / doc phantom / reverse phantom / unregistered) pasted raw into the receipt
+4. The summary line of the **seven lists** of `powershell -NoProfile -File orphans.ps1` (orphan / zero-reference export / doc phantom / reverse phantom / unregistered / unregistered docs / archive candidates) pasted raw into the receipt
 
-❌ Counter-example: the receipt says only "orphans.ps1 was run, no problems" (not one of the five lists pasted = not verified)
-✅ Good example: paste the raw summary line + the counts of the three kinds of handling (deleted x / registered TD x / retro-registered x), summed by deduplicated entry count = the sum of the five classes in the summary line
+❌ Counter-example: the receipt says only "orphans.ps1 was run, no problems" (not one of the seven lists pasted = not verified)
+✅ Good example: paste the raw summary line + the counts of the three kinds of handling (deleted x / registered TD x / retro-registered x), summed by deduplicated entry count = the sum of the seven classes in the summary line
 
 ❌ Counter-example: turning a P batch into "refactor along the way + add new features" (equivalent to not cleaning at all, and gratuitously introducing a new surface)
 
@@ -86,7 +86,7 @@ Each line = added / deleted / file; sum the "deleted" column and compare it with
 1. This round's repayment list: TD number → result (closed + evidence / reason for downgrade / rescheduled)
 2. Every commit hash
 3. A summary of the ledger file's current state (open/closed counts)
-4. P batch: the `git diff --numstat` summary (net added/net deleted lines + file count vs the reduction target) + the dry-run deletion list + the raw summary lines of the five lists from `orphans.ps1`
+4. P batch: the `git diff --numstat` summary (net added/net deleted lines + file count vs the reduction target) + the dry-run deletion list + the raw summary lines of the seven lists from `orphans.ps1`
 
 ---
 

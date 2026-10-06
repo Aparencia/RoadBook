@@ -1,6 +1,6 @@
 # Card 5-7 · Configuration management and baseline (one fact, one place to write it; anything written down must have a reader)
 > Trigger: before a release / a configuration item is added or deleted / the same fact is found stated differently in two places | Output: docs/BASELINE.md | Next: 5-2 Release or 5-1 Archive
-> Process area: CM
+> Process area: CM, DOC
 
 ---
 

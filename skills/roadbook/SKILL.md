@@ -73,7 +73,7 @@ description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 
 | 首次搭 CI / 改门禁（口径与 check.ps1 唯一） | `playbook_EN/4-4-continuous-integration.md`（4-4 持续集成） |
 | 需要新环境 / 配置项与密钥来源 | `playbook_EN/4-5-environments-and-config.md`（4-5 环境与配置） |
 | 交付前要给人用：任务设计、行为观测、问题定级与处置 | `playbook_EN/4-6-usability-verification.md`（4-6 可用性验证） |
-| 一段工作收尾入库（归档十一查 + 孤儿五张清单） | `playbook_EN/5-1-archive.md`（5-1 归档） |
+| 一段工作收尾入库（归档十一查 + 孤儿与文档七张清单） | `playbook_EN/5-1-archive.md`（5-1 归档） |
 | 里程碑发版（分级部署 + 回滚预案） | `playbook_EN/5-2-release.md`（5-2 发布） |
 | L 档 / 高风险发布：策略与灰度阶梯 | `playbook_EN/5-3-progressive-delivery.md`（5-3 发布策略与灰度） |
 | 发布后观测窗（健康检查 + 核心指标） | `playbook_EN/5-4-observability.md`（5-4 运行期观测） |

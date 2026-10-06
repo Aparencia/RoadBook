@@ -110,6 +110,15 @@ if ($null -ne $map) {
     Check (-not $disMiss) "DOC_MAP 里 disabled 的规则在 template/STATE.md 裁剪记录可见（缺：$($disMiss -join ', ')；静默关掉义务 = 判据消失而没人知道）"
 }
 
+# ── C1：固定槽位文档必须有「最近核对」行（文档是唯一没有机器可读头的受控项）────────────
+# 合法值两种：`—`（模板骨架，尚未核对——生成出来的项目一开始就是这种）/ `<YYYY-MM-DD> @ <7~40 位哈希>`
+# （核对后填，口径见 7-7 卡）。核对日**只在文档头、不进对应表**——两处都写就是第二处真相。
+$hdrDocs = 'README.md,ARCHITECTURE.md,RUNBOOK.md,OBSERVABILITY.md,PRIVACY.md,I18N.md,USER_GUIDE.md,UI.md,DESIGN_TOKENS.md,MOTION.md,TECH_DEBT.md,registry/COMPONENTS.md,registry/DATA_DICT.md,registry/APIS.md,pool/IDEAS.md,refactor/README.md,archive/INDEX.md'.Split(',')
+$badHdr = @($hdrDocs | Where-Object { $fp = Join-Path $root ('template\docs\' + ($_ -replace '/', '\')); -not (Test-Path -LiteralPath $fp) -or @([IO.File]::ReadAllLines($fp, [Text.Encoding]::UTF8) | Where-Object { $_ -match '^> 最近核对\s+(—|\d{4}-\d{2}-\d{2}\s+@\s+[0-9a-f]{7,40})' }).Count -eq 0 })
+Check (-not $badHdr) "固定槽位文档有「最近核对」行（缺/格式不对：$($badHdr -join ', ')；合法值 = — 骨架未核对 / <日期> @ <短哈希>）"
+$selfN2 = [IO.File]::ReadAllLines((Join-Path $root '_qc\check-docs.ps1'), [Text.Encoding]::UTF8).Count
+Check ($selfN2 -le 130) "行数 $selfN2 <= 130 ：_qc/check-docs.ps1 自身（2026-10-06 由 120 上调：C1 最近核对行 + B2 DOC_MAP 绑定；与 _qc/check.ps1 同款自设上限）"
+
 Write-Host "文档域：通过 $pass 项；失败 $($fail.Count) 项"
 if ($fail.Count -gt 0) {
     $fail | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }

@@ -52,25 +52,25 @@ Expected: one `<file> = <actual line count> lines (limit <limit>)` line per budg
 @(Get-ChildItem docs/lessons -Filter *.md).Count; @(Get-ChildItem docs/decisions -Filter *.md).Count; @(Get-ChildItem docs/specs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) }).Name
 ```
 Expected: three numbers — the lessons count, the decisions count, and the names of specs directories untouched for over 30 days (empty when there are none).
-   - lessons/ and decisions/ each over 30 cards → move the oldest with no references for 90 days into `docs/archive/`
-   - **The 6 seed lesson cards do not take part in this 30-card ranking elimination** (seeds are only proposed for promotion by the 6-6 card when they recur across projects)
-   - Task directories under specs/ untouched for over 30 days → prompt the user to archive them
+   - **Elimination ≠ archiving** (decided 2026-10-06): `docs/lessons/` over 30 cards → **merge** same-symptom cards or delete them (**do not move them into archive** — moving them there means keeping them forever, which is not elimination); `docs/decisions/` is **not eliminated by card count** (the value of a decision card rises with time — half a year later is exactly when you want to read it); mark it in-line as `superseded by <date/card>` only when it actually is
+   - **The 6 seed lesson cards do not take part in the ranking elimination** (seeds are only proposed for promotion by the 6-6 card when they recur across projects)
+   - Task directories under specs/ untouched for over 30 days → prompt the user to archive them; the **machine reading is the `[archive candidates]` list from `orphans.ps1`** (last commit date > 30 days), no more eyeballing `LastWriteTime`
 
 **7. Workspace cleanup (archive with git mv; directory naming is uniformly `<日期>_<slug>`; `$slug` comes from the same source as this task's directory under docs/specs)**:
 ```powershell
-$date = Get-Date -Format 'yyyy-MM-dd'; $slug = 'export-limit'; $src = "docs/specs/${date}_$slug"; $dest = "docs/archive/${date}_$slug"; git mv $src $dest; $rows = Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-' | ForEach-Object { $_.Line }; $open = @($rows | Where-Object { $_ -match '\|\s*open\s*\|' }).Count; $carried = @($rows | Where-Object { $_ -match '\|\s*carried\s*\|' }).Count; $closed = @($rows | Where-Object { $_ -match '\|\s*closed\s*\|' }).Count; $keyItem = ($rows | Where-Object { $_ -match '\|\s*open\s*\|' } | Select-Object -First 1); Set-Content -Path "$dest/tech-debt.md" -Encoding UTF8 -Value @("# 债务快照 $date", "open $open ｜ carried $carried ｜ closed $closed", "关键项：$keyItem")
+$date = Get-Date -Format 'yyyy-MM-dd'; $slug = 'export-limit'; $concl = 'one-line conclusion'; $revive = 'none'; $cards = '2-1→4-1→4-3→5-1'; $src = "docs/specs/${date}_$slug"; $dest = "docs/archive/${date}_$slug"; git mv $src $dest; $rows = Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-' | ForEach-Object { $_.Line }; $open = @($rows | Where-Object { $_ -match '\|\s*open\s*\|' }).Count; $carried = @($rows | Where-Object { $_ -match '\|\s*carried\s*\|' }).Count; $closed = @($rows | Where-Object { $_ -match '\|\s*closed\s*\|' }).Count; $keyItem = ($rows | Where-Object { $_ -match '\|\s*open\s*\|' } | Select-Object -First 1); Set-Content -Path "$dest/tech-debt.md" -Encoding UTF8 -Value @("> 归档 $date ｜ 结论 $concl ｜ 复活条件 $revive", "# 债务快照 $date", "open $open ｜ carried $carried ｜ closed $closed", "关键项：$keyItem"); Add-Content -Path docs/archive/INDEX.md -Encoding UTF8 -Value "| $date | $slug | $(git rev-parse --short HEAD) | $concl | $revive | $cards |"
 ```
 The directory-name date format = `YYYY-MM-DD` (`$date` is exactly the output of `Get-Date -Format 'yyyy-MM-dd'`, e.g. `2026-10-03`) and it **comes from the same source as the specs directory created by 2-1**: the same `$date` serves as the date in `docs/specs/<date>_<slug>` and in `docs/archive/<date>_<slug>`, and the two must not use different formats (a date is always hyphenated; the 8-digit compact form must not appear).
 
-Expected: `$dest/tech-debt.md` has 3 lines (title / `open x ｜ carried y ｜ closed z` / the key item); the counts **must be derived by the command above from the `状态` column of `docs/TECH_DEBT.md`** (assign `$open`/`$carried`/`$closed`/`$keyItem` before writing the file; referencing an unassigned variable silently writes empty numbers, which is no measurement at all). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
+Expected: `$dest/tech-debt.md` has 4 lines (**archive header** / title / `open x ｜ carried y ｜ closed z` / the key item), and `docs/archive/INDEX.md` gains one row at the end of its table (six columns: date / slug / short hash / conclusion / revival condition / related cards); the counts **must be derived by the command above from the `状态` column of `docs/TECH_DEBT.md`** (assign `$open`/`$carried`/`$closed`/`$keyItem` before writing the file; referencing an unassigned variable silently writes empty numbers, which is no measurement at all). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
    - ❌ Counter-example: writing `docs/archive/2026-10-03/` (no slug; two tasks on the same day overwrite each other) ｜ ✅ Good example: `docs/archive/2026-10-03_export-limit/` (date + slug, unique and searchable)
 
-**8. The five orphan lists (file level / zero-reference exports / doc phantoms / reverse phantoms / unregistered; git is the basis, run scripts rather than relying on memory)**:
+**8. The seven orphan, ghost and doc lists (file level / zero-reference exports / doc phantoms / reverse phantoms / unregistered / unregistered docs / archive candidates; git is the basis, run scripts rather than relying on memory)**:
 
 ```powershell
 powershell -NoProfile -File orphans.ps1; "git ls-files = $(@(git ls-files).Count) lines"
 ```
-Expected: orphans.ps1's summary line (the five class counts) is pasteable verbatim; the second line prints `git ls-files = <N> lines` and is only a reference count — the measurement standard is orphans.ps1's summary line, and **the summary line is pasted into the receipt verbatim**.
+Expected: orphans.ps1's summary line (the seven class counts) is pasteable verbatim; the second line prints `git ls-files = <N> lines` and is only a reference count — the measurement standard is orphans.ps1's summary line, and **the summary line is pasted into the receipt verbatim**.
 
    - a. `[孤儿]` file level: files in `git ls-files` with zero references (their file name cannot be found in any .md/.ps1/.json/source file, and they are not in the entry list)
    - b. `[零引用导出]` code level: exports/functions/classes with zero references — with zero dependencies use text search first; once there are dependencies bring in knip / vulture / tsc --noUnusedLocals. **Report only, do not block; observe for two rounds before promoting it to a gate**
@@ -81,7 +81,7 @@ Expected: orphans.ps1's summary line (the five class counts) is pasteable verbat
 **Handling rules (every orphan must land in one of the three classes below; "do nothing" is not allowed):**
    - Delete — what can be safely deleted this time goes with this archive commit; register as tech debt — write it into `docs/TECH_DEBT.md`; add the registration in COMPONENTS.md
    - ❌ Counter-example: a pile of orphans is scanned out and the receipt says "acknowledged, handled next round" (= nothing was done)
-   - ✅ Good example: every item has an owner, and the receipt gives the counts "deleted x / registered as TD x / registered x", and asserts **the sum of the five class counts ≥ the number of deduplicated files** (the five classes are not deduplicated against each other, so one file can fall into several at once; the three handling counts are compared only against the deduplicated item count, never forced to equal the five-class sum)
+   - ✅ Good example: every item has an owner, and the receipt gives the counts "deleted x / registered as TD x / registered x", and asserts **the sum of the seven class counts ≥ the number of deduplicated files** (the seven classes are not deduplicated against each other, so one file can fall into several at once; the three handling counts are compared only against the deduplicated item count, never forced to equal the seven-class sum)
 
 **9. Rollback confirmation**: how are this task's changes reverted? (First check the scope with `git log --oneline "$anchor..HEAD"`, then decide `git revert` or `git reset`; has the migration down been dry-run?) Write a one-line conclusion into the receipt.
 
@@ -119,7 +119,7 @@ powershell -NoProfile -File security.ps1
 ## ③ Evidence receipt
 
 Give, item by item:
-1. The archive eleven checks' results item by item (1–11; each item states the action or "confirmed none" + its basis); for 8 attach the verbatim `orphans.ps1` summary line + the three-class handling counts (deleted x / registered as TD x / registered x), and assert **the sum of the five class counts ≥ the deduplicated file count** (the five classes are not deduplicated against each other, so one file can fall into several at once)
+1. The archive eleven checks' results item by item (1–11; each item states the action or "confirmed none" + its basis); for 8 attach the verbatim `orphans.ps1` summary line + the three-class handling counts (deleted x / registered as TD x / registered x), and assert **the sum of the seven class counts ≥ the deduplicated file count** (the seven classes are not deduplicated against each other, so one file can fall into several at once)
 2. The archive list (source paths → `docs/archive/<date>_<slug>/`)
 3. The debt-change summary (closed x / carried x / added x, with the key item on one line) + the raw line from the §3 concession close-out (`<N> markers, <M> with no trigger.` + disposition counts)
 4. The real evidence for close-out steps 1–5: `git status --porcelain` (must be empty), the commit hash, the complete output of `check.ps1` with exit code 0, the `git push` output (or "no remote: local-only")

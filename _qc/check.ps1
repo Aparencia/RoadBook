@@ -226,9 +226,19 @@ Check (-not $badRefEn) "英文卡无母版内部引用（问题：$($badRefEn -j
 # ── 过程域覆盖（2026-10-06 增；判据 = design/playbook-contract.md §1.1 词表 + v6-design.md §18）──
 # 三层分工：**词表定义在 contract、数据在卡头第 3 行、汇总在本脚本**。这里不读任何手写矩阵——
 # 手抄一份必然与卡漂移（矩阵说有覆盖、卡里没有）。缺口的唯一合法出口是「§18 显式点名」。
-$paVocab = @('REQ','DES','ARCH','IMP','VER','REL','OPS','CM','QA','RISK','PLAN','KNOW','AGENT')
 $paContract = [IO.File]::ReadAllText((Join-Path $root 'design\playbook-contract.md'), [Text.Encoding]::UTF8)
 Check ($paContract.Contains('### 1.1 受控过程域词表')) '写作契约含 §1.1 受控过程域词表（卡头第 3 行的取值域）'
+# 词表从 §1.1 的表格解析，**不在这里再写死一份**——写死就是第二处真相：契约加了新域而这里没跟，
+# 报出来的却是「卡头取值越界」，把定义漂移伪装成卡写错（2026-10-06 加 DOC 时先撞的就是这条）。
+$paVocab = @()
+$paAt11 = $paContract.IndexOf('### 1.1 受控过程域词表')
+if ($paAt11 -ge 0) {
+    $paSec11 = $paContract.Substring($paAt11)
+    $paNextHd = [regex]::Match($paSec11.Substring(4), '(?m)^#{2,3} ')
+    if ($paNextHd.Success) { $paSec11 = $paSec11.Substring(0, 4 + $paNextHd.Index) }
+    foreach ($m in [regex]::Matches($paSec11, '(?m)^\|\s*`([A-Z]+)`\s*\|')) { $paVocab += $m.Groups[1].Value }
+}
+Check ($paVocab.Count -ge 13) "从 §1.1 词表解析出过程域 $($paVocab.Count) 项（<13 = 解析器空心，越界断言会变成恒真）"
 $paDesign = [IO.File]::ReadAllText((Join-Path $root 'design\v6-design.md'), [Text.Encoding]::UTF8)
 $paAt = $paDesign.IndexOf('## 18. 过程域覆盖矩阵')
 $paSection = if ($paAt -ge 0) { $paDesign.Substring($paAt) } else { '' }
@@ -405,8 +415,8 @@ Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04-security.md')) '�
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 120; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 145; 'orphans.ps1' = 90; 'security.ps1' = 130 }
-foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','DOC_MAP.json','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md')) {
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 125; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 45; 'docs/archive/INDEX.md' = 120; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 145; 'orphans.ps1' = 140; 'security.ps1' = 130 }
+foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','DOC_MAP.json','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md','docs/archive/INDEX.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
 foreach ($k in $budget.Keys) {
