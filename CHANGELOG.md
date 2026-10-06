@@ -20,7 +20,13 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
-## [未发布]
+## [0.8.1] - 2026-10-06
+
+**图册默认目录折算修复（BUG-002）。** 按升版判定表「修 bug → 修订号」走 `0.8.0 → 0.8.1`；`vendor/**` 上游代码一字不动。本节 = `v0.8.0` 之后 `[未发布]` 节的全部条目（对照 `git log --oneline v0.8.0..HEAD`）。
+
+**升级注意四行**：**不适用** —— 本次无破坏性变更（回执 schema、目录约定、命令参数、Loader 行 id 全都没动；新增的 `isAbsolutePath` / `resolveSidebarPath` 只改「我们发出去的请求路径」，不改任何对外形状）。
+
+**已装用户需要动作**：本批含客户端半（`lib/client.js`），须**更新插件**并**重启 DSH** 才会生效。自检一条：更新后打开图册，列表应能正常读出图纸（不再出现「读取失败：… is not an absolute path」），页脚版本显示 `v0.8.1`。
 
 ### 修 bug
 
