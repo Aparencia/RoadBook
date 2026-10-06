@@ -18,6 +18,45 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
+## [0.7.2] - 2026-10-06
+
+**两个「静默不注入」的根因修复：技能从来没被读进技能目录 + 分叉会话被误判成子代理。** 实测 `%TEMP%\roadbook-autoload.jsonl` 166 行里 `inject` 事件 **0** 条 —— 插件是活的（`loaded` 39 / `banner` 41 / `team` 5），但流程正文一次都没进过上下文。按「修 bug → 修订号」走 **0.7.2**。
+
+### 根因一（P0）：`SKILL.md` 的 frontmatter 是非法 YAML，被宿主整份丢弃
+
+`skills/roadbook/SKILL.md` 的 `description` 是**未加引号的 YAML 朴素标量**，其中第 378 字符处有一个 ASCII 冒号+空格（`…when no process is wanted: a one-off question…`）—— YAML 把它读成嵌套映射。用 profile 里同一个 `yaml` 包、按 `dsh-skill-filesystem/lib/index.js:780-806` 的 `parseFrontmatter` 逐行复刻实测：
+
+```text
+[roadbook]       parseFrontmatter THREW -> invalid YAML frontmatter
+                 Nested mappings are not allowed in compact mappings at line 2, column 14
+[roadbook-atlas] YAML OK | keys=name,description,license        ← 对照组
+```
+
+抛错被 `:672` 的 catch 接住、只打一条 warn 就 `return` ⇒ **该文件被忽略** ⇒ 技能目录里没有 `roadbook`（`skill("roadbook")` 当场报 `unknown`，而同 provider 分发的 `roadbook-atlas` 在）⇒ 自动加载落 `skip/no-skill`（观测里 07:58:28Z 与 10:41:25Z 两次，cwd 均为本仓）⇒ 正文永不注入。
+
+**为什么两天没被发现**：`_qc/check.ps1` 为 frontmatter 写了**九条**断言，但**全部走正则**（`:593` 按行切 `---`、`:594` 抓键名、`:597` 切 description）——正则读得懂非法 YAML，所以九条全绿。这正是本仓最反对的**假绿**：断言看着密，方向不对。
+
+### 根因二（P1）：分叉/续接会话被 `isSubagentHeader` 误判成子代理
+
+`trigger.js` 的 `isSubagentHeader` 先看 `parentSession` 非空就判 true。解压真实会话头实测：**4 个真子代理**是 `delegationDepth=1, isSeeded=false`，而**分叉出来的用户会话**是 `delegationDepth=0, isSeeded=true` 且同样带着 `parentSession` ⇒ 用户会话被判成子代理、整轮不注入（本会话 02:11:07Z 那条 `skip/subagent` 即此）。DSH 早已提供权威字段 `delegationDepth`，判据不该拿 `parentSession` 代替。
+
+### 修复
+
+- **`SKILL.md` 与 `skills/roadbook/SKILL.md`（B4 镜像，同批）**：`description` 值**加双引号**——正文一字未动，文件字符数 8189 → 8191，解析后 description 仍 496 字（≤ `catalogDescriptionMaxLength` 500）。
+- **`plugin/roadbook-autoload/trigger.js`**：`isSubagentHeader` 改为**优先认 `delegationDepth > 0`**；宿主没给该字段时才退回旧的 `parentSession` 判据（保守，不放松）。
+- **`_qc/check.ps1` §4**：新增 YAML 安全断言——frontmatter **未加引号**的值不得含 ASCII「: 」；其自身上限 720 → 730（同步 `design/v6-design.md` §8）。
+- **`design/v6-design.md`**：§13 机制要点②补「frontmatter 必须是合法 YAML」与本次实例；§15 补子代理判据的口径修正。
+
+### 本轮已有证据（修复过程中实测）
+
+- **新断言有牙**：加完断言、`SKILL.md` 尚未修时跑门禁 → `[FAIL] SKILL.md frontmatter 未加引号的值不含 ASCII「: 」`、退出码 1。
+- **变异验证**：把 `isSubagentHeader` 换回旧实现放进临时副本 ⇒ 用例 `分叉/续接会话不算子代理` **恰好 1 条红**；本仓实跑 `plugin/roadbook-autoload/test/*.test.mjs` **94/94 绿**。
+- 收尾门禁与三套测试的完整输出见本次提交的粘贴回执。
+
+### 已装用户需要动作
+
+`skills/` 随包分发，**必须更新插件**（插件面板或「图册」页脚「更新」）并重启 DSH，技能才会进技能目录；本地路径安装的机器需要重新 `pnpm add`。更新后自检一条：`skill("roadbook")` 应当可加载 —— 报 `unknown` 就是还没生效。
+
 ## [0.7.1] - 2026-10-05
 
 **真机「应用无法启动」的根因修复：客户端半的顶层 `inject` 必须为空。** 0.7.0 装上去后 DSH 弹「应用无法启动或已意外停止」，正文是 `web boot: 1 entry did not activate / roadbook: import failed (see console for the import error)` —— 而**控制台里其实没有任何 roadbook 的错误**。按「修 bug → 修订号」走 **0.7.1**。

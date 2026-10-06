@@ -103,6 +103,14 @@ test('子代理会话识别', () => {
   assert.equal(isSubagentHeader(undefined), false)
 })
 
+test('分叉/续接会话不算子代理：delegationDepth 优先于 parentSession', () => {
+  // 真实形状（2026-10-06 解压会话头实测）：分叉会话 parentSession 非空、delegationDepth=0、isSeeded=true。
+  // 只看 parentSession 的旧判据会把它判成子代理 ⇒ 整轮不注入（这是被这条用例钉住的缺陷）。
+  assert.equal(isSubagentHeader({ id: 'session-f', parentSession: 'session-root', delegationDepth: 0, isSeeded: true }), false)
+  // 真子代理：parentSession 非空 + delegationDepth ≥ 1（同批实测 4 个 subagent 全是 depth=1、isSeeded=false）
+  assert.equal(isSubagentHeader({ id: 'session-s', parentSession: 'session-root', delegationDepth: 1, isSeeded: false }), true)
+})
+
 test('会话日志去重按 skill-invocation 形状（data.source 与 data.message.source 都认）', () => {
   const events = [
     { type: 'user/message', data: { message: { source: { kind: 'agent-instructions' } } } },

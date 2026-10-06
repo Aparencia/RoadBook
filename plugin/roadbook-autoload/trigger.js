@@ -94,11 +94,18 @@ export function hasGesture(text, names) {
   return false
 }
 
-/** 子代理会话默认不注入（它们的上下文里已经带着流程）。 */
+/**
+ * 子代理会话默认不注入（它们的上下文里已经带着流程）。
+ *
+ * `delegationDepth` 是权威判据：真子代理 depth ≥ 1，而"分叉 / 续接"出来的**用户**会话
+ * depth = 0、却同样带着 `parentSession`（2026-10-06 解压会话头实测：4 个真子代理
+ * `depth=1, isSeeded=false`；分叉会话 `depth=0, isSeeded=true`）—— 只看 `parentSession`
+ * 会把用户会话误判成子代理，那一整轮就静默不注入。宿主没给 depth 时才退回旧判据（保守，不放松）。
+ */
 export function isSubagentHeader(header) {
   if (header === null || typeof header !== 'object') return false
-  if (typeof header.parentSession === 'string' && header.parentSession.length > 0) return true
-  return typeof header.delegationDepth === 'number' && header.delegationDepth > 0
+  if (typeof header.delegationDepth === 'number') return header.delegationDepth > 0
+  return typeof header.parentSession === 'string' && header.parentSession.length > 0
 }
 
 /** 本回合已在决策里带了同名注入消息。 */

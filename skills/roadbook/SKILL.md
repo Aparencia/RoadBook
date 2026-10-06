@@ -1,6 +1,6 @@
 ---
 name: roadbook
-description: Roadbook（路书）V6 开发流程母版：把开发动作落到 45 张卡（0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡）上（中文权威版 playbook/、英文执行版 playbook_EN/），含门禁、完成的唯一定义（DoD）、红灯与红线规则。当用户要求按这套流程推进开发、问「下一步走哪张卡 / 流程上该做什么」、要开工或收工（归档验收 / 体检清理 / 依赖升级 / 项目重构），或需要按卡逐条执行并留证据时加载。Use when the user wants development run through this card-based process, wants the next card, or wants the process enforced. Do not use when no process is wanted: a one-off question, a single command, casual chat, an unrelated project, or an explicit request to skip the process.
+description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 45 张卡（0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡）上（中文权威版 playbook/、英文执行版 playbook_EN/），含门禁、完成的唯一定义（DoD）、红灯与红线规则。当用户要求按这套流程推进开发、问「下一步走哪张卡 / 流程上该做什么」、要开工或收工（归档验收 / 体检清理 / 依赖升级 / 项目重构），或需要按卡逐条执行并留证据时加载。Use when the user wants development run through this card-based process, wants the next card, or wants the process enforced. Do not use when no process is wanted: a one-off question, a single command, casual chat, an unrelated project, or an explicit request to skip the process."
 ---
 
 # Roadbook（路书）· skill 路由（45 张卡：0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡，中英双语）

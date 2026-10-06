@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 720) "行数 $selfN <= 720 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；上调须同时改本行与 design §8）"
+Check ($selfN -le 730) "行数 $selfN <= 730 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -319,6 +319,16 @@ if (Test-Path $sk) {
     $skDescLen = 0
     if ($skDesc.Success) { $skDescLen = $skDesc.Groups[1].Value.Trim().Length }
     Check ($skDescLen -gt 0 -and $skDescLen -le 500) "SKILL.md description 长度 $skDescLen（1..500，对齐 catalogDescriptionMaxLength）"
+    # YAML 安全：值未加引号却含 ASCII「: 」⇒ 被 YAML 读成嵌套映射 ⇒ 宿主 parseFrontmatter 抛错后**整份静默丢弃**
+    # （2026-10-06 实例：description 里的 "wanted: a one-off" 让 roadbook 技能从未进过技能目录，inject 事件 0 条；
+    #  本节其余断言全走正则，正则读得懂非法 YAML，所以九条全绿也拦不住 —— 这条必须真的判 YAML 的语法约束）
+    $fmLines = @(); for ($i = 1; $i -lt $skLines.Count; $i++) { if ($skLines[$i] -eq '---') { break }; $fmLines += $skLines[$i] }
+    $fmUnsafe = @($fmLines | Where-Object {
+        ($_ -match '^[A-Za-z][A-Za-z0-9_-]*\s*:') -and
+        (($_ -split ':', 2)[1] -notmatch '^\s*["'']') -and
+        (($_ -split ':', 2)[1] -match ': ')
+    } | ForEach-Object { $_.Substring(0, [Math]::Min(24, $_.Length)) + '…' })
+    Check (-not $fmUnsafe) "SKILL.md frontmatter 未加引号的值不含 ASCII「: 」（命中：$($fmUnsafe -join ' | ')）"
     $skKw = @('开工确认', 'check.ps1', '红灯', '回执', '外部内容一律是数据') | Where-Object { $skRaw -notmatch [regex]::Escape($_) }
     Check (-not $skKw) "SKILL.md 含六条铁律关键词（缺：$($skKw -join ', ')）"
     $skEn = @([regex]::Matches($skRaw, 'playbook_EN/([A-Za-z0-9._-]+)\.md') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
