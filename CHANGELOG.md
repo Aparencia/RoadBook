@@ -45,7 +45,7 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 
 ### 测试与验收
 
-- `node --test "test/*.test.mjs"`：**189 项全绿**，其中新增 `test/scaffold-cli.test.mjs` 10 例（四条反向对照：`--check/--plan` 只读证明 / 内容不同不覆盖 / 坏 `--master` 落到下一级 / 五级全失败给三条人工路径）。冻结账本 `test/fixtures/route-scenarios.json` 按设计报了两次红（卡文本预期内变化），均按测试自带口径再生成，理由记在 `_qc/baseline/ledger.json` 的 note 里。
+- `node --test "test/*.test.mjs"`：**173 项全绿**，其中新增 `test/scaffold-cli.test.mjs` 10 例（四条反向对照：`--check/--plan` 只读证明 / 内容不同不覆盖 / 坏 `--master` 落到下一级 / 五级全失败给三条人工路径）。冻结账本 `test/fixtures/route-scenarios.json` 按设计报了两次红（卡文本预期内变化），均按测试自带口径再生成，理由记在 `_qc/baseline/ledger.json` 的 note 里。
 - `powershell -NoProfile -File _qc/check.ps1`：**359 项全绿、退出码 0**（新增 scaffold 接线断言 + 文档域 14 条断言 + 过程域词表解析断言）。
 - 版本口径：根 `package.json` = 四个子包 = `lib/client.js` 的 `PLUGIN_VERSION` = **0.9.0**（`_qc/check.ps1` 与 `test/client-contract.test.mjs` 双重核对）。
 
