@@ -20,6 +20,35 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
+## [0.9.0] - 2026-10-06
+
+**文档域 + 接入自举：把两类「只写在散文里的义务」改成机械判据。** 按升版判定表「加能力 → 次版本」走 `0.8.1 → 0.9.0`（新增 `scaffold` CLI 命令 + 新增 `DOC_MAP.json` 契约 + `gate.ps1` 新增拦截项）。**升级注意：不适用** —— 无破坏性变更（回执 schema、目录约定、Loader 行 id 全未动，重启 DSH 即生效）。
+
+### 新能力
+
+- **`scaffold` CLI（`skills/roadbook/bin/scaffold.mjs`）——项目接入不再要求用户手报母版路径**。五级解析阶梯：`--master` → `ROADBOOK_MASTER` → **CLI 自身位置**（装成 skill / 插件包时命中，母版就在本地包内，不必联网）→ npm 身份 `roadbook/package.json` → 全失败才报三条人工路径并退出 2；每级打 `source=` 便于审计。`--check` / `--plan` **绝不写盘**；`--apply` **只补新增、永不覆盖**；`AGENTS.md` / `STATE.md` 是红线域（A6 / C3），只出 `规则版本：` 对比。退出码 0 无缺口 / 1 待人裁决 / 2 环境或用法错。
+- **`DOC_MAP.json`（`roadbook-docmap/1`）+ `gate.ps1` 文档义务拦截**：把「改了什么要同步哪些文档」从**散文表**换成**按形态判定的机器判据**——本批新增了文件 / 导出 / 路由 / `.env` 键 / 迁移，而对应文档没在同批改动里 → `gate.ps1` 判红。判据数据在项目根的 JSON 里（每条规则带 `d13` 字段逐字引用 `AGENTS.md` 的义务行，绑定由母版侧反向核对），脚本本体不随项目变。
+- **`orphans.ps1` 从五张清单扩到七张**：新增 `[未登记文档]`（`docs/` 固定槽位里没进对应表的文件）与 `[归档候选]`（留存目录"多久没动"的机械读数：最后提交日 >30/90 天且无人引用）——`docs/` 此前是整体排除目录，这两个洞没有任何清单看得见。
+- **`docs/archive/INDEX.md` 归档索引 + 归档头**：读归档先读索引（日期 / slug / 提交哈希 / 一句话结论 / 复活条件 / 关联卡）；归档目录内 `tech-debt.md` 首行带机器可读头。
+- **`DOC` 过程域（第 14 项）**：文档**生命周期**（登记闭包 / 核对 / 归档 / 退役）此前没有归属——`KNOW` 管"文档里写什么"，`DOC` 管"这份文档还在不在、还算不算数"；承接卡 = 5-7。词表 13 → 14，且 `_qc/check.ps1` 的取值域改为**从契约 §1.1 解析**（此前是脚本里写死的一份：加域时先撞的竟是"取值越界"，把定义漂移伪装成卡写错）。
+- **骨架文档「最近核对」行**：16 份固定槽位文档头部加一行（`—` = 骨架未核对 / `<YYYY-MM-DD> @ <短哈希>` = 核对后填），文档从此有了可机械判定的复核字段。
+
+### 修掉的漂移（文档登记双向化）
+
+- `_qc/check.ps1` 里**写死的 4 项文档清单**（`$newDocs = @('UI.md','DESIGN_TOKENS.md','MOTION.md','refactor/')`，2026-10-04 加 UI/UX 文档时钉下的）换成 `_qc/check-docs.ps1` 的三条闭包断言：卡产物里的每个 `docs/` 路径都要有对应表槽位 / 对应表每行都要在 design 全文出现 / 预算表的行数上限与对应表**同源**。卡维度早在 design §10 第 21 条就改成"从 §4 表解析、不硬编码卡名"，本次是文档维度的同一次改造。
+- 实测补上的四处缺失：`docs/BASELINE.md`（5-7 卡的产物，此前**五处登记缺四处**而门禁照旧全绿）进对应表与 design §5；`docs/ARCHITECTURE.md` 上限 120 → **150**（对应表没跟上 2026-10-06 的上调）；`docs/UI.md` 120 → 125、`docs/refactor/README.md` 40 → 45（新增结构行后正好卡上限）。
+- **淘汰 ≠ 归档**：`docs/decisions/` 移出"超 30 张淘汰"名单（决策卡的价值随时间上升，半年后正是要读它的时候），`docs/lessons/` 的淘汰改为"同症状合并或删除"；两者都不再搬进 `archive/`——搬进去等于永久保留，那不是淘汰。
+
+### 已知问题（本次未修，登记备查）
+
+- `orphans.ps1` 的 `[文档幽灵]` 在**生成出来的项目**里必然误报若干条：模板文档会引用母版侧文件（`rules/rules.json`、`START-HERE.md`、`skills/roadbook/SKILL.md` 等）。属既有行为，本次只确保自己不再新增同类引用，未做母版引用与项目路径的区分。
+
+### 测试与验收
+
+- `node --test "test/*.test.mjs"`：**189 项全绿**，其中新增 `test/scaffold-cli.test.mjs` 10 例（四条反向对照：`--check/--plan` 只读证明 / 内容不同不覆盖 / 坏 `--master` 落到下一级 / 五级全失败给三条人工路径）。冻结账本 `test/fixtures/route-scenarios.json` 按设计报了两次红（卡文本预期内变化），均按测试自带口径再生成，理由记在 `_qc/baseline/ledger.json` 的 note 里。
+- `powershell -NoProfile -File _qc/check.ps1`：**359 项全绿、退出码 0**（新增 scaffold 接线断言 + 文档域 14 条断言 + 过程域词表解析断言）。
+- 版本口径：根 `package.json` = 四个子包 = `lib/client.js` 的 `PLUGIN_VERSION` = **0.9.0**（`_qc/check.ps1` 与 `test/client-contract.test.mjs` 双重核对）。
+
 ## [0.8.1] - 2026-10-06
 
 **图册默认目录折算修复（BUG-002）。** 按升版判定表「修 bug → 修订号」走 `0.8.0 → 0.8.1`；`vendor/**` 上游代码一字不动。本节 = `v0.8.0` 之后 `[未发布]` 节的全部条目（对照 `git log --oneline v0.8.0..HEAD`）。

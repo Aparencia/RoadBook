@@ -37,16 +37,19 @@ After summarizing the scoring table, give a **recommended stack + one-line basis
 
 **Action 2: write the STACK decision card** `docs/decisions/STACK_<日期>_<主题>.md` (≤60 lines): what was chosen / each rejected stack and the reason for rejection / the four-dimension scoring table / cost source links.
 
-**Action 3: generate the full project from the master's template/** (do this first: **the agent must ask the user "母版文件夹放在哪" ("where is the master folder"), get the real absolute path, then act; copying the sample path verbatim is forbidden**)
+**Action 3: generate the full project from the master's template/ (use the `scaffold` CLI; do not hand-roll a copy loop)**
 
-**Variable names must be ASCII**: when Windows PowerShell 5.1 reads a .ps1 without BOM, a Chinese variable name raises "字符串缺少终止符" ("string is missing the terminator"); scripts must be saved as UTF-8 with BOM.
+The master is **resolved first, asked about second** (a five-rung ladder; the CLI prints `source=` so you can see which rung was used): `--master` → `ROADBOOK_MASTER` → **the CLI's own location** (this hits whenever the skill / plugin package is installed — the master is inside the local package, so no network and no question to the user) → npm identity `roadbook/package.json` → only when all of them fail does it print three manual paths and exit 2 (**it never guesses a directory**: guessing wrong means pouring the template into somebody else's repository).
 ```powershell
-$master = 'D:/path/to/roadbook'   # ← must be changed to the real absolute path of the master folder on this machine (keep the single quotes when the path contains spaces/Chinese); the agent first asks the user where the master lives — copying this line verbatim is forbidden
+$scaffold = 'D:/path/to/roadbook/skills/roadbook/bin/scaffold.mjs'   # ← the agent fills in the real absolute path from this skill's base directory (present whenever the skill is installed); only without a skill does it fall back to asking the user where the master lives
 $dest = 'C:/code/myapp'           # target project root; created when absent, and when present only the missing files are filled in (no existing file is overwritten)
-$src = "$master/template"; New-Item -ItemType Directory -Force $dest | Out-Null; Get-ChildItem $src -Recurse -Force | ForEach-Object { $t = Join-Path $dest $_.FullName.Substring($src.Length + 1); if (-not (Test-Path $t)) { Copy-Item $_.FullName $t -Recurse -Force } }; Set-Location $dest; Get-ChildItem -Force
+node $scaffold --check $dest      # read-only health check: added / same / conflict (writes nothing)
+node $scaffold --apply $dest      # fills in "added" only; anything already present is left untouched
 ```
+Expected: `--check` prints `模板：N 个文件 ｜ 新增 a ｜ 同内容 s ｜ 冲突 c` plus `母版：<path>（source=…）`; `--apply` prints `已写入 N 个新增文件（未覆盖任何已存在文件）` and exits 0; re-running `--check` then reports `新增 0` (a non-zero conflict count or a stale rule version makes it exit 1 = **a human decision is pending, not a failure**).
+
 `Get-ChildItem -Force` — check item by item that .gitignore/.tool-versions/.env.example are all there. **Any file already present under `$dest` is left untouched** (this protects in particular the `docs/pool/IDEAS.md` built by 1-1 and any file the user has written); an existing `docs/` from 1-1 does not conflict with this fill-in-the-missing merge, and telling the user to delete the directory is forbidden.
-If an existing file is older than the template version and you want to upgrade it, you must compare it by hand item by item first; **overwriting a whole directory with `-Force` is forbidden**. Then replace the placeholders file by file:
+If an existing file is older than the template version and you want to upgrade it, you must compare it by hand item by item first; **overwriting a whole directory is forbidden**; `AGENTS.md` and `STATE.md` are red-line domains (A6 / C3) — `scaffold` only prints a `规则版本：` comparison and never overwrites them. Then replace the placeholders file by file:
 
 | File | What to replace |
 | :-- | :-- |

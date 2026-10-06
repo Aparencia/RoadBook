@@ -43,30 +43,25 @@ Copy the full text from the master's AGENTS.md template, then replace: §0 one-l
 **Action 4: generate STATE.md (≤45 lines)**
 Copy from the master's STATE.md template and replace: project name/one-liner/tech stack (when no STACK decision card can be linked, write "存量项目反推" ("reverse-engineered from a legacy project")) / current stage = onboarding complete / next = wait for a new intent.
 
-**Action 5: generate the docs/ skeleton + the registry three-piece format headers (headers only, not the full set)**
-```powershell
-New-Item -ItemType Directory -Force docs/registry, docs/pool, docs/specs, docs/decisions, docs/reviews, docs/versions, docs/lessons, docs/archive | Out-Null
-```
-Write only the header plus one hint line in each of the three registry files, and add rows only on first touch of the corresponding object:
-- `docs/registry/COMPONENTS.md`: `| 页面 | 界面元素 | 人话标识 | 程序名 | 文件 | 搜索词 | 影响面 |`
-- `docs/registry/DATA_DICT.md`: `| 表 | 字段 | 类型 | 校验 | 敏感度 D1~D4 |`
-- `docs/registry/APIS.md`: `| 路径 | 方法 | 用途 | 错误码 | 鉴权 |`
+**Action 5: run `scaffold` to inventory and fill in existing assets (fills in what is missing, never overwrites)**
 
-**Action 5.5: install the five guard scripts (copy from the master's template directory into the project root)**
+The master is **resolved first, asked about second** (a five-rung ladder; the CLI prints `source=` so you can see which rung was used): `--master` → `ROADBOOK_MASTER` → **the CLI's own location** (this hits whenever the skill / plugin package is installed — the master is inside the local package, so no network and no question to the user) → npm identity `roadbook/package.json` → only when all of them fail does it print three manual paths and exit 2 (**it never guesses a directory**: guessing wrong means pouring the template into somebody else's repository).
+
 ```powershell
-$master = 'D:/path/to/roadbook'   # absolute path to the master root (first ask the user where the master lives; copying this line verbatim is forbidden); assign before calling
-$proj = 'C:/code/myapp'           # absolute path to the target project root
-foreach ($f in @('check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1')) {
-  $dst = Join-Path $proj $f
-  if (Test-Path $dst) { "已有同名脚本，本次不覆盖：$f（把差异给用户看，由他决定合并还是保留原有）" }
-  else { Copy-Item "$master/template/$f" $dst }
-}
-Get-ChildItem "$proj/*.ps1" | Select-Object Name, Length
+$scaffold = 'D:/path/to/roadbook/skills/roadbook/bin/scaffold.mjs'   # ← the agent fills in the real absolute path from this skill's base directory; only without a skill does it fall back to asking the user where the master lives
+$proj = 'C:/code/myapp'   # target project root (already scanned in Action 1 of this card)
+node $scaffold --check $proj    # read-only health check: added / same / conflict + `规则版本：` comparison (writes nothing)
+node $scaffold --apply $proj    # fills in "added" only: the five guard scripts, the docs/ skeleton, .gitignore/.gitattributes/.tool-versions/.env.example, CHANGELOG, and the 6 seed lesson cards
 ```
+Expected: `--apply` prints `已写入 N 个新增文件（未覆盖任何已存在文件）` and exits 0; re-running `--check` then reports `新增 0` (a non-zero conflict count or a stale rule version makes it exit 1 = **a human decision is pending, not a failure**).
+
+**Five dispositions for existing assets** (file every `[conflict]` entry under one of them; the criterion is the relationship to a RoadBook slot, not the file type): **same-role authority** (an existing rules file such as `AGENTS.md` / `CLAUDE.md`) → **diff only, human decides** (A6 / C3 red-line domain), and the merge law is **project facts go into `AGENTS.md` §0/§10 while the rule sections come from the master wholesale** (the master already splits "facts" from "rules"); **same function, different shape** (an existing ADR / spec directory / TODO / issue tracker) → **write a pointer, never restate the content**, and register it in the `docs/README.md` table; **same-name placeholder** → a content conflict is not overwritten, but when `.gitignore` is missing the four entries `.env` / `*.pem` / `*.key` / `.env.local` **that is a pure append and must be added** (otherwise Action 8.5's `git check-ignore -v .env` inevitably goes red, and secrets can reach history); **historical sediment** (old reports / old specs) → **add one line "historical evidence, not current criteria"**, do not move them (moving breaks links and blame); **unrelated assets** (business code / `vendor/`) → **leave them alone**, but write "why it is untouched" into the STATE.md trim record (the reverse duty of D6②).
+
+**Action 5.5: placeholders and self-checks**
 - Replace `$STEPS` at the top of `check.ps1` with this project's real commands (the script counts as installed only once they run through, i.e. exit code 0) [disambiguated] — **only for the files newly installed this time**; write the real tool names and versions for this project's stack into `.tool-versions` (doctor.ps1 reads it and compares item by item; a wrong name = missing-tool red light).
-- If the project already has a same-named script → **do not overwrite**: the loop above prints the skipped entry as `已有同名脚本，本次不覆盖：check.ps1` ("a same-named script already exists; not overwriting this time: check.ps1"); to upgrade or merge you must compare each file by hand and replace it manually — show the user the differences and let them decide between merging and keeping theirs.
+- Write only the header in each registry file, adding rows on first touch: `COMPONENTS.md` = `| 页面 | 界面元素 | 人话标识 | 程序名 | 文件 | 搜索词 | 影响面 |` ｜ `DATA_DICT.md` = `| 表 | 字段 | 类型 | 校验 | 敏感度 D1~D4 |` ｜ `APIS.md` = `| 路径 | 方法 | 用途 | 错误码 | 鉴权 |`
 - In this step run only `powershell -NoProfile -File orphans.ps1`: at this moment all new files are uncommitted, so it prints `[FAIL] 未跟踪 N 个文件` ("N untracked files") with exit code 1 — that means "the list is incomplete" (run `git add` first), **not orphans**; `check.ps1` will inevitably print `[FAIL] 工作树不干净` ("working tree is dirty") — **also expected**; leave it and re-run in ④ after the Action 8 commit to get 0.
-- The `file-count baseline` = `@(git ls-files).Count` (including `docs/` and the five guard scripts), **sampled only after the Action 8 first commit**, then written into STATE.md; orphans.ps1's summary "file count" excludes `docs/` and the guard scripts and **must not** be written into the baseline. Onboarding the whole template raises the file count far beyond the 20 check.ps1 allows, so sampling before the commit always prints FAIL — the only legal timing is after the onboarding commit, using the measured value, **never** the pre-onboarding one.
+- The `file-count baseline` = `@(git ls-files).Count` (including `docs/` and the five guard scripts), **sampled only after the Action 8 first commit**, then written into STATE.md; orphans.ps1's summary "file count" excludes `docs/` and the guard scripts and **must not** be written into the baseline. Onboarding the whole template raises the file count far beyond the 20 check.ps1 allows, so sampling before the commit always prints FAIL — the only legal timing is after the onboarding commit, using the measured value.
 - If the user trims this mechanism away → write in the STATE.md "trim record": "孤儿与文档七张清单与文件数预算不适用 + 原因" ("the orphan/doc seven-list and the file-count budget do not apply + reason").
 
 **Action 6: reverse-engineer a first version of ARCHITECTURE.md (≤150 lines)**
@@ -128,7 +123,7 @@ At wrap-up, give item by item:
 
 ## ④ State write-back
 
-Update STATE.md: the three project identity fields, `current stage` = onboarding complete, `next` = wait for a new intent, `trim record` = the Action 7 result, the first entry of "recently completed" = onboarding complete + hash, `remote repository` = <url or "local-only (trimmed)">, `working tree status` = clean.
+Update STATE.md: the three project identity fields, `current stage` = onboarding complete, `next` = wait for a new intent, `trim record` = the Action 7 result + **one provenance line** (`接入：母版 roadbook v<version> / 规则版本 <YYYY-MM-DD.N>`, with the version taken from the first line of the `scaffold --check` receipt), the first entry of "recently completed" = onboarding complete + hash, `remote repository` = <url or "local-only (trimmed)">, `working tree status` = clean.
 
 After writing back, wrap up with the fixed three steps (write back → commit → re-run check.ps1):
 ```powershell
@@ -137,6 +132,14 @@ git commit -m "1-3 docs(state): record onboarding result"
 powershell -NoProfile -File check.ps1
 ```
 `git status --porcelain` empty + check.ps1 exit code 0 = wrap-up complete.
+
+**The four onboarding proofs (missing any one = onboarding is not complete; symmetric with the 1-2 green-light four):**
+```text
+① re-running scaffold --check reports "新增 0" (fill-in green)
+② doctor.ps1 exits 0 (environment green; .tool-versions matches reality)
+③ check.ps1 exits 0 (guardrail green; re-run after the commit to obtain 0)
+④ the starting anchor is recorded in STATE.md + the remote has landed or is explicitly trimmed (anchor and remote green)
+```
 
 Next: wait for a new intent. From then on all intents are routed by the 0-1 driver card; trimmed cards are skipped directly when routing.
 
