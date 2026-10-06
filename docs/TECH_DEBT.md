@@ -7,6 +7,10 @@
 
 | 编号 | 日期 | 位置 | 类型 | 影响 | 清偿触发条件 | 状态 | 偿还证据 |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| （示例）TD-001 | 2026-01-12 | src/export.ts:88 | 腐化 | 导出无分页上限，数据量大时全量拉取拖慢接口 | 单次导出 >1 万行，或接口 P95 >2s | open |  |
+| TD-001 | 2026-10-06 | `docs/registry/COMPONENTS.md` 表头 ↔ `AGENTS.md` D13 | 设计 | 表头规定为 UI 组件七列（页面/界面元素/人话标识/程序名/文件/搜索词/影响面），而 D13 要求"新建文件 → COMPONENTS.md 登记路径+用途+归属批次"；两处口径打架 ⇒ `orphans.ps1` 的 `[未登记]` 永不归零（本仓当前 77 项），且新人不知道该往哪一列填 | 6-6 流程体检重审两处原文、二选一定稿 | open |  |
+| TD-002 | 2026-10-06 | `orphans.ps1` 的 `[文档幽灵]` 判定口径 | 测试 | 母版自己接入模板后必然误报：卡与文档里作为**示例**写出的路径（`THREAT.md` / `NFR.md` / `RCA.md` / `DATA_DICT.md` / `judge.md` / `.receipt.json` / `v6-design.md` / 已删的 `docs/TOOLING.md` 等）被当成真实引用。当前 13 项**全是误报**——噪声会把真幽灵淹掉 | 误报淹掉真问题的第一次实际发生，或 6-6 体检 | open | `CHANGELOG.md` 0.9.0「已知问题」节已登记同类（母版侧） |
+| TD-003 | 2026-10-06 | `[反向幽灵]`：`_qc/`、`test/`、`plugin/*/test/` 共 54 项 ｜ `[零引用导出]`：`lib/update.js:defaultReportPath`、`skills/roadbook-atlas/vendor/archify/recipes/scenarios.mjs:publicGuideData` 共 2 项 | 测试 | `[反向幽灵]` 与 `[零引用导出]` 的静态引用分析对**被执行 / 被动态加载**的脚本天然盲（守护脚本、测试文件、CLI 入口都没有 import 入边）。属工具口径，但常态 54 项噪声同样稀释信号 | 6-6 体检时给工具加"被执行入口"白名单口径 | open | 实测 `orphans.ps1` 报「反向幽灵 54 / 零引用导出 2」 |
+| TD-004 | 2026-10-06 | `_qc/loader-accept.mjs`、`_qc/migrations/fix-card-headers-2026-10-03.mjs` | 腐化 | 真·零入边引用（`[孤儿]` 2 项）。一次性迁移脚本"用完即弃"是本仓惯例，但文件里没写这一句，就与普通脚本无从区分——D11 要求孤儿必须落"删除 / 登记技术债 / 补登记"之一 | 下次动 `_qc/migrations/` 时同批补"一次性"标注或删除 | open | 实测 `orphans.ps1` 报 `[孤儿]` 2 项 |
+| TD-005 | 2026-10-06 | `security.ps1:87 / :103 / :115` 的 `$self` 排除口径 | 测试 | 母版同时存在根 `security.ps1` 与 `template/security.ps1`（同一份扫描器），而扫描范围取 `git ls-files` 全仓、只排除"运行中的自己"那个路径 ⇒ **模板那份自己的规则字面量（`verify=False` / `Invoke-Expression` / `--insecure` / `.netrc`）被自己命中**，母版安全门禁**永远 5 红、不可能绿**。生成出来的项目没有 `template/`，故不受影响——这是"母版接入自己"之后才暴露的缺陷 | 6-6 体检或 7-3 清偿：把排除口径从"自身路径"扩到"与自身逐字节相同的副本"（改完须同步 `template/security.ps1` 并跑 `_qc/check.ps1`） | open | 实测 `security.ps1` 退出码 1、红 5 / 黄 24，5 条红全部落在 `template/security.ps1` |
 
 <!-- 债务只增不减不是坏，坏的是"closed 却没有证据"。每周归档时滚动一次；腐化类关键词是全表通用筛选口径，不随项目改 -->
