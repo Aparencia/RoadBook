@@ -18,6 +18,12 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
+## [未发布]
+
+### 修 bug
+
+- **`route.mjs` 看不见多位数卡号，而 `--audit` 判「双语无缺份」绿（假绿）**：`ID_RE` 原为 `/^(\d-\d)-(.+)\.md$/`，第二位只认一位数字 —— 2026-10-06 新增的 `7-10-技术栈迁移` 因此对扫描器**不存在**：`--audit` 报「44 张 · 判绿」，而 `playbook/` 与 `playbook_EN/` 各有 45 个文件、`design/v6-design.md` §4 表 45 行、`_qc/check.ps1:63` 断言 45。一张卡对扫描器不存在 = 路由永远到不了它，而门禁与 `roadbook-evolve` 的 S6（只看退出码）**双双判绿**。修法：`ID_RE` 放宽为多位数字；`scanDir` 把认不出的 `*.md` 收进 `unparsed`；`audit` 逐条判红。**防线**：A1 由 `cardsCn >= 41` 改为「扫描到的卡数 = 磁盘上的 `.md` 文件数」，新增 A2b 反向对照（合成一个认不出的文件名 → 必须报红）。
+
 ## [0.7.2] - 2026-10-06
 
 **两个「静默不注入」的根因修复：技能从来没被读进技能目录 + 分叉会话被误判成子代理。** 实测 `%TEMP%\roadbook-autoload.jsonl` 166 行里 `inject` 事件 **0** 条 —— 插件是活的（`loaded` 39 / `banner` 41 / `team` 5），但流程正文一次都没进过上下文。按「修 bug → 修订号」走 **0.7.2**。

@@ -39,7 +39,16 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..', '..') // skills/roadbook/bin → 母版根
 export const CN_DIR = join(ROOT, 'playbook')
 export const EN_DIR = join(ROOT, 'playbook_EN')
-const ID_RE = /^(\d-\d)-(.+)\.md$/
+/**
+ * 卡文件名：`<阶段>-<序号>-<名字>.md`。
+ *
+ * 两段都必须是 `\d+`：**2026-10-06 实测事故**——旧写法 `/^(\d-\d)-/` 只认一位数字，
+ * 于是新增的 `7-10-*.md` 不匹配，`scanDir` 静默 `continue`，`--audit` 报「44 张 ·
+ * 双语无缺份 · 判绿」，而磁盘与 design §4 表都是 45 张。一张卡对扫描器不存在 =
+ * 路由永远到不了它，**而门禁与自进化信号（S6 只看退出码）双双判绿**——这正是本仓
+ * 反复定义的那类假绿。放宽为多位数字，并把「认不出的文件」报出来（见 scanDir）。
+ */
+const ID_RE = /^(\d+-\d+)-(.+)\.md$/
 /** 锚点只许取自这两类行：H1 与触发行（`> 触发：…` / `> Trigger: …`）。 */
 const H1_RE = /^#\s+\S/
 const TRIGGER_RE = /^>\s*(?:触发|Trigger)/
@@ -142,10 +151,17 @@ export function anchorAreaOf(lines) {
 
 export function scanDir(dir) {
   const out = new Map()
+  // 「看得见的 .md」与「认得出的卡」的差额。挂在 Map 上的 expando 数组：现有消费者
+  // 只用 Map 方法（get / has / size / keys），加这个属性不影响它们；audit 读不到时
+  // 用 `?? []` 兜底（测试自己造的合成 Map 因此仍然成立）。
+  out.unparsed = []
   if (!existsSync(dir)) return out
   for (const file of readdirSync(dir).sort()) {
     const m = ID_RE.exec(file)
-    if (!m) continue
+    if (!m) {
+      if (file.endsWith('.md')) out.unparsed.push(file)
+      continue
+    }
     const text = readFileSync(join(dir, file), 'utf8')
     const lines = text.split(/\r?\n/)
     const { h1, trigger, anchorArea } = anchorAreaOf(lines)
@@ -276,6 +292,14 @@ export function audit(cn = scanDir(CN_DIR), en = scanDir(EN_DIR)) {
   }
   for (const id of cn.keys()) if (!en.has(id)) problems.push(`双语缺份：playbook/${id} 有，playbook_EN/ 没有`)
   for (const id of en.keys()) if (!cn.has(id)) problems.push(`双语缺份：playbook_EN/${id} 有，playbook/ 没有`)
+  // 认不出的文件名必须判红：它对扫描器不存在，路由永远到不了；旧行为是静默跳过，
+  // 于是「少扫一张卡」被报成「双语无缺份」。判据是**看得见的文件数 = 认得出的卡数**。
+  for (const file of cn.unparsed ?? []) {
+    problems.push(`无法识别的卡文件名：playbook/${file} —— 扫描器看不见它（卡号须形如 <阶段>-<序号>-<名字>.md，两段都可多位数字）`)
+  }
+  for (const file of en.unparsed ?? []) {
+    problems.push(`无法识别的卡文件名：playbook_EN/${file} —— 扫描器看不见它（同上）`)
+  }
   const ids = STEPS.map((s) => s.card)
   const dup = ids.filter((x, i) => ids.indexOf(x) !== i)
   if (dup.length) problems.push(`链里有重复卡：${[...new Set(dup)].join(', ')}`)

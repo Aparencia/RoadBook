@@ -19,7 +19,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -73,7 +73,13 @@ test('A1 审计判绿：node skills/roadbook/bin/route.mjs --audit 退出码 0',
   assert.deepEqual(j.problems, [], `审计问题清单应空：${JSON.stringify(j.problems)}`)
   assert.equal(j.mirroredSteps, STEPS.length, '镜像覆盖条数应等于 STEPS 条数')
   assert.equal(j.cardsCn, j.cardsEn, `双语卡数不等：${j.cardsCn} vs ${j.cardsEn}`)
-  assert.ok(j.cardsCn >= 41, `卡片数 ${j.cardsCn} 少于 41：要么真删了卡，要么扫描坏了`)
+  // 「扫描器看不见某张卡」这类假绿的机械防线：**认得出的卡数 = 磁盘上的 .md 文件数**。
+  // 2026-10-06 实测事故：7-10 卡号两位数，旧 ID_RE 只认一位数字 → 扫到 44 张、判「双语无缺份」绿。
+  // 旧断言写的是 `>= 41` —— 下界挡不住「少扫一张」，所以这里换成与磁盘对账。
+  const cnFiles = readdirSync(CN_DIR).filter((f) => f.endsWith('.md'))
+  const enFiles = readdirSync(EN_DIR).filter((f) => f.endsWith('.md'))
+  assert.equal(j.cardsCn, cnFiles.length, `扫描到 ${j.cardsCn} 张，而 playbook/ 有 ${cnFiles.length} 个 .md —— 有文件没被认出来（假绿）`)
+  assert.equal(j.cardsEn, enFiles.length, `扫描到 ${j.cardsEn} 张，而 playbook_EN/ 有 ${enFiles.length} 个 .md —— 有文件没被认出来（假绿）`)
 })
 
 test('A1b 主模块判定精确：被同名文件 import 不许执行 main（旧 endsWith 兜底会误跑）', () => {
@@ -117,6 +123,27 @@ test('A2 反向对照：篡改一份卡表的 head（H1 与触发行）必须判
     audit(bodyOnly, en).problems.length === 0,
     '锚点只认 H1 与触发行：正文里出现同名词不算命中，此时应判绿（绿的是新规则本身）',
   )
+})
+
+/* ── A2b 反向对照：认不出的卡文件名必须判红（2026-10-06 假绿事故的防线） ── */
+test('A2b 认不出的文件名必须判红：scanDir 的 unparsed 要进 audit 的 problems', () => {
+  const cn = scanDir(CN_DIR)
+  const en = scanDir(EN_DIR)
+  assert.deepEqual(cn.unparsed, [], `playbook/ 有认不出的 .md：${JSON.stringify(cn.unparsed)}`)
+  assert.deepEqual(en.unparsed, [], `playbook_EN/ 有认不出的 .md：${JSON.stringify(en.unparsed)}`)
+
+  // 反向对照：合成一份「多出一个认不出的文件」的扫描结果 —— 必须报出来，而不是静默跳过
+  const dirty = new Map([...cn])
+  dirty.unparsed = ['7-10x-畸形卡号.md']
+  const problems = audit(dirty, en).problems
+  assert.ok(
+    problems.some((p) => p.includes('7-10x-畸形卡号.md') && p.includes('无法识别')),
+    `认不出的文件名没被判红（那就是「少扫一张卡却报双语无缺份」的假绿），问题清单：${JSON.stringify(problems)}`,
+  )
+
+  // 向后兼容：测试自己造的、没有 unparsed 属性的旧形状 Map 不许因此炸掉或判红
+  const legacy = new Map([...cn])
+  assert.deepEqual(audit(legacy, en).problems, [], '没有 unparsed 属性的旧形状 Map 必须仍然判绿')
 })
 
 /* ── A3 双语缺份 / 幽灵引用 ── */
