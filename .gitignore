@@ -11,6 +11,11 @@ node_modules/
 # DSH 代码索引的本地缓存（工具生成，不入库；未忽略会让工作树永远不干净，5-1 卡的「工作树必须干净」判据直接失效）
 .dsh-code-index/
 
+# 图纸产物（atlas 插件的默认落点，cordis.patch.yml 的 diagrams 配置）：规格 + HTML + 回执都是
+# 本机渲染产物，不是流程判据；未忽略会让工作树永远非空 —— 5-1 卡的「工作树必须干净」判据直接失效。
+# 要长期保存的图纸请显式 `git add -f`（本次只处置 2026-10-06 生成的 roadbook-overview 三件）。
+docs/diagrams/
+
 # 环境与密钥（永不提交）：design §14 第 5 行要求推送前用 `git check-ignore -v .env` 自证敏感文件
 # 确实被挡住，而母版仓库此前一条都不命中（template/.gitignore 早有这几条，属口径不齐）。
 # 推出去不可逆 —— .env 一旦进历史就永远可读，所以这里按 template 同口径补齐。
