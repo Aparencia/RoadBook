@@ -66,9 +66,7 @@ A solo project does not skip this step — **a stakeholder is a role such as "fu
 | Runtime | What order the key scenarios run in | ≥3 sequences (one of them a failure path), each step stating which component it lands in |
 | Data | Where data lives, who the source of truth is, how it is backed up | Entity table + source-of-truth marking + copy and restore granularity |
 
-**Action 4: Quality-attribute scenarios (the reason architecture exists; never invent a threshold)**
-
-Every line carries all three elements: **stimulus** (who triggers it under what condition) → **response** (what the system does) → **measure** (how many seconds / how many items / what probability).
+**Action 4: Quality-attribute scenarios (the reason architecture exists; never invent a threshold)** Every line carries all three elements: **stimulus** (who triggers it under what condition) → **response** (what the system does) → **measure** (how many seconds / how many items / what probability).
 
 | Attribute | Example scenario (stimulus → response → measure) |
 | :-- | :-- |
@@ -87,9 +85,7 @@ Every line carries all three elements: **stimulus** (who triggers it under what 
 - **No layer skipping**: the UI layer must not connect straight to the data layer; if it does there must be an adapter, and exactly one adapter
 - After drawing the graph, run the self-check once (Action 8); cycles and two-way edges get called out by the script
 
-**Action 6: Trade-off records (no architecture option is free of cost)**
-
-Every record is written as one line: `选了 X ｜ 换来 Y ｜ 代价 Z ｜ 什么条件下翻案` ("chose X | gained in exchange Y | cost Z | what condition reverses it").
+**Action 6: Trade-off records (no architecture option is free of cost)** Every record is written as one line: `选了 X ｜ 换来 Y ｜ 代价 Z ｜ 什么条件下翻案` ("chose X | gained in exchange Y | cost Z | what condition reverses it").
 
 | Example | Gained | Cost | When it is reversed |
 | :-- | :-- | :-- | :-- |
@@ -105,17 +101,7 @@ Every record is written as one line: `选了 X ｜ 换来 Y ｜ 代价 Z ｜ 什
 **Action 8: Architecture self-check (run from the project root; non-developers only need the exit code: exit 1 = this card is not done)**
 Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
 ```powershell
-$m = 'docs/ARCHITECTURE.md'
-$l = @(Get-Content $m -Encoding UTF8)
-$txt = $l -join "`n"
-$views = @('上下文','模块','运行时','数据') | Where-Object { $txt -match $_ }
-$tri   = @($l | Where-Object { $_ -match '刺激|响应|度量' }).Count
-$tr    = @($l | Where-Object { $_ -match '代价' }).Count
-$gap   = @($l | Where-Object { $_ -match '演化口子|以后要做' }).Count
-"ARCHITECTURE.md 行数 $($l.Count)（要求 ≤150）"
-"视图命中 $($views.Count)/4（要求 4）：$($views -join ' ')"
-"质量属性三要素行 $tri（要求 ≥5）；权衡代价行 $tr（要求 ≥3）；演化口子行 $gap（要求 ≥2）"
-if ($l.Count -gt 150 -or $views.Count -lt 4 -or $tri -lt 5 -or $tr -lt 3 -or $gap -lt 2) { Write-Host '[FAIL] 本卡自查未过'; exit 1 } else { Write-Host '[OK] 本卡自查通过' }
+$m = 'docs/ARCHITECTURE.md'; $l = @(Get-Content $m -Encoding UTF8); $txt = $l -join "`n"; $views = @('上下文','模块','运行时','数据') | Where-Object { $txt -match $_ }; $tri = @($l | Where-Object { $_ -match '刺激|响应|度量' }).Count; $tr = @($l | Where-Object { $_ -match '代价' }).Count; $gap = @($l | Where-Object { $_ -match '演化口子|以后要做' }).Count; "ARCHITECTURE.md 行数 $($l.Count)（要求 ≤150）"; "视图命中 $($views.Count)/4（要求 4）：$($views -join ' ')"; "质量属性三要素行 $tri（要求 ≥5）；权衡代价行 $tr（要求 ≥3）；演化口子行 $gap（要求 ≥2）"; if ($l.Count -gt 150 -or $views.Count -lt 4 -or $tri -lt 5 -or $tr -lt 3 -or $gap -lt 2) { Write-Host '[FAIL] 本卡自查未过'; exit 1 } else { Write-Host '[OK] 本卡自查通过' }
 ```
 
 **Prohibitions (any violation voids this round's output):**
@@ -150,10 +136,7 @@ if ($l.Count -gt 150 -or $views.Count -lt 4 -or $tri -lt 5 -or $tr -lt 3 -or $ga
 - `裁剪记录` [disambiguated: trimming log] = single-person mode: skip the architecture review meeting, write one line of reason; tier S writes "a single-page app's structure is its file list, this card is trimmed"; `下一步` [disambiguated: next step] = 3-1 Design (tier L) or 4-1 Batch coding
 
 ```powershell
-$m = 'docs/ARCHITECTURE.md'
-git add STATE.md $m
-git commit -m "3-7 docs(arch): 四视图与质量属性权衡"
-powershell -NoProfile -File check.ps1
+$m = 'docs/ARCHITECTURE.md'; git add STATE.md $m; git commit -m "3-7 docs(arch): 四视图与质量属性权衡"; powershell -NoProfile -File check.ps1
 ```
 The exit code must be 0; if non-0, stop and ask the user — never declare this card done.
 

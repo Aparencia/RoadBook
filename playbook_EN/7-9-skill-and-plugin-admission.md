@@ -16,15 +16,7 @@ After receiving the start instruction, give the receipt for the six items below 
    ③ What tier is this project on right now? Recommended: read it straight from the `档位` (tier) field of STATE.md, and only ask you if it cannot be read.
    ④ The license and its obligations? Recommended: a license is not a blocker; the obligations (keep the notice / NOTICE / mark modifications) just go into the admission record.
    ⑤ The re-review due date? Recommended: the admission date + 90 days; re-run this card when it comes due.
-4. **Quote this card's checklist verbatim** (paste the eight items below word for word; being unable to quote them = this round's output is void):
-   - [ ] Source and version are traceable (commit / package name + version, floating tags are forbidden)
-   - [ ] The license and its obligations have been checked (including NOTICE / marking modifications)
-   - [ ] The machine-check exit code has been pasted (0 / 1 / 2 each get a different handling)
-   - [ ] All five checks have a conclusion item by item (no "probably fine")
-   - [ ] The permission surface has no overlap with the project's red-line domains (red-line domains: authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface; any overlap = escalate)
-   - [ ] No egress or telemetry that is on by default, or it has been turned off and that is written down
-   - [ ] No new excess privilege after installation (directory / domain / hook)
-   - [ ] The three-value conclusion has been adjudicated by the user and landed in docs/decisions/
+4. **Quote this card's checklist verbatim** (the eight items at the start of §②, pasted word for word; being unable to quote them = this round's output is void).
 5. **Boundary statement**: the admission conclusion is adjudicated by the user; the agent only produces a recommendation + evidence (non-delegable); rejected items are registered in the rejected-options ledger, and the ledger is read before any re-review.
 6. **One question before starting**: who maintains this external item, and where is it installed from? If it cannot be answered (only "found it somewhere online") → stop; do not start reading it.
 
@@ -53,10 +45,7 @@ After receiving the start instruction, give the receipt for the six items below 
 
 **Action 1: look first, do not install** — `git clone --depth 1` into an isolated directory, or unpack into the system temporary directory; read only, do not put it into the project dependency tree, do not execute any of its scripts:
 ```powershell
-$url = 'https://example.com/owner/repo.git'   # replace with the exact official repository URL the user gave
-$src = Join-Path $env:TEMP 'third-party-skill'
-git clone --depth 1 $url $src
-Get-ChildItem -Path $src -Recurse -File | Select-Object -First 40 FullName, Length
+$url = 'https://example.com/owner/repo.git'; <# replace with the exact official repository URL the user gave #> $src = Join-Path $env:TEMP 'third-party-skill'; git clone --depth 1 $url $src; Get-ChildItem -Path $src -Recurse -File | Select-Object -First 40 FullName, Length
 ```
 - Archives are handled the same way: unpack into `$env:TEMP` first, then read only.
 - ❌ Counter-example: cloning into a project subdirectory, `npm i -g`, or running its `install.sh` once after cloning to see what happens.
@@ -65,9 +54,7 @@ Get-ChildItem -Path $src -Recurse -File | Select-Object -First 40 FullName, Leng
 
 **Action 2: run the machine check** (isolate first → machine check → only then discuss installing):
 ```powershell
-$src = Join-Path $env:TEMP 'third-party-skill'
-powershell -NoProfile -File security.ps1 -SkillDir $src
-"机检退出码 = $LASTEXITCODE"
+$src = Join-Path $env:TEMP 'third-party-skill'; powershell -NoProfile -File security.ps1 -SkillDir $src; "机检退出码 = $LASTEXITCODE"
 ```
 - **Exit code 0** = no red findings (yellow items do not block) → continue to the five manual checks (0 does not mean pass); **1** = red findings → judge each hit against the five checks and paste the hit lines verbatim into the receipt; **2** = environment / path error → fix it first, treating it as a pass is forbidden; using `-ReportOnly` for an admission verdict is **forbidden** (troubleshooting only; it downgrades red to yellow).
 - ❌ Counter-example: the script reports that it cannot find the path and you carry on as if "no problem was found".
@@ -106,20 +93,16 @@ Handling: route grabbing → reject; an over-broad description → conditional a
 **Action 4: the three-value verdict** (admission / conditional admission / rejection)
 - **Admission** = all five checks pass; it goes into the project dependency tree and is used within its declared scope; **conditional admission** = the restrictions are written out: run only in an isolated directory, network disabled, read-only mount, not in CI; **rejection** = not one character is installed, and the temporary directory of anything already cloned is deleted.
 - **The conclusion is adjudicated by the user; the agent only produces a recommendation + evidence (non-delegable).**
-- ✅ Good example: `建议：有条件准入（限：只在系统临时目录跑、禁网、不进 CI）｜依据：五查第 ②③ 条命中，机检退出码 1` ("recommendation: conditional admission (restrictions: run only in the system temporary directory, network disabled, not in CI) | basis: checks ② and ③ hit, machine-check exit code 1")
-- ❌ Counter-example: the agent writes "admission passed, installed" on its own authority.
+- ✅ Good example: `建议：有条件准入（限：只在系统临时目录跑、禁网、不进 CI）｜依据：五查第 ②③ 条命中，机检退出码 1` ("recommendation: conditional admission (restrictions: run only in the system temporary directory, network disabled, not in CI) | basis: checks ② and ③ hit, machine-check exit code 1"); ❌ Counter-example: the agent writes "admission passed, installed" on its own authority.
 
 **Action 5: record** — the admission record lands at `docs/decisions/<date>_<name>-admission.md` (one page), with seven mandatory items: ① source and version (repository URL + commit hash, or package name + version; floating tags are forbidden) ② the conclusion of each of the five checks (①~⑤, one line each) ③ the raw machine-check output and exit code (0 / 1 / 2 pasted verbatim) ④ the three-value verdict + the restrictions ⑤ the re-review due date (admission date + 90 days, a specific date) ⑥ rejected items → register in the rejected-options ledger (the ledger's landing point follows the write-back obligation table of the project constitution): date / proposal / reason for rejection ⑦ conditional admission → write "what change would escalate it to a rejection" (e.g. a new network domain, a need for credentials, being unable to pin the version).
 
 **Action 6: post-installation review** (do it immediately after installing or upgrading, do not wait for next time):
 ```powershell
-$src = Join-Path $env:TEMP 'third-party-skill'
-powershell -NoProfile -File security.ps1 -SkillDir $src
-"复核退出码 = $LASTEXITCODE"
+$src = Join-Path $env:TEMP 'third-party-skill'; powershell -NoProfile -File security.ps1 -SkillDir $src; "复核退出码 = $LASTEXITCODE"
 ```
 - Re-run the machine check and confirm that it **did not gain any permission beyond its declared scope**: new directory reads, new network domains, new hooks, checked item by item against the declared scope from action 3.
-- ❌ Counter-example: running a hello world once after installing and calling the review done.
-- ✅ Good example: re-run for 0, then list "declared scope vs actual permissions" item by item, and uninstall immediately if there is one extra.
+- ❌ Counter-example: running a hello world once after installing and calling the review done; ✅ Good example: re-run for 0, then list "declared scope vs actual permissions" item by item, and uninstall immediately if there is one extra.
 - Excess privilege found → uninstall immediately + write back to `风险摘要` (risk summary) in STATE.md.
 
 **Prohibitions (violating any one of them = this round's output is void):**

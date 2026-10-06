@@ -33,64 +33,44 @@ After receiving the start instruction, first receipt:
 ```powershell
 Select-String -Path <files this task touched> -Pattern 'ceiling:|upgrade:|no-trigger'
 ```
-Expected: the last line reads `<N> markers, <M> with no trigger.` (N/M are real numbers), copied into the receipt verbatim together with the disposition counts (registered TD x / into open questions y / closed this batch z).
-  Each hit must either land in `docs/TECH_DEBT.md` this batch or be written into the `open questions` field of STATE.md; **`no-trigger` (the ones with no upgrade trigger written) come first** — a concession without a trigger never resurfaces on its own and is the first to rot silently. Copy the script's final `<N> markers, <M> with no trigger.` line into the receipt + the disposition counts (registered TD x / into open questions y / closed this batch z).
+Expected: the last line reads `<N> markers, <M> with no trigger.` (N/M are real numbers); each hit must either land in `docs/TECH_DEBT.md` this batch or be written into the `open questions` field of STATE.md, and the disposition counts (registered TD x / into open questions y / closed this batch z) go into the receipt verbatim together with that last line — **`no-trigger` (the ones with no upgrade trigger written) come first**: a concession without a trigger never resurfaces on its own and is the first to rot silently.
   ❌ Counter-example: at archive time just say "there are some TODOs in the code" without a count or an account (next round nobody can find them) ｜ ✅ Good example: `7 markers, 3 with no trigger.` → all 3 no-trigger ones registered as TD-021~023, the other 4 into STATE.md open questions.
 
 **4. Version record**: append one line to the "unreleased" section at the top of the root `CHANGELOG.md` (one of the four kinds: added / changed / deprecated / fixed; one line per item).
 
 **5. Standing-document staleness and over-limit check (run item by item; update anything over the limit or inconsistent)**:
 ```powershell
-$budget = @{ 'AGENTS.md' = 240; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100 }
-foreach ($f in $budget.Keys) { "$f = $([IO.File]::ReadAllLines($f, [Text.Encoding]::UTF8).Count) lines (limit $($budget[$f]))" }
-Select-String -Path README.md -Pattern 'powershell'
+$budget = @{ 'AGENTS.md' = 240; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100 }; foreach ($f in $budget.Keys) { "$f = $([IO.File]::ReadAllLines($f, [Text.Encoding]::UTF8).Count) lines (limit $($budget[$f]))" }; Select-String -Path README.md -Pattern 'powershell'
 ```
 Expected: one `<file> = <actual line count> lines (limit <limit>)` line per budgeted file first, then the `powershell` hits in README.md.
    - AGENTS.md has stale rules → delete them (hard limit 240 lines: before adding one, first ask "which real rework did this rule prevent?")
    - Run every README startup/check/test command for real; anything that does not run = fix it on the spot
-   - Does docs/ARCHITECTURE.md's module diagram match the real directories in `git ls-files`?
-   - Do docs/RUNBOOK.md's deploy/rollback/backup steps match this change?
+   - Does docs/ARCHITECTURE.md's module diagram match the real directories in `git ls-files`?; do docs/RUNBOOK.md's deploy/rollback/backup steps match this change?
 
 **6. Anti-bloat execution (act as soon as a limit is exceeded; do not let it pile up)**:
 ```powershell
-@(Get-ChildItem docs/lessons -Filter *.md).Count
-@(Get-ChildItem docs/decisions -Filter *.md).Count
-@(Get-ChildItem docs/specs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) }).Name
+@(Get-ChildItem docs/lessons -Filter *.md).Count; @(Get-ChildItem docs/decisions -Filter *.md).Count; @(Get-ChildItem docs/specs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) }).Name
 ```
 Expected: three numbers — the lessons count, the decisions count, and the names of specs directories untouched for over 30 days (empty when there are none).
    - lessons/ and decisions/ each over 30 cards → move the oldest with no references for 90 days into `docs/archive/`
    - **The 6 seed lesson cards do not take part in this 30-card ranking elimination** (seeds are only proposed for promotion by the 6-6 card when they recur across projects)
    - Task directories under specs/ untouched for over 30 days → prompt the user to archive them
 
-**7. Workspace cleanup (archive with git mv; directory naming is uniformly `<日期>_<slug>`)**:
+**7. Workspace cleanup (archive with git mv; directory naming is uniformly `<日期>_<slug>`; `$slug` comes from the same source as this task's directory under docs/specs)**:
 ```powershell
-$date = Get-Date -Format 'yyyy-MM-dd'
-$slug = 'export-limit'                     # same source as this task's directory under docs/specs
-$src  = "docs/specs/${date}_$slug"
-$dest = "docs/archive/${date}_$slug"
-git mv $src $dest
-$rows    = Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-' | ForEach-Object { $_.Line }
-$open    = @($rows | Where-Object { $_ -match '\|\s*open\s*\|' }).Count
-$carried = @($rows | Where-Object { $_ -match '\|\s*carried\s*\|' }).Count
-$closed  = @($rows | Where-Object { $_ -match '\|\s*closed\s*\|' }).Count
-$keyItem = ($rows | Where-Object { $_ -match '\|\s*open\s*\|' } | Select-Object -First 1)
-Set-Content -Path "$dest/tech-debt.md" -Encoding UTF8 -Value @("# 债务快照 $date", "open $open ｜ carried $carried ｜ closed $closed", "关键项：$keyItem")
+$date = Get-Date -Format 'yyyy-MM-dd'; $slug = 'export-limit'; $src = "docs/specs/${date}_$slug"; $dest = "docs/archive/${date}_$slug"; git mv $src $dest; $rows = Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-' | ForEach-Object { $_.Line }; $open = @($rows | Where-Object { $_ -match '\|\s*open\s*\|' }).Count; $carried = @($rows | Where-Object { $_ -match '\|\s*carried\s*\|' }).Count; $closed = @($rows | Where-Object { $_ -match '\|\s*closed\s*\|' }).Count; $keyItem = ($rows | Where-Object { $_ -match '\|\s*open\s*\|' } | Select-Object -First 1); Set-Content -Path "$dest/tech-debt.md" -Encoding UTF8 -Value @("# 债务快照 $date", "open $open ｜ carried $carried ｜ closed $closed", "关键项：$keyItem")
 ```
 The directory-name date format = `YYYY-MM-DD` (`$date` is exactly the output of `Get-Date -Format 'yyyy-MM-dd'`, e.g. `2026-10-03`) and it **comes from the same source as the specs directory created by 2-1**: the same `$date` serves as the date in `docs/specs/<date>_<slug>` and in `docs/archive/<date>_<slug>`, and the two must not use different formats (a date is always hyphenated; the 8-digit compact form must not appear).
 
-Expected: `$dest/tech-debt.md` has 3 lines (title / `open x ｜ carried y ｜ closed z` / the key item); the three counts come from the `状态` column of TECH_DEBT.md via the command above.
-The debt snapshot is written to `$dest/tech-debt.md` (3 lines: title / the three counts / the key item). The counts **must be derived by the command above from the `状态` column of `docs/TECH_DEBT.md`** (assign `$open`/`$carried`/`$closed`/`$keyItem` before writing the file; referencing an unassigned variable silently writes empty numbers, which is no measurement at all). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
-   - ❌ Counter-example: writing `docs/archive/2026-10-03/` (no slug; two tasks on the same day overwrite each other)
-   - ✅ Good example: `docs/archive/2026-10-03_export-limit/` (date + slug, unique and searchable)
+Expected: `$dest/tech-debt.md` has 3 lines (title / `open x ｜ carried y ｜ closed z` / the key item); the counts **must be derived by the command above from the `状态` column of `docs/TECH_DEBT.md`** (assign `$open`/`$carried`/`$closed`/`$keyItem` before writing the file; referencing an unassigned variable silently writes empty numbers, which is no measurement at all). Without a git environment, use Move-Item and note the "history-chain cost" in the receipt.
+   - ❌ Counter-example: writing `docs/archive/2026-10-03/` (no slug; two tasks on the same day overwrite each other) ｜ ✅ Good example: `docs/archive/2026-10-03_export-limit/` (date + slug, unique and searchable)
 
 **8. The five orphan lists (file level / zero-reference exports / doc phantoms / reverse phantoms / unregistered; git is the basis, run scripts rather than relying on memory)**:
 
 ```powershell
-powershell -NoProfile -File orphans.ps1
-"git ls-files = $(@(git ls-files).Count) lines"
+powershell -NoProfile -File orphans.ps1; "git ls-files = $(@(git ls-files).Count) lines"
 ```
-Expected: orphans.ps1's summary line (the five class counts) is pasteable verbatim; the second line prints `git ls-files = <N> lines` and is only a reference count.
-(The second line is only a reference count; the measurement standard is orphans.ps1's summary line, and **the summary line is pasted into the receipt verbatim**.)
+Expected: orphans.ps1's summary line (the five class counts) is pasteable verbatim; the second line prints `git ls-files = <N> lines` and is only a reference count — the measurement standard is orphans.ps1's summary line, and **the summary line is pasted into the receipt verbatim**.
 
    - a. `[孤儿]` file level: files in `git ls-files` with zero references (their file name cannot be found in any .md/.ps1/.json/source file, and they are not in the entry list)
    - b. `[零引用导出]` code level: exports/functions/classes with zero references — with zero dependencies use text search first; once there are dependencies bring in knip / vulture / tsc --noUnusedLocals. **Report only, do not block; observe for two rounds before promoting it to a gate**
@@ -99,9 +79,7 @@ Expected: orphans.ps1's summary line (the five class counts) is pasteable verbat
    - e. `[未登记]`: files not in `docs/registry/COMPONENTS.md`
 
 **Handling rules (every orphan must land in one of the three classes below; "do nothing" is not allowed):**
-   - Delete — what can be safely deleted this time goes with this archive commit
-   - Register as tech debt — write it into `docs/TECH_DEBT.md`
-   - Add the registration in COMPONENTS.md
+   - Delete — what can be safely deleted this time goes with this archive commit; register as tech debt — write it into `docs/TECH_DEBT.md`; add the registration in COMPONENTS.md
    - ❌ Counter-example: a pile of orphans is scanned out and the receipt says "acknowledged, handled next round" (= nothing was done)
    - ✅ Good example: every item has an owner, and the receipt gives the counts "deleted x / registered as TD x / registered x", and asserts **the sum of the five class counts ≥ the number of deduplicated files** (the five classes are not deduplicated against each other, so one file can fall into several at once; the three handling counts are compared only against the deduplicated item count, never forced to equal the five-class sum)
 
@@ -109,15 +87,12 @@ Expected: orphans.ps1's summary line (the five class counts) is pasteable verbat
 
 **10. Remote-sync readiness check (numbered separately; the receipt matches it number by number)**:
 ```powershell
-$branch = git rev-parse --abbrev-ref HEAD
-git remote -v
-git check-ignore -v .env
+$branch = git rev-parse --abbrev-ref HEAD; git remote -v; git check-ignore -v .env
 ```
 Expected: the current branch name + the remote list (empty when there is no remote) + the ignore-rule hit line for `.env` (output present = correctly ignored).
    - With a remote → push at close-out `git push origin HEAD` (to pin the upstream, `git push -u origin $branch`); without a remote → record one line "local-only"
    - A rejected `git push` = the remote has moved ahead (someone else pushed): **stop and report to the user** and check `git log --oneline origin/$branch..HEAD`; **`--force` is forbidden** ("rejected, so force it" is wrong); a force push requires an explicit request from the user
-   - **Reverse secret check**: `.env` / `*.key` / `*.pem` must be **ignored** (`git check-ignore -v` producing output = correct; an ignored file can never appear in porcelain); if `git status --porcelain` does list one of them = it is not ignored, **stop and report a red light**; committing and pushing are forbidden
-   - **Pre-push git history secret check (mandatory for the first push; `git status --porcelain` only shows the working tree and cannot see secrets already committed into history)**: `git log --all --oneline -- .env` must produce **no output** (output = `.env` was committed into history, the secret already exists in that history, and **pushing is irreversible** — stop and report to the user); `git check-ignore -v .env` must produce **output** (`.env` is already in .gitignore, and an ignored file can never enter a commit). Only when both pass is `git push` allowed.
+   - **Reverse secret check + pre-push git history secret check (mandatory for the first push; `git status --porcelain` only shows the working tree and cannot see secrets already committed into history)**: `.env` / `*.key` / `*.pem` must be **ignored** and `git check-ignore -v .env` must produce **output** (`.env` is already in .gitignore, so an ignored file can never enter a commit nor appear in porcelain); `git log --all --oneline -- .env` must produce **no output** (output = `.env` was committed into history, the secret already exists in that history, and **pushing is irreversible** — stop and report to the user); if `git status --porcelain` does list one of them = it is not ignored, **stop and report a red light**, and committing and pushing are forbidden. Only when both pass is `git push` allowed.
    - Two consecutive archive cycles without a push = 6-6 card signal 10 (push lag)
 
 **11. Security-gate final check (the archive counts as complete only on exit code 0)**:
@@ -130,11 +105,8 @@ powershell -NoProfile -File security.ps1
 **Close-out order (this section performs no commit or push; it only declares the numbering so that §③ can reference it number by number)**:
 1. Write back STATE.md (`最近完成` / `体检计数` / `未来 3 步` / `最近归档` / `当前文件数`; field semantics in §④) + the write-back of the affected rows in the three registry tables: `COMPONENTS.md` add 文件·搜索词·影响面·最近确认 (fill in the archive date), `APIS.md` add 错误码·说明, `DATA_DICT.md` add 校验·敏感度
 2. Commit: `git add $dest STATE.md docs/TECH_DEBT.md` (add the other files changed this time one by one: `docs/lessons/…`, `CHANGELOG.md`, etc.) → `git commit -m "5-1 docs(archive): archive ${date}_$slug"`
-3. Re-run `powershell -NoProfile -File check.ps1` and take exit code 0
-4. Remote sync: `git push origin HEAD` (record "local-only" when there is no remote)
-5. Print the §③ receipt
-   - ❌ Counter-example: `git commit` first, then change STATE.md (the state changes again after the commit, the close-out tree is necessarily dirty, and check.ps1 judges a dirty tree)
-   - ✅ Good example: write back STATE.md → the same commit as the archive output → re-run check.ps1 for 0 → `git status --porcelain` is empty
+3. Re-run `powershell -NoProfile -File check.ps1` and take exit code 0; 4. Remote sync: `git push origin HEAD` (record "local-only" when there is no remote); 5. Print the §③ receipt
+   - ❌ Counter-example: `git commit` first, then change STATE.md (the state changes again after the commit, the close-out tree is necessarily dirty, and check.ps1 judges a dirty tree) ｜ ✅ Good example: write back STATE.md → the same commit as the archive output → re-run check.ps1 for 0 → `git status --porcelain` is empty
 
 **Prohibitions:**
 - Ticking an item you have not verified is forbidden (every check needs a real action or a basis for "confirmed none")
@@ -159,12 +131,10 @@ Give, item by item:
 **The order iron rule: write back state first → then commit → then re-run check.ps1 for a 0 → push last. State changes must land in the same commit; "commit first and change STATE afterwards" is forbidden.**
 
 Update STATE.md:
-- `最近完成` insert one entry at the top (rolling, keep 5): date + a one-line task summary + commit
-- `体检计数` +1 (create it as 1 if the field does not exist; **cumulative ≥15 → `下一步` = 6-6 process audit**)
+- `最近完成` insert one entry at the top (rolling, keep 5): date + a one-line task summary + commit; `体检计数` +1 (create it as 1 if the field does not exist; **cumulative ≥15 → `下一步` = 6-6 process audit**)
 - `未来 3 步` rolled as needed (the roadmap)
 - `最近归档` insert one entry at the top (rolling, keep 2; one line with **6 fields**: date / slug / commit hash / start anchor / current file count / push result — write "已 push origin HEAD" or "本地-only" as the push result; create the field if it does not exist) — the 6-6 card's signals 8, 9, 10 read only these 2 entries
-- `起点锚点` **kept unchanged** (= the commit at this task's start; the archive does not clear it — the 6-6 card relies on it to judge commit cadence; a new task overwrites it in ① start confirmation, and the old value is already on record in the `最近归档` line above, so nothing is lost)
-- `文件数基线` **kept unchanged** (set only once at onboarding / the first batch; the archive does not reset it, otherwise the budget mechanism idles)
+- `起点锚点` **kept unchanged** (= the commit at this task's start; the archive does not clear it — the 6-6 card relies on it to judge commit cadence; a new task overwrites it in ① start confirmation, and the old value is already on record in the `最近归档` line above, so nothing is lost); `文件数基线` **kept unchanged** (set only once at onboarding / the first batch; the archive does not reset it, otherwise the budget mechanism idles)
 - `当前任务` cleared; `工作树状态` = clean
 - `下一步` = awaiting a new intent (the driver card 9 guides the user on a vague intent); if the health-check count triggers, the 6-6 card governs [disambiguated]
 

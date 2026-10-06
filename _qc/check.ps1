@@ -174,12 +174,13 @@ foreach ($c in $cards) {
         if ($txt -notmatch [regex]::Escape('等待你裁决。回复"继续"执行下一张卡，或说新指令。')) { $badTail += $c }
     }
 }
-$badEn = @(); $badRefEn = @(); $enTail = [regex]::Escape('Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.')
+$badEn = @(); $badRefEn = @(); $longEn = @(); $enTail = [regex]::Escape('Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.')
 foreach ($c in $cards) {
     $no = [regex]::Match($c, '^(\d+-\d+)-').Groups[1].Value
     $ep = Join-Path $pen $enMap[$no]
     if (-not (Test-Path $ep)) { continue }
     $el = [System.IO.File]::ReadAllLines($ep, [Text.Encoding]::UTF8)
+    if ($el.Count -gt 150) { $longEn += "$($enMap[$no])($($el.Count))" }
     $etxt = [IO.File]::ReadAllText($ep, [Text.Encoding]::UTF8)
     if ($el[0] -notmatch ('^# Card ' + [regex]::Escape($no) + ' ·')) { $badEn += "$no H1" }
     if ($no -eq '0-1') {
@@ -302,7 +303,11 @@ Check (-not $subDrift) "子包 version 跟随伞包 $rootVer（不一致：$($su
 $rfZh = [IO.File]::ReadAllText((Join-Path $root 'template\AGENTS.md'), [Text.Encoding]::UTF8)
 $rfEn = [IO.File]::ReadAllText((Join-Path $root 'design\glossary-en.md'), [Text.Encoding]::UTF8)
 Check (($rfZh -match [regex]::Escape('| 你会想 | 事实 |')) -and ($rfEn -match [regex]::Escape('| You may think | Reality |'))) '规则唯一正文与英文口径都有合理化红旗表表头（中英同批；落点 2026-10-05 由 0-1 卡搬到 AGENTS.md D3）'
-Observe ($longCards.Count -eq 0) "本轮观测项（不拦红）：卡 ≤150 行，超限 $($longCards.Count) 张 $($longCards -join ', ')"
+# ≤150 行：2026-10-03 按用户裁决降级为观测项（"先完整后续再进行精简"），2026-10-06 全库无损压行
+# 达标后**恢复硬断言**（design §17.7）。中文卡与英文镜像**同一上限、两个循环都量**——原先只量中文卡，
+# 英文侧无人管，而 §8 第 5 条写的是"每张卡"（口径缺口由本轮补上）。压行的合法手法只有换行与连接符，
+# 判据一条不许删：`design/playbook-contract.md` §2 的"加一层给指针"是超限的唯一结构出口。
+Check (($longCards.Count + $longEn.Count) -eq 0) "每张卡 ≤150 行（中文 + 英文镜像同限；超限：$(@($longCards + $longEn) -join ', ')）"
 $extra = @(Get-ChildItem $pb -Filter *.md | Where-Object { $cards -notcontains $_.BaseName })
 Check ($extra.Count -eq 0) "playbook/ 无未注册卡（多出：$($extra.BaseName -join ', ')）"
 $extraEn = @(Get-ChildItem $pen -Filter *.md | Where-Object { $enFiles -notcontains $_.Name })

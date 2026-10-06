@@ -6,25 +6,17 @@
 
 ## ① Start confirmation
 
-After receiving the start instruction, first receipt the following five items before touching anything (do not start with an item missing):
+After receiving the start instruction, first receipt the following four items before touching anything (do not start with an item missing); and declare this card's output = `docs/specs/<date>_<slug>/USABILITY.md`, next card = 5-1 Archive.
 
 1. **Task restatement**: one plain sentence — "who is doing it, from what starting point, which few things they do, and how I tell whether they got it".
 2. **Assumptions list**: write "I assume X; if that is wrong then Y is void" item by item (e.g. I assume the tester has never seen this UI; if that is wrong then task 1 detects nothing). Anything findable in SCOPE.md or UI.md must not be written as an assumption.
 3. **Clarifying questions (≤5, delete what you can)**: ask only the hard information that decides the task design — what does he have in hand when he first opens it? why is he using it (what is his own goal)? is there a scenario that must not fail? can the screen be recorded? by when is a conclusion needed?
-4. **This card's checklist verbatim (restate these twelve items word for word at start, tick them one by one before finishing)**:
-   - [ ] ① The boundary against `4-3 Verification` is written down: 4-3 answers "does the feature run" (command exit code), this card answers "can a human keep using it" (behaviour observation); **evidence from the two sides must not stand in for each other**
-   - [ ] ② 3–5 tasks designed, each with all four parts: **one-sentence scenario + starting state + success criterion + stop condition**
-   - [ ] ③ At least one task is the "first time using it" cold-start path (from zero, no teaching first)
-   - [ ] ④ ≥1 participant, and **not the person writing the code**; in single-person mode with no second person, take the `冷启动自测` ("cold-start self-test") branch and declare it explicitly (see Action 3)
-   - [ ] ⑤ The observation table records six columns per task, row by row: completed/abandoned, time taken, help-request count, the exact place they stalled, **verbatim quotes**, my guesses
-   - [ ] ⑥ Record **behaviour and verbatim quotes** only, never opinion questions like "do you think it is easy to use" (an answer to an opinion question does not count as evidence)
-   - [ ] ⑦ Grade every problem: **阻断** (blocker: cannot finish) / **摩擦** (friction: slow, or wrong once) / **皮痛** (paper cut: complained, but completion was unaffected)
-   - [ ] ⑧ Every problem lands on one of three dispositions: fix / register as tech debt / explicit acceptance with a written reason — **a non-landing state such as "to be watched" is forbidden**
-   - [ ] ⑨ The conclusion gives at least one **actionable change** (naming which file or which control changes), or writes "no change this round + reason"
-   - [ ] ⑩ Unmet items must stay in the document; deleting them because they were fixed later is forbidden (deletion = erasing this round's conclusion)
-   - [ ] ⑪ Landing point `docs/specs/<date>_<slug>/USABILITY.md`, and STATE.md `下一步` set to 5-1 Archive
-   - [ ] ⑫ Run the Action 8 self-check command, exit code 0
-5. **Landing declaration**: output = `docs/specs/<date>_<slug>/USABILITY.md`; next card = 5-1 Archive.
+4. **This card's checklist verbatim (restate these five items word for word at start, tick them one by one before finishing; each item's full criterion lives in the matching §② action)**:
+   - [ ] ① The boundary against `4-3 Verification` is written down: 4-3 answers "does the feature run" (command exit code), this card answers "can a human keep using it" (behaviour observation); **evidence from the two sides must not stand in for each other** (4-3's green cannot serve as this card's evidence, and this card's observations cannot overturn 4-3's red; only when both are green does pre-delivery pass) — see Action 1
+   - [ ] ② 3–5 tasks designed, each with all four parts: **one-sentence scenario + starting state + success criterion + stop condition**; at least one task is the "first time using it" cold-start path (from zero, no teaching first) — see Action 2
+   - [ ] ③ ≥1 participant, and **not the person writing the code**; in single-person mode with no second person, take the `冷启动自测` ("cold-start self-test") branch and declare it explicitly (see Action 3); the observation table records six columns per task, row by row: completed/abandoned, time taken, help-request count, the exact place they stalled, **verbatim quotes**, my guesses — and records **behaviour and verbatim quotes** only, never opinion questions like "do you think it is easy to use" (an answer to an opinion question does not count as evidence) — see Action 4
+   - [ ] ④ Grade every problem: **阻断** (blocker: cannot finish) / **摩擦** (friction: slow, or wrong once) / **皮痛** (paper cut: complained, but completion was unaffected), and land each on one of three dispositions: fix / register as tech debt / explicit acceptance with a written reason — **a non-landing state such as "to be watched" is forbidden** — see Action 5
+   - [ ] ⑤ The conclusion gives at least one **actionable change** (naming which file or which control changes), or writes "no change this round + reason"; unmet items must stay in the document and deleting them because they were fixed later is forbidden (deletion = erasing this round's conclusion); landing point `docs/specs/<date>_<slug>/USABILITY.md`, and STATE.md `下一步` set to 5-1 Archive; run the Action 8 self-check command, exit code 0
 
 ---
 
@@ -47,8 +39,6 @@ After receiving the start instruction, first receipt the following five items be
 | The question it asks | is the feature correct, does the command exit 0 | can a human finish it on their own |
 | Evidence form | command output, assertions, coverage | behaviour records, verbatim quotes, where they stalled |
 | What failure looks like | red | the human stands still, clicks repeatedly, gives up |
-
-One sentence: **4-3's green cannot serve as this card's evidence, and this card's observations cannot overturn 4-3's red**. Only when both are green does pre-delivery pass.
 
 **Action 2: task design (3–5 tasks, with all four parts written out)**
 
@@ -107,22 +97,9 @@ How to write the disposition: `问题 → 级别 → 改哪个文件/控件 或 
 | What it exposes is a missing feature | go back to `2-1 Feature research` to open it as a project |
 | What it exposes is an accessibility problem (keyboard traps, insufficient contrast) | take `7-6 Internationalization and accessibility` |
 
-**Action 8: usability-verification self-check (run it at the project root; non-developers only read the exit code: exit 1 = this card is not done)**
-Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
+**Action 8: usability-verification self-check (run it at the project root; non-developers only read the exit code: exit 1 = this card is not done)** Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
 ```powershell
-$m = 'docs/specs'
-$f = @(Get-ChildItem $m -Recurse -Filter 'USABILITY.md' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
-if ($f.Count -eq 0) { Write-Host '[FAIL] 找不到 USABILITY.md'; exit 1 }
-$p = $f[0].FullName
-$l = @(Get-Content $p -Encoding UTF8)
-$txt = $l -join "`n"
-$task = @($l | Where-Object { $_ -match '^\|\s*T[0-9]' }).Count
-$lvl  = @('阻断','摩擦','皮痛') | Where-Object { $txt -match $_ }
-$act  = @($l | Where-Object { $_ -match '改哪个|登记到|接受（理由' }).Count
-$cold = @($l | Where-Object { $_ -match '冷启动' }).Count
-"USABILITY.md $p 行数 $($l.Count)"
-"任务行 $task（要求 3-5）；级别命中 $($lvl.Count)/3；处置行 $act（要求 ≥1）；冷启动命中 $cold（要求 ≥1）"
-if ($task -lt 3 -or $task -gt 5 -or $lvl.Count -lt 3 -or $act -lt 1 -or $cold -lt 1) { Write-Host '[FAIL] 本卡自查未过'; exit 1 } else { Write-Host '[OK] 本卡自查通过' }
+$m = 'docs/specs'; $f = @(Get-ChildItem $m -Recurse -Filter 'USABILITY.md' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending); if ($f.Count -eq 0) { Write-Host '[FAIL] 找不到 USABILITY.md'; exit 1 }; $p = $f[0].FullName; $l = @(Get-Content $p -Encoding UTF8); $txt = $l -join "`n"; $task = @($l | Where-Object { $_ -match '^\|\s*T[0-9]' }).Count; $lvl = @('阻断','摩擦','皮痛') | Where-Object { $txt -match $_ }; $act = @($l | Where-Object { $_ -match '改哪个|登记到|接受（理由' }).Count; $cold = @($l | Where-Object { $_ -match '冷启动' }).Count; "USABILITY.md $p 行数 $($l.Count)"; "任务行 $task（要求 3-5）；级别命中 $($lvl.Count)/3；处置行 $act（要求 ≥1）；冷启动命中 $cold（要求 ≥1）"; if ($task -lt 3 -or $task -gt 5 -or $lvl.Count -lt 3 -or $act -lt 1 -or $cold -lt 1) { Write-Host '[FAIL] 本卡自查未过'; exit 1 } else { Write-Host '[OK] 本卡自查通过' }
 ```
 
 **Prohibitions (any violation = this round's output is void):**
@@ -158,10 +135,7 @@ if ($task -lt 3 -or $task -gt 5 -or $lvl.Count -lt 3 -or $act -lt 1 -or $cold -l
 - `裁剪记录` = when no second participant can be found, write "单人档走冷启动自测，已声明" ("single-person mode runs the cold-start self-test, and it has been declared"); `下一步` = 5-1 Archive
 
 ```powershell
-$m = 'docs/specs/<日期>_<slug>/USABILITY.md'
-git add STATE.md $m
-git commit -m "4-6 docs(usability): 任务观测与处置"
-powershell -NoProfile -File check.ps1
+$m = 'docs/specs/<日期>_<slug>/USABILITY.md'; git add STATE.md $m; git commit -m "4-6 docs(usability): 任务观测与处置"; powershell -NoProfile -File check.ps1
 ```
 The exit code must be 0; if non-0 → stop and ask the user; declaring this card done is forbidden.
 

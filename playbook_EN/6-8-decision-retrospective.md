@@ -6,26 +6,17 @@
 
 ## ① Start confirmation
 
-After receiving the start order, echo these five items before touching anything (do not start with an item missing):
+After receiving the start order, echo these four items before touching anything (do not start with an item missing); and declare this card's output = `docs/decisions/REVIEW_<date>.md`, next card = 6-6 Process audit (when there is a process-level signal) or back to 2-1 Feature research (when there is something to change).
 
 1. **Task restatement**: one plain sentence — which past decisions to dig up, what counts as today's reality, and what conclusion counts as done.
 2. **Assumption list**: one line each, "I assume X; if wrong, Y breaks" (e.g. I assume the decision card recorded the original reasoning; if wrong, this card writes the reasoning first and retrospects afterwards).
 3. **Clarifying questions (≤5, delete what you can)**: ask only the hard facts that fix the retrospective's scope — which period of decisions does this round cover? Whose review dates have arrived? Is anything already visibly broken and needing immediate action?
-4. **This card's checklist, quoted verbatim at start and ticked before finishing (thirteen items)**:
-   - [ ] ① The boundary with `6-5 Retrospective` is written out: 6-5 opens only **after something went wrong** and checks the **process**; this card **opens even when nothing went wrong** and checks **decision quality**
-   - [ ] ② **Inventory**: list every decision card in this period (including the rejected-options ledger), each marked "already reviewed ｜ reviewed this round ｜ skipped + reason"
-   - [ ] ③ Every decision **quotes the reasoning and assumptions written at the time, word for word**; retelling them from today's impression is forbidden
-   - [ ] ④ Every decision gets **one of the four verdicts**: Holds / **Right by luck** / Broken but costless / Broken and already paid for
-   - [ ] ⑤ For every **"Right by luck"**, write out **where the reasoning was wrong** (right conclusion, wrong inference = copying it next time is guaranteed to hit the pit)
-   - [ ] ⑥ Every "broken" item lands one of three: fix it / register it as tech debt / explicitly accept it with a written reason
-   - [ ] ⑦ Conclusions must **land on a specific file** (lesson card / constitution diff / card change / to-do entry), otherwise this card is not done
-   - [ ] ⑧ Produce at least one **change the next round can execute** (verb + object plus landing point); if there is none, write "no change needed this round + reason"
-   - [ ] ⑨ Review-date backfill: for every decision card reviewed this round, write the next review date back into the card
-   - [ ] ⑩ Landing point `docs/decisions/REVIEW_<date>.md`, and STATE.md `下一步` [disambiguated: next step] set to 6-6 or back to 2-1
-   - [ ] ⑪ Run the Action 7 self-check command, exit code 0
-   - [ ] ⑫ Open questions (the trade-offs the user has not settled) go into STATE.md, one line each
-   - [ ] ⑬ Read-only: this round **must not** change product code in passing (to change it, go through 2-1 Feature research)
-5. **Landing declaration**: output = `docs/decisions/REVIEW_<date>.md`; next card = 6-6 Process audit (when there is a process-level signal) or back to 2-1 Feature research (when there is something to change).
+4. **This card's checklist, quoted verbatim at start and ticked before finishing (five items; each item's full criterion lives in the matching §② action)**:
+   - [ ] ① The boundary with `6-5 Retrospective` is written out: 6-5 opens only **after something went wrong** and checks the **process**; this card **opens even when nothing went wrong** and checks **decision quality** — see Action 1
+   - [ ] ② **Inventory**: list every decision card in this period (including the rejected-options ledger), each marked "already reviewed ｜ reviewed this round ｜ skipped + reason"; every decision **quotes the reasoning and assumptions written at the time, word for word**; retelling them from today's impression is forbidden — see Actions 2–3
+   - [ ] ③ Every decision gets **one of the four verdicts**: Holds / **Right by luck** / Broken but costless / Broken and already paid for; for every **"Right by luck"**, write out **where the reasoning was wrong** (right conclusion, wrong inference = copying it next time is guaranteed to hit the pit); every "broken" item lands one of three: fix it / register it as tech debt / explicitly accept it with a written reason — see Action 4
+   - [ ] ④ Conclusions must **land on a specific file** (lesson card / constitution diff / card change / to-do entry), otherwise this card is not done; produce at least one **change the next round can execute** (verb + object plus landing point), or write "no change needed this round + reason"; review-date backfill: for every decision card reviewed this round, write the next review date back into the card — see Actions 5–6
+   - [ ] ⑤ Landing point `docs/decisions/REVIEW_<date>.md`, and STATE.md `下一步` [disambiguated: next step] set to 6-6 or back to 2-1; open questions (the trade-offs the user has not settled) go into STATE.md, one line each; run the Action 7 self-check command, exit code 0; **read-only: this round must not change product code in passing** (to change it, go through 2-1 Feature research)
 
 ---
 
@@ -55,9 +46,7 @@ After receiving the start order, echo these five items before touching anything 
 **Action 2: Inventory (list everything first, then pick the important ones)**
 
 ```powershell
-Get-ChildItem docs/decisions -Filter '*.md' -File | Sort-Object Name |
-  Select-Object Name, LastWriteTime, @{ n = '复核日'; e = { if ((Get-Content $_.FullName -Raw -Encoding UTF8) -match '复核[:：]\s*(\d{4}-\d{2}-\d{2})') { $Matches[1] } else { '未登记' } } } |
-  Format-Table -AutoSize
+Get-ChildItem docs/decisions -Filter '*.md' -File | Sort-Object Name | Select-Object Name, LastWriteTime, @{ n = '复核日'; e = { if ((Get-Content $_.FullName -Raw -Encoding UTF8) -match '复核[:：]\s*(\d{4}-\d{2}-\d{2})') { $Matches[1] } else { '未登记' } } } | Format-Table -AutoSize
 ```
 
 The inventory table has three columns: **decision card / status (already reviewed ｜ reviewed this round ｜ skipped + reason) / due date**. A skip must state its reason — "no time" is not a reason; write clearly why digging into this one now means nothing.
@@ -106,20 +95,9 @@ Write each change as one line: `action → which file it lands on → who reads 
 - How the due date is chosen: high-risk decisions (red-line domain, one-off and irreversible, spending money) ≤1 month; ordinary decisions ≤3 months; frozen decisions get "no further review (reason)"
 - After backfilling, run the Action 2 inventory command once more and confirm nothing is left as "未登记" ("unregistered")
 
-**Action 7: A runnable decision-retrospective self-check (run from the project root; non-developers only need the exit code: exit 1 = this card is not done)**
-Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
+**Action 7: A runnable decision-retrospective self-check (run from the project root; non-developers only need the exit code: exit 1 = this card is not done)** Variable names are ASCII only: when Windows PowerShell 5.1 reads a BOM-less .ps1, a Chinese variable name fails with 『字符串缺少终止符』 (missing string terminator); save scripts as UTF-8 with a BOM.
 ```powershell
-$f = @(Get-ChildItem docs/decisions -Filter 'REVIEW_*.md' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
-if ($f.Count -eq 0) { Write-Host '[FAIL] 找不到 REVIEW_<日期>.md'; exit 1 }
-$l = @(Get-Content $f[0].FullName -Encoding UTF8)
-$txt = $l -join "`n"
-$four = @('成立','侥幸成立','不成立' ) | Where-Object { $txt -match $_ }
-$rows = @($l | Where-Object { $_ -match '^\|' -and $_ -match 'DEC-|决策' }).Count
-$land = @($l | Where-Object { $_ -match 'docs/lessons/|AGENTS\.md|TECH_DEBT\.md|STATE\.md' }).Count
-$lucky= @($l | Where-Object { $_ -match '侥幸成立' }).Count
-"复核记录 $($f[0].Name) 行数 $($l.Count)（要求 ≤120）"
-"四值命中 $($four.Count)/3；决策行 $rows（要求 ≥1）；落点行 $land（要求 ≥1）；侥幸成立命中 $lucky（要求 ≥1）"
-if ($l.Count -gt 120 -or $four.Count -lt 3 -or $rows -lt 1 -or $land -lt 1 -or $lucky -lt 1) { Write-Host '[FAIL] 本卡自查未过'; exit 1 } else { Write-Host '[OK] 本卡自查通过' }
+$f = @(Get-ChildItem docs/decisions -Filter 'REVIEW_*.md' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending); if ($f.Count -eq 0) { Write-Host '[FAIL] 找不到 REVIEW_<日期>.md'; exit 1 }; $l = @(Get-Content $f[0].FullName -Encoding UTF8); $txt = $l -join "`n"; $four = @('成立','侥幸成立','不成立' ) | Where-Object { $txt -match $_ }; $rows = @($l | Where-Object { $_ -match '^\|' -and $_ -match 'DEC-|决策' }).Count; $land = @($l | Where-Object { $_ -match 'docs/lessons/|AGENTS\.md|TECH_DEBT\.md|STATE\.md' }).Count; $lucky = @($l | Where-Object { $_ -match '侥幸成立' }).Count; "复核记录 $($f[0].Name) 行数 $($l.Count)（要求 ≤120）"; "四值命中 $($four.Count)/3；决策行 $rows（要求 ≥1）；落点行 $land（要求 ≥1）；侥幸成立命中 $lucky（要求 ≥1）"; if ($l.Count -gt 120 -or $four.Count -lt 3 -or $rows -lt 1 -or $land -lt 1 -or $lucky -lt 1) { Write-Host '[FAIL] 本卡自查未过'; exit 1 } else { Write-Host '[OK] 本卡自查通过' }
 ```
 
 **Prohibitions (any violation voids this round's output):**
@@ -158,10 +136,7 @@ Only three kinds of proof count: real command output / file paths / commit hash;
 - `裁剪记录` [disambiguated: trimming log] = single-person mode: skip the decision review meeting, write one line of reason; `下一步` [disambiguated: next step] = 6-6 Process audit or back to 2-1 Feature research
 
 ```powershell
-$m = 'docs/decisions/REVIEW_<日期>.md'
-git add STATE.md docs/decisions docs/lessons TECH_DEBT.md $m
-git commit -m "6-8 docs(decision): 决策复核与侥幸成立专项"
-powershell -NoProfile -File check.ps1
+$m = 'docs/decisions/REVIEW_<日期>.md'; git add STATE.md docs/decisions docs/lessons TECH_DEBT.md $m; git commit -m "6-8 docs(decision): 决策复核与侥幸成立专项"; powershell -NoProfile -File check.ps1
 ```
 The exit code must be 0; if non-0, stop and ask the user — never declare this card done.
 

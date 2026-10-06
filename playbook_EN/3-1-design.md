@@ -10,9 +10,7 @@ After receiving the start instruction, first receipt the following four items be
 
 1. **Restate the task**: which tables / interfaces / components this design involves (extracted from the SCOPE Must list, listed one by one).
 2. **Upstream references + assumptions list**: SCOPE path + one sentence on the confirmed approach from RESEARCH; list the default assumptions one by one (e.g. "single database, single table, no concurrent writes").
-3. **Clarifying questions (≤5)**: if the answer is findable in SCOPE / registry, asking a human is forbidden.
-   ❌ Counter-example: "Which fields should we add?" (it is in SCOPE)
-   ✅ Good example: "Should the bill amount be stored as two decimal places or as integer cents?"
+3. **Clarifying questions (≤5)**: if the answer is findable in SCOPE / registry, asking a human is forbidden. ❌ Counter-example: "Which fields should we add?" (it is in SCOPE) ｜ ✅ Good example: "Should the bill amount be stored as two decimal places or as integer cents?"
 4. **Paste the reference checklist verbatim** (paste this card's §② "four design evidence items" word for word).
 
 Also declare: SQL / migrations are always executed by a human (non-delegable); the agent only produces files and commands; the design passes only when the user approves it.
@@ -30,35 +28,15 @@ Also declare: SQL / migrations are always executed by a human (non-delegable); t
 | These are "industry best practices", no source needed | Unsourced quantification and "best practices" are anti-AI-slop signatures; criteria must land on this project's tables / fields / paths / commands |
 
 **Action 0: design plan up front (write it before touching anything, ≤10 lines; opening DESIGN.md without it = this card has not started)**
-
 ① One-sentence goal ② The objects to nail down this time (one line each for tables / interfaces / components, pointing back to the SCOPE items) ③ Trade-offs and criteria (each one says "choose A not B, because …"; the criterion must be testable) ④ Explicitly not doing (the verbatim Won't Have text) ⑤ The six-axis pre-shipment self-assessment must be run (see Action 9)
 ❌ Counter-example: opening DESIGN.md directly and starting from the first table ｜ ✅ Good example: paste the 10-line plan first, then fill it in section by section
 
 **The DESIGN.md nine-section skeleton (fill it in this order; missing any one section = the design does not pass)**
-```text
-1 Goal and non-goals (including the verbatim Won't Have text)
-2 Data dictionary diff (table | field | type | validation | sensitivity)
-3 Interface contract (path | method | purpose | error code | authentication + minimal JSON)
-4 Component impact (page | interface element | plain-language identifier | file | impact surface)
-5 The three-part migration set (the paths of up / down / seed)
-6 Destructiveness classification (L1 / L2 / L3 + basis)
-7 Rework vs rewrite (change surface % + justification)
-8 Decision record (written only when all three requirements hold at the same time)
-9 Rejected options (one line of rejection reason each)
-```
+1 Goal and non-goals (including the verbatim Won't Have text) ｜ 2 Data dictionary diff (table | field | type | validation | sensitivity) ｜ 3 Interface contract (path | method | purpose | error code | authentication + minimal JSON) ｜ 4 Component impact (page | interface element | plain-language identifier | file | impact surface) ｜ 5 The three-part migration set (the paths of up / down / seed) ｜ 6 Destructiveness classification (L1 / L2 / L3 + basis) ｜ 7 Rework vs rewrite (change surface % + justification) ｜ 8 Decision record (written only when all three requirements hold at the same time) ｜ 9 Rejected options (one line of rejection reason each)
 
 **Action 1: data design → the "data dictionary diff" section of DESIGN.md (line by line)**
-Format: `table | field | type | validation | sensitivity`. Mark sensitivity with the table below; a wrong mark leaks encryption and masking:
-
-| Tier | Definition | Example |
-| :-- | :-- | :-- |
-| D1 | Public data; leakage causes no real harm | product name, public settings |
-| D2 | Internal data; leakage is uncomfortable but does no harm | note content, usage records |
-| D3 | Personal information; can identify a person | name, email, phone number |
-| D4 | Confidential; leakage causes major damage | password, token, payment, ID number |
-
-❌ Counter-example: marking the email column of the user table as D1 (wrong — it is D3, logs and exports must be masked)
-✅ Good example: `user | email | varchar(255) | format validation | D3`
+Format: `table | field | type | validation | sensitivity`; mark sensitivity with the table below (Tier | Definition | Example), a wrong mark leaks encryption and masking — D1 Public data; leakage causes no real harm (product name, public settings) ｜ D2 Internal data; leakage is uncomfortable but does no harm (note content, usage records) ｜ D3 Personal information; can identify a person (name, email, phone number) ｜ D4 Confidential; leakage causes major damage (password, token, payment, ID number).
+❌ Counter-example: marking the email column of the user table as D1 (wrong — it is D3, logs and exports must be masked) ｜ ✅ Good example: `user | email | varchar(255) | format validation | D3`
 
 **Action 2: interface design → the "interface contract" section of DESIGN.md (line by line)**
 Format: `path | method | purpose | error code | authentication`, with one pair of minimal JSON request/response examples per line (≤4 lines). New error codes are declared inline; for placeholder interfaces that are not implemented this cycle but whose contract comes first, the response is written as 503 + **9xxx = unimplemented placeholder**, the line must be marked `planned`, and the error code must be registered in the error-code column of `docs/registry/APIS.md` (unregistered = the design does not pass).
@@ -67,92 +45,43 @@ Format: `path | method | purpose | error code | authentication`, with one pair o
 Line by line: `page | interface element | plain-language identifier | file | impact surface`. Use the plain-language identifier column of docs/registry/COMPONENTS.md to locate things; mark elements you cannot find as "row to be created". For new pages, write the route mount point.
 
 **Action 4: the three-part migration set (when table structures are involved)**
-Landing path `migrations/<YYYYMMDD>_<slug>_up.sql / _down.sql / _seed.sql` (framework projects use the corresponding migration files, same naming rule).
-- **up**: forward table creation / field change.
-- **down**: hand-write an exact reverse rollback (a framework's autogenerated downgrade is unreliable); it must be able to restore the state before up.
-  ❌ Counter-example: the down script only writes `DROP TABLE users;` (it destroys the table's pre-existing data along with it)
-  ✅ Good example: the down for a column change backs up the old column data first and then restores it; the down for a dropped object deletes only the objects that up created
-- **seed**: fake data for development (things like `张三 test@example.com`), must be idempotent (repeated execution does not error); real personal information is forbidden.
+Landing path `migrations/<YYYYMMDD>_<slug>_up.sql / _down.sql / _seed.sql` (framework projects use the corresponding migration files, same naming rule). **up** forward table creation / field change ｜ **down** hand-write an exact reverse rollback (a framework's autogenerated downgrade is unreliable); it must be able to restore the state before up — ❌ Counter-example: the down script only writes `DROP TABLE users;` (it destroys the table's pre-existing data along with it) ｜ ✅ Good example: the down for a column change backs up the old column data first and then restores it; the down for a dropped object deletes only the objects that up created ｜ **seed** fake data for development (things like `张三 test@example.com`), must be idempotent (repeated execution does not error); real personal information is forbidden.
 
 **down must be verified by a human-run local dry run (when table structures are involved; no table structure → write N/A as item 4 of the ③ evidence receipt, and write the basis in `裁剪记录` under `## ④ State write-back`. The agent provides exactly three precise commands):**
-```powershell
-# The human executes them in order; the agent replaces $up/$down with the real commands for the actual stack before delivering:
-# 1) powershell -NoProfile -File check.ps1
-# 2) $up   = 'psql -d app -f migrations/20260912_bills_up.sql'
-# 3) $down = 'psql -d app -f migrations/20260912_bills_down.sql'
-```
-After down finishes, run one table-query command (given by the agent) and paste the output back; matching the pre-migration state = the ④-th evidence item holds.
+The human executes them in order; the agent replaces `$up`/`$down` with the real commands for the actual stack before delivering: ① `powershell -NoProfile -File check.ps1` ② `$up = 'psql -d app -f migrations/20260912_bills_up.sql'` ③ `$down = 'psql -d app -f migrations/20260912_bills_down.sql'`. After down finishes, run one table-query command (given by the agent) and paste the output back; matching the pre-migration state = the ④-th evidence item holds.
 
 **Action 5: destructiveness classification (judge before acting; 🔴 is a red card)**
-🟢 L1 pure addition (new table / nullable column / new index) → just do it.
-🟡 L2 change type / add NOT NULL / rename / backfill → requires a backup plan + a rollback-capable down.
-🔴 L3 drop table or column / split or merge tables / change primary-foreign key semantics → **red card: split the task**: this task only does additions and dual writes; the destructive step becomes its own separate task in its own batch.
-❌ Counter-example: one migration that both "adds a status column + drops the old state column"
-✅ Good example: task A adds the status column and dual-writes; task B (a separate batch) drops the state column after the switch is confirmed
+🟢 L1 pure addition (new table / nullable column / new index) → just do it ｜ 🟡 L2 change type / add NOT NULL / rename / backfill → requires a backup plan + a rollback-capable down ｜ 🔴 L3 drop table or column / split or merge tables / change primary-foreign key semantics → **red card: split the task**: this task only does additions and dual writes; the destructive step becomes its own separate task in its own batch.
+❌ Counter-example: one migration that both "adds a status column + drops the old state column" ｜ ✅ Good example: task A adds the status column and dual-writes; task B (a separate batch) drops the state column after the switch is confirmed
 
 **Action 6: rework vs rewrite (compute the change surface first, then act)**
-Change surface = lines that this task needs to change ÷ the target file's current line count. Criteria (inlined; relaxing them on the spot is forbidden):
-- < 40% → **in-place change** (the default path; no extra justification needed).
-- **≥ 40% → a written justification plus user confirmation is always required** (both in-place change and rewrite must write it; a receipt missing the justification or the confirmation = the design does not pass).
-- \> 60% and the old logic has no reuse value → only then is a rewrite allowed, and both conditions must hold at the same time.
-
-When "rewrite" is chosen, the design section must deliver two things (missing one = the design does not pass):
-1. **Equivalence evidence plan**: pick one of three and write the concrete command — ① all old tests green (paste the test command) ② snapshot comparison (paste the generation + comparison commands) ③ a manual test checklist for the critical path (write the operation and expected result for each item).
-2. **Old-implementation retirement plan**: write in which batch the old implementation is deleted, the deletion condition (must be decidable), and whether parallel-state registration is needed — there are only three legitimate retention reasons: progressive delivery / rollback with a deadline, an external compatibility contract with a deprecation period, and evidence retention (the answer for evidence retention is git history; the working tree must not keep a second copy).
-
-❌ Counter-example: create a fresh `xxx_v2.ts` and implement it again, leaving the old file around "for later"
-✅ Good example: in-place rework + delete the old implementation in the same batch + paste the deletion evidence in the receipt (the deleted lines in `git diff --stat`)
+Change surface = lines that this task needs to change ÷ the target file's current line count. Criteria (inlined; relaxing them on the spot is forbidden): < 40% → **in-place change** (the default path; no extra justification needed) ｜ **≥ 40% → a written justification plus user confirmation is always required** (both in-place change and rewrite must write it; a receipt missing the justification or the confirmation = the design does not pass) ｜ \> 60% and the old logic has no reuse value → only then is a rewrite allowed, and both conditions must hold at the same time.
+When "rewrite" is chosen, the design section must deliver two things (missing one = the design does not pass): 1. **Equivalence evidence plan**: pick one of three and write the concrete command — ① all old tests green (paste the test command) ② snapshot comparison (paste the generation + comparison commands) ③ a manual test checklist for the critical path (write the operation and expected result for each item). 2. **Old-implementation retirement plan**: write in which batch the old implementation is deleted, the deletion condition (must be decidable), and whether parallel-state registration is needed — there are only three legitimate retention reasons: progressive delivery / rollback with a deadline, an external compatibility contract with a deprecation period, and evidence retention (the answer for evidence retention is git history; the working tree must not keep a second copy).
+❌ Counter-example: create a fresh `xxx_v2.ts` and implement it again, leaving the old file around "for later" ｜ ✅ Good example: in-place rework + delete the old implementation in the same batch + paste the deletion evidence in the receipt (the deleted lines in `git diff --stat`)
 
 **Action 7: the three requirements for a decision record (all three must hold to write it into `docs/decisions/`)**
 Write one only when it is **hard to reverse** AND **surprising** AND a **real trade-off**, all three at the same time; if any one is missing, do not write it — writing it is pure noise and drowns the records that really need re-reading.
-❌ Counter-example: "turn the log level from info up to debug" (reversible at any time, the result is not surprising, no trade-off → do not write it)
-✅ Good example: "store the order amount as integer cents" (reverting means touching the migration and the historical data = hard to reverse; the team assumed two decimal places = surprising; there is a precision-versus-compatibility trade-off = a real trade-off → write one)
+❌ Counter-example: "turn the log level from info up to debug" (reversible at any time, the result is not surprising, no trade-off → do not write it) ｜ ✅ Good example: "store the order amount as integer cents" (reverting means touching the migration and the historical data = hard to reverse; the team assumed two decimal places = surprising; there is a precision-versus-compatibility trade-off = a real trade-off → write one)
 
 **Action 8: Rejected options (DESIGN.md must have this section)**
 Write one line per rejected option saying "why it was not chosen", so a later re-review reads it first; when the same option is re-reviewed, paste that line verbatim before discussing it — not pasting it = re-deciding from scratch, and last time's judgment was wasted.
-❌ Counter-example: after rejecting "add a message queue", write nothing at all → the next person raises it again and the whole discussion restarts
-✅ Good example: `Rejected options: message queue —— reason for rejection: single-machine deployment this cycle, operational cost > benefit (2026-09-12)`
+❌ Counter-example: after rejecting "add a message queue", write nothing at all → the next person raises it again and the whole discussion restarts ｜ ✅ Good example: `Rejected options: message queue —— reason for rejection: single-machine deployment this cycle, operational cost > benefit (2026-09-12)`
 
 **Action 9: the six-axis pre-shipment self-assessment (each axis 1~5 points; any axis <3 triggers a revision round. At most 3 rounds; still <3 in round 3 = the plan itself is wrong, go back and ask the user)**
-
-| Axis | Ask yourself | What a 5 looks like |
-| :-- | :-- | :-- |
-| Groundedness | Can every criterion point to a concrete table / field / path / command? | Every criterion lands on this project's own objects; no "best practices" |
-| Reversibility | If something goes wrong, can it be rolled back? | Every destructive action has a down script or a dual-write plan |
-| Minimum surface | Was anything that could stay unchanged changed? | Change surface < 40%, and the "what you deliberately did not touch" list is included |
-| Testability | Can the criterion be judged red? | Every criterion comes with a runnable command or an observable phenomenon |
-| Consistency | Is it consistent with the registry / ARCHITECTURE? | The three diffs match the registry three-piece set line by line |
-| Room to evolve | Can 4-1 work from this design alone, without making further design decisions? | 4-1 does not need to come back and change the design |
-
+(Axis | Ask yourself | What a 5 looks like) Groundedness: can every criterion point to a concrete table / field / path / command? → every criterion lands on this project's own objects; no "best practices" ｜ Reversibility: if something goes wrong, can it be rolled back? → every destructive action has a down script or a dual-write plan ｜ Minimum surface: was anything that could stay unchanged changed? → change surface < 40%, and the "what you deliberately did not touch" list is included ｜ Testability: can the criterion be judged red? → every criterion comes with a runnable command or an observable phenomenon ｜ Consistency: is it consistent with the registry / ARCHITECTURE? → the three diffs match the registry three-piece set line by line ｜ Room to evolve: can 4-1 work from this design alone, without making further design decisions? → 4-1 does not need to come back and change the design.
 Write the self-assessment scores and the revision rounds verbatim into item 9 of the ③ receipt.
 
 **Action 10: design-document self-check (run it at the project root; exit 1 = this card is not finished)**
-Variable names are always ASCII: when Windows PowerShell 5.1 reads a .ps1 without a BOM, a Chinese variable name reports "The string is missing the terminator".
+Variable names are always ASCII: when Windows PowerShell 5.1 reads a .ps1 without a BOM, a Chinese variable name reports "The string is missing the terminator". Replace `$d` with the real DESIGN.md path, then run:
 ```powershell
-$d = 'docs/specs/20260912_export/DESIGN.md'   # replace with the real path
-$l = @(Get-Content $d -Encoding UTF8)
-$sec = @('目标与非目标','数据字典','接口契约','组件影响','迁移三件套','破坏性分级','改造 vs 重写','决策记录','被否方案')
-$miss = @($sec | Where-Object { -not ($l -match [regex]::Escape($_)) })
-$bad = @($l | Where-Object { $_ -match '待定|TBD|最佳实践' })
-"DESIGN.md lines $($l.Count); missing sections $($miss.Count) (must be 0); anti-AI-slop lines $($bad.Count) (must be 0)"
-if ($miss.Count -gt 0 -or $bad.Count -gt 0) { Write-Host '[FAIL] design-document self-check failed'; exit 1 } else { Write-Host '[OK] design-document self-check passed' }
+$d = 'docs/specs/20260912_export/DESIGN.md'; $l = @(Get-Content $d -Encoding UTF8); $sec = @('目标与非目标','数据字典','接口契约','组件影响','迁移三件套','破坏性分级','改造 vs 重写','决策记录','被否方案'); $miss = @($sec | Where-Object { -not ($l -match [regex]::Escape($_)) }); $bad = @($l | Where-Object { $_ -match '待定|TBD|最佳实践' }); "DESIGN.md lines $($l.Count); missing sections $($miss.Count) (must be 0); anti-AI-slop lines $($bad.Count) (must be 0)"; if ($miss.Count -gt 0 -or $bad.Count -gt 0) { Write-Host '[FAIL] design-document self-check failed'; exit 1 } else { Write-Host '[OK] design-document self-check passed' }
 ```
 
 **The four design evidence items (missing one = the design does not pass):**
-
-```text
-① Every line of the DATA_DICT diff is marked with sensitivity D1~D4
-② Every line of APIS contains an error-code column and an authentication column
-③ The component impact list is enumerated (including "row to be created" markers)
-④ down passed a human-run local dry run and the output was pasted back (no table structure → write N/A as item 4 of the ③ evidence receipt, and write the basis in `裁剪记录` under `## ④ State write-back`)
-```
+① Every line of the DATA_DICT diff is marked with sensitivity D1~D4 ｜ ② Every line of APIS contains an error-code column and an authentication column ｜ ③ The component impact list is enumerated (including "row to be created" markers) ｜ ④ down passed a human-run local dry run and the output was pasted back (no table structure → write N/A as item 4 of the ③ evidence receipt, and write the basis in `裁剪记录` under `## ④ State write-back`)
 
 **The five anti-AI-slop signature red lines (any one of them appearing in the design document = the design does not pass):**
-- Unsourced quantified claims ("10x performance improvement", "industry best practice")
-- Placeholder content passed off as design (`待定`, `TBD`, fake person or brand names, fake data outside the seed section)
-- Decorative phrasing (`赋能` ("empower"), `闭环` ("closed loop"), `一站式` ("one-stop")) replacing testable criteria
-- "Do everything" with no trade-off (quietly moving Won't Have items back into Must)
-- Copying another project's structure without explaining why it suits this project
+① Unsourced quantified claims ("10x performance improvement", "industry best practice") ｜ ② Placeholder content passed off as design (`待定`, `TBD`, fake person or brand names, fake data outside the seed section) ｜ ③ Decorative phrasing (`赋能` ("empower"), `闭环` ("closed loop"), `一站式` ("one-stop")) replacing testable criteria ｜ ④ "Do everything" with no trade-off (quietly moving Won't Have items back into Must) ｜ ⑤ Copying another project's structure without explaining why it suits this project
 
 **Prohibitions:**
 - Writing only up and not down is forbidden
@@ -188,13 +117,8 @@ Update STATE.md:
 - `下一步` = 4-1 batch coding [disambiguated]
 - `未决问题` = the trade-off conclusions for L2/L3 (list them if any)
 
-After the write-back, close out with the fixed three steps (write back → commit → re-run check.ps1):
-```powershell
-$spec = 'docs/specs/20260912_export'   # this task's directory; assign it before calling
-git add STATE.md $spec migrations      # for projects without table structures, drop migrations
-git commit -m "3-1 docs(design): add export design"
-powershell -NoProfile -File check.ps1
-```
+After the write-back, close out with the fixed three steps (write back → commit → re-run check.ps1; assign `$spec` before calling it; for projects without table structures, drop migrations):
+`$spec = 'docs/specs/20260912_export'; git add STATE.md $spec migrations; git commit -m "3-1 docs(design): add export design"; powershell -NoProfile -File check.ps1`
 `git status --porcelain` empty + check.ps1 exit code 0 = close-out complete.
 
 Fixed closing line:

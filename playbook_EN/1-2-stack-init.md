@@ -43,11 +43,7 @@ After summarizing the scoring table, give a **recommended stack + one-line basis
 ```powershell
 $master = 'D:/path/to/roadbook'   # ← must be changed to the real absolute path of the master folder on this machine (keep the single quotes when the path contains spaces/Chinese); the agent first asks the user where the master lives — copying this line verbatim is forbidden
 $dest = 'C:/code/myapp'           # target project root; created when absent, and when present only the missing files are filled in (no existing file is overwritten)
-$src = "$master/template"
-New-Item -ItemType Directory -Force $dest | Out-Null
-Get-ChildItem $src -Recurse -Force | ForEach-Object { $t = Join-Path $dest $_.FullName.Substring($src.Length + 1); if (-not (Test-Path $t)) { Copy-Item $_.FullName $t -Recurse -Force } }
-Set-Location $dest
-Get-ChildItem -Force
+$src = "$master/template"; New-Item -ItemType Directory -Force $dest | Out-Null; Get-ChildItem $src -Recurse -Force | ForEach-Object { $t = Join-Path $dest $_.FullName.Substring($src.Length + 1); if (-not (Test-Path $t)) { Copy-Item $_.FullName $t -Recurse -Force } }; Set-Location $dest; Get-ChildItem -Force
 ```
 `Get-ChildItem -Force` — check item by item that .gitignore/.tool-versions/.env.example are all there. **Any file already present under `$dest` is left untouched** (this protects in particular the `docs/pool/IDEAS.md` built by 1-1 and any file the user has written); an existing `docs/` from 1-1 does not conflict with this fill-in-the-missing merge, and telling the user to delete the directory is forbidden.
 If an existing file is older than the template version and you want to upgrade it, you must compare it by hand item by item first; **overwriting a whole directory with `-Force` is forbidden**. Then replace the placeholders file by file:
@@ -65,11 +61,8 @@ If an existing file is older than the template version and you want to upgrade i
 | any .ps1 (especially check.ps1) | after editing you must verify the byte header `head -c 3 check.ps1 \| od -An -tx1` = `ef bb bf`; if it is gone, restore it with `printf '\xef\xbb\xbf' > t && cat check.ps1 >> t && mv t check.ps1` — PS 5.1 reports "字符串缺少终止符" ("string is missing the terminator") when it reads a script without BOM |
 **Action 4: fill check.ps1's STEPS with a one-line zero-dependency placeholder check first** (this card fills the placeholder; card 4-1 swaps in the real commands)
 ```powershell
-$STEPS = @('git status --porcelain','powershell -NoProfile -File security.ps1')   # zero-dependency placeholder: it exists only so 1-2 can wrap up; any project runs it through
-# once card 4-1 lands its first batch of files this must become this project's real build/test commands (card 4-1 owns that); an empty array = "done" can never hold
-# the security.ps1 entry is **never swapped out**: the security gate (secrets / dangerous execution chains / dependencies and CI) enters the DoD from the very first commit
-# Node/TS: @('pnpm typecheck','pnpm lint','pnpm test')   Python: @('python -m mypy .','python -m pytest -q')
-# faking the check with always-true commands (exit 0, Write-Host) is forbidden — they stay green forever, i.e. the gate is welded shut
+$STEPS = @('git status --porcelain','powershell -NoProfile -File security.ps1')   # zero-dependency placeholder: it exists only so 1-2 can wrap up; any project runs it through; once card 4-1 lands its first batch of files this must become this project's real build/test commands (card 4-1 owns that); an empty array = "done" can never hold
+# the security.ps1 entry is **never swapped out**: the security gate (secrets / dangerous execution chains / dependencies and CI) enters the DoD from the very first commit; Node/TS: @('pnpm typecheck','pnpm lint','pnpm test')   Python: @('python -m mypy .','python -m pytest -q'); faking the check with always-true commands (exit 0, Write-Host) is forbidden — they stay green forever, i.e. the gate is welded shut
 ```
 **Action 5: doctor self-check (green-light proof one)**: run `powershell -NoProfile -File doctor.ps1`.
 `$REQUIRED` is deprecated: doctor.ps1 reads `.tool-versions` and compares item by item (missing file / non-UTF-8 / placeholder / version mismatch are all red lights). Only exit code 0 counts as passing; if a tool is missing, install it first and never skip. When it reports a version mismatch, **prefer changing `.tool-versions` to the version actually installed on this machine** (unless the project hard-requires a version); do not go reinstalling Node.
@@ -77,23 +70,15 @@ $STEPS = @('git status --porcelain','powershell -NoProfile -File security.ps1') 
 ```powershell
 pnpm install          # or pip install -r requirements.txt (by stack)
 git init
-$initFiles = @(
-  'README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','.env.example','.gitignore','.gitattributes',
-  'check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','docs'
-  # append the stack files the selection generates (package.json / lockfile / requirements.txt / src / tests, etc.) to the line above one by one — no untracked file may fall outside this list
-)
+$initFiles = @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','.env.example','.gitignore','.gitattributes','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','docs')   # append the stack files the selection generates (package.json / lockfile / requirements.txt / src / tests, etc.) to this line one by one — no untracked file may fall outside this list
 git add $initFiles
 $n = (git ls-files).Count    # write into STATE.md's "file-count baseline" and "current file count" (the baseline is written only this once)
-git commit -m "1-2 chore(init): init project from V6 template"
-$anchor = git rev-parse HEAD
+git commit -m "1-2 chore(init): init project from V6 template"; $anchor = git rev-parse HEAD
 ```
 The list = every managed file at the root (including gate.ps1, orphans.ps1, security.ps1, CHANGELOG.md, .gitattributes); after committing, `git status --porcelain` must be empty (non-empty = some file was never added to the repo; no untracked file may fall outside the list, and when `pnpm install` has generated a lockfile, the lockfile must be committed along with it). Record `$anchor` as the first entry of STATE.md "recently completed".
 **Action 7: first run of check / gate / orphans / security (guardrail green)**
 ```powershell
-powershell -NoProfile -File check.ps1
-powershell -NoProfile -File gate.ps1 -Anchor HEAD -ScopeFiles "README.md,AGENTS.md,STATE.md,CHANGELOG.md,.tool-versions,.env.example,.gitignore,.gitattributes,check.ps1,doctor.ps1,gate.ps1,orphans.ps1,security.ps1,docs/" -RepoRoot .
-powershell -NoProfile -File orphans.ps1
-powershell -NoProfile -File security.ps1
+powershell -NoProfile -File check.ps1; powershell -NoProfile -File gate.ps1 -Anchor HEAD -ScopeFiles "README.md,AGENTS.md,STATE.md,CHANGELOG.md,.tool-versions,.env.example,.gitignore,.gitattributes,check.ps1,doctor.ps1,gate.ps1,orphans.ps1,security.ps1,docs/" -RepoRoot .; powershell -NoProfile -File orphans.ps1; powershell -NoProfile -File security.ps1
 ```
 This card's hard gate = doctor.ps1 exit code 0 + all four commands above returning 0 (**they must return 0 even while STEPS holds the placeholder**; at this moment gate can only be green or amber: `-Anchor HEAD` draws an empty list, amber but still exit 0). **It must run after `git init` and after the baseline is written**: check.ps1 goes red when there is no git or the baseline is 0, so running it before `git init` (the old version) = guaranteed failure. "Skip it for now and run it later" is forbidden; four non-zero codes = the guard scripts are misinstalled — fix them before continuing.
 **Action 8: remote repository (choose one of the three; private/public is the human's verdict)**
@@ -148,9 +133,7 @@ Update the project-root STATE.md:
 
 After writing back, wrap up with the fixed three steps (write back → commit → re-run check.ps1):
 ```powershell
-git add STATE.md
-git commit -m "1-2 chore(state): record init result"
-powershell -NoProfile -File check.ps1
+git add STATE.md; git commit -m "1-2 chore(state): record init result"; powershell -NoProfile -File check.ps1
 ```
 `git status --porcelain` empty + check.ps1 exit code 0 = wrap-up complete.
 
