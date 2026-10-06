@@ -16,13 +16,12 @@
 - 体检计数：0（5-1 归档卡每跑一次 +1；累计 ≥15 → 执行 6-6-流程体检）
 - 风险摘要：无
 - 文件数基线：348（2026-10-06 接入提交 1d17762 之后取样一次，之后永不改动——重置基线 = 掩盖膨胀）
-- 当前文件数：350（4-1 卡每批收尾更新；膨胀判定 = 当前 − 基线 > 20 → check.ps1 判红）
+- 当前文件数：351（4-1 卡每批收尾更新；膨胀判定 = 当前 − 基线 > 20 → check.ps1 判红）
 
 ## 下一步
-**执行哪张卡：** 2-6 外部方案调研（开工确认五项已裁决）—— 开工前先定下面第 1 条的网络口径
+**执行哪张卡：** 2-6 外部方案调研 —— 五查的 ② 活跃度 / ③ LICENSE 原文走 `git clone --depth 1`（SSH 通道）；**`web_fetch` 取 github.com 会被本机 hosts 挡**（`github.com` → 127.0.0.1），见 `docs/lessons/2026-10-06_GitHub被hosts屏蔽.md`；包元数据走 `https://registry.npmjs.org/<包名>`
 
 ## 未决问题（等用户裁决）：
-- **2-6 卡的网络口径**：五查的 ② 活跃度 / ③ LICENSE 原文要打开 GitHub 仓库页，而本机 `web_fetch` 到 `github.com` 解析失败（`git ls-remote` 通、HTTP fetch 不通）⇒ 按 Q3 裁决「先修网络再跑；修不了记 `UNVERIFIED`」，**"修不修"先定**，否则 2-6 一开工就写满 UNVERIFIED
 - .gitignore / .gitattributes 与 template 的差集是否全量对齐（本轮只补了 4-1、4-5 卡机械检查的 4 条）
 - orphans `[未登记]` 77 项是否本轮清偿（1-3 卡动作 5.5 明确禁止"把登记表建全"，已登记 TD-001 待裁决）
 - **远端已推**（用户 2026-10-06 裁决「推」）：origin/main + tag `v0.9.1` 落地回执见「最近完成」
@@ -33,6 +32,7 @@
 | （空） | — | — | — | — | — |
 
 ## 最近完成（滚动保留 5 条）
+- 2026-10-06 · 仪器定位：本机 `hosts` 把 `github.com` 整片映射 `127.0.0.1` ⇒ `web_fetch` 被私网护栏拒（护栏正确），`git` 因 SSH 改走 `ssh.github.com:443` 照通；2-6 的 ②③ 改走 `git clone --depth 1` 取真数据 · 落 `docs/lessons/2026-10-06_GitHub被hosts屏蔽.md`
 - 2026-10-06 · 5-6 版本发布：**v0.9.1**（修订号）——`template/security.ps1` 自身跳过口径修复**随包分发**；详情文件 `docs/versions/v0.9.1.md`（三对齐第二项补齐，历史缺口登记 TD-007）；`_qc/check.ps1` 359 通过 / 0 失败；tag `v0.9.1`（注解式）已推 origin
 - 2026-10-06 · 6-3 修复：`security.ps1` 跳过口径扩到「逐字节副本」→ `_qc/check.ps1` **359 通过 / 0 失败、退出码 0** · commit 1efb31e
 - 2026-10-06 · 6-3 修复：恢复被编辑工具丢弃的 `check.ps1` UTF-8 BOM（PS 5.1 按 GBK 解码 → ParserError）· commit 14f2036
