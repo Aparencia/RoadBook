@@ -1,5 +1,6 @@
 # Card 7-4 · Feature decommission
 > Trigger: a feature reaches end of life, or the user says "decommission / delete X" ｜ Output: deletion commit + decommission record (registry row / CHANGELOG deprecation line / the decommission line in `docs/versions/<版本>.md`) ｜ Next: 5-1 Archive
+> Process area: OPS
 
 ---
 

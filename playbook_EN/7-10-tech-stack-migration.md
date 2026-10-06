@@ -1,5 +1,6 @@
 # Card 7-10 · Tech stack migration
 > Trigger: swapping language / framework / storage / runtime / hosting platform (the implementation substrate is replaced wholesale; internal behavior and data shape may change) ｜ Output: docs/decisions/STACK_<date>_<topic>.md + batched switch commits (one rollback point per batch) ｜ Next: 4-2 Self-check and guardrails (per batch) / 5-1 Archive (wrap-up)
+> Process area: OPS, REL
 
 ---
 

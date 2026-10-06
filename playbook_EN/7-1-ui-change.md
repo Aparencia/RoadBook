@@ -1,5 +1,6 @@
 # Card 7-1 · UI change
 > Trigger: changing interface elements (button / text / style / layout) ｜ Output: code + registry write-back ｜ Next: 5-1 Archive (tier S: visual inspection + check is enough, 4-3 simplified)
+> Process area: DES, IMP
 
 ---
 

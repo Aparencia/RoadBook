@@ -1,5 +1,6 @@
 # Card 7-8 · Refactoring (behavior unchanged, implementation swapped)
 > Trigger: duplicated code everywhere / god class / circular dependency / a performance fix that requires swapping the implementation (**switching language, framework, storage, runtime or hosting platform → go to 7-10 Tech stack migration, not this card**) ｜ Output: docs/refactor/REFACTOR_<date>_<slug>.md + batched commits (one rollback point per batch) ｜ Next: 4-2 Code review (end of each batch) / 5-1 Archive (final wrap-up)
+> Process area: OPS, IMP
 
 ---
 

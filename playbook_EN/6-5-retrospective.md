@@ -1,5 +1,6 @@
 # Card 6-5 · Retrospective
 > Trigger: after a P0/P1 incident or major rework (daily small pits do not trigger it; a lesson card is enough) ｜ Output: retrospective document + preventive measures landed ｜ Next: 5-1 Archive
+> Process area: KNOW, QA
 
 ---
 

@@ -1,5 +1,6 @@
 # Card 0-2 · Session lifecycle
 > Trigger: closing a session / opening a new session / forking or dispatching a subagent / whether a long task needs goal | Output: evidence on disk + STATE.md write-back + a handover note when needed | Next: determined by STATE.md
+> Process area: AGENT, PLAN
 
 ---
 

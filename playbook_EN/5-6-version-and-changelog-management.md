@@ -1,5 +1,6 @@
 # Card 5-6 · Version and changelog management
 > Trigger: a version number must be fixed / upgrade notes must be written / an archive must append one line to the unreleased section / the tag is due | Output: the root CHANGELOG.md (the unreleased section or a formal section) + docs/versions/vX.Y.Z.md | Next: 5-2 Release (when this round deploys)
+> Process area: REL, CM
 
 ---
 

@@ -1,5 +1,6 @@
 # Card 3-1 · Design (mandatory extra pass for tier L; nail down data/interfaces/components before touching code)
 > Trigger: 2-2 requirement scope confirmed and tier = L ｜ Output: docs/specs/<date>_<slug>/DESIGN.md + the three-part migration draft ｜ Next: 3-2 threat modeling (when touching a red-line domain) → 3-3 test strategy → 4-1 batch coding [disambiguated]
+> Process area: DES, RISK
 
 ---
 

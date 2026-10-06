@@ -1,5 +1,6 @@
 # Card 4-5 · Environments and config (run additionally when a new environment is needed)
 > Trigger: a new environment (staging/prod) is needed, or a config entry is added ｜ Output: the "环境与配置" (environments and config) section of `docs/RUNBOOK.md` + `.env.example` ｜ Next: 5-2 release
+> Process area: REL, PLAN
 
 ---
 

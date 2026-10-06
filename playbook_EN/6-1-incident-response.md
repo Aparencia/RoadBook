@@ -1,5 +1,6 @@
 # Card 6-1 · Incident response (required for any production incident; stop the bleeding before root cause)
 > Trigger: production incident / user report / monitoring alert ｜ Output: docs/specs/<date>_<slug>/INCIDENT.md ｜ Next: 6-2 Root cause analysis
+> Process area: OPS
 
 ---
 

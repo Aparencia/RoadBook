@@ -1,5 +1,6 @@
 # Card 4-2 · Code review (mandatory for tiers M/L; tier S skips this card, with the 4-3 card guardrail + constitution §11 self-check as the fallback; run it in a new session independent of coding)
 > Trigger: after 4-1 is green (**tier S: after 4-1 is green go straight to 4-3 (skipping 4-2); tiers M/L: after 4-2 is green and the user gives the go-ahead, go to 4-3**) ｜ Output: docs/reviews/CODE_<date>_<slug>.md ｜ Next: 4-3 verification (on red/amber, go back to 4-1 to fix, then re-review under the "re-review scope") [disambiguated]
+> Process area: IMP, QA
 
 ---
 

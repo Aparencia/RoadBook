@@ -1,5 +1,6 @@
 # Card 1-2 · Stack init (the build card after a Go verdict; run once per project)
 > Trigger: 1-1 idea research gets the user's "Go" | Output: the project itself + docs/decisions/STACK_<日期>_<主题>.md | Next: wait for a new intent (the first feature goes through 2-1 feature research)
+> Process area: PLAN
 
 ---
 

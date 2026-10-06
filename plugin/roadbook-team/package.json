@@ -1,6 +1,6 @@
 {
   "name": "roadbook-team",
-  "version": "0.1.0",
+  "version": "0.7.2",
   "private": true,
   "description": "RoadBook 的 Team 策略行：只在官方 Agent Teams 已挂载时存在（装配层 disabled 门控），为流程提供 roadbookTeam 服务。",
   "license": "MIT",

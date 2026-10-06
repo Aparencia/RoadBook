@@ -1,5 +1,6 @@
 # Card 2-1 · Feature research (the mandatory entry point for any new feature/page/API)
 > Trigger: the driver card receives a new-feature intent | Output: docs/specs/<日期>_<slug>/RESEARCH.md | Next: 2-2 scope definition (after the user confirms the approach and tier; for tiers M/L with unclear requirements, run 2-3 requirement elicitation first)
+> Process area: REQ
 
 ---
 

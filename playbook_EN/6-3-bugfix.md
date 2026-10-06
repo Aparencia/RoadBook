@@ -1,5 +1,6 @@
 # Card 6-3 · Bugfix (required for all tiers)
 > Trigger: after the 6-2 Root cause analysis is confirmed by the user ｜ Output: fix code + commit ｜ Next: 6-4 Regression verification
+> Process area: IMP, OPS
 
 ---
 

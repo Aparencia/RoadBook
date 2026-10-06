@@ -1,5 +1,6 @@
 # Card 7-2 · Dependency upgrade
 > Trigger: a dependency needs upgrading (user request or security patch) ｜ Output: upgrade commit + compatibility conclusion ｜ Next: 5-1 Archive
+> Process area: IMP, RISK
 
 ---
 

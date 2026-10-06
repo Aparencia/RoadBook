@@ -1,5 +1,6 @@
 # Card 5-3 · Progressive delivery (run additionally for tier-L / high-risk releases)
 > Trigger: a tier-L release or a high-risk release (touching auth / payments / data deletion / external interfaces) ｜ Output: the rollout section of `docs/versions/vX.Y.Z.md` + `docs/RUNBOOK.md` ｜ Next: 5-4 observability
+> Process area: REL
 
 ---
 

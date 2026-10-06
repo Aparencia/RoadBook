@@ -1,5 +1,6 @@
 # Card 3-2 · Threat modeling (mandatory when any of the five red-line domains (authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface) is touched, and the tier rises to L)
 > Trigger: this task touches any of the five red-line domains (authentication/authorization, payment/billing, deleting real data, changing the table schema, adding an external-facing interface) ｜ Output: docs/specs/<date>_<slug>/THREAT.md ｜ Next: 3-3 Test strategy
+> Process area: RISK, DES
 
 ---
 

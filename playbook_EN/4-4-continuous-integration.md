@@ -1,5 +1,6 @@
 # Card 4-4 · Continuous integration (run additionally when CI is first set up or the gate is changed)
 > Trigger: first CI setup, or a change to check.ps1 / the workflow ｜ Output: `.github/workflows/ci.yml` (or an equivalent) + one line in `docs/RUNBOOK.md` ｜ Next: awaiting a new intent (incident → 6-1 incident response; periodic restore drill → 5-5 backup and restore drill)
+> Process area: IMP, QA
 
 ---
 

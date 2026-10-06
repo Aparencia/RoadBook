@@ -1,5 +1,6 @@
 # Card 7-3 · Debt and rot repayment (tech debt T batch / cleanup P batch)
 > Trigger: the user says "repay debt / clean up tech debt / do some cleanup", or a cleanup batch is forced after every 3–5 feature batches ｜ Output: repayment commit + ledger closed ｜ Next: 5-1 Archive
+> Process area: OPS, QA
 
 ---
 

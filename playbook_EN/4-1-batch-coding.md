@@ -1,5 +1,6 @@
 # Card 4-1 · Batch coding (mandatory for all tiers; batch-level notice + requirement-level gate)
 > Trigger: after 2-2 requirement scope is confirmed by the user (tier L goes through 3-1 design first) ｜ Output: code + per-batch commits ｜ Next: 4-2 code review (tier S: after 4-1 is green go straight to 4-3 (skipping 4-2); tiers M/L: after 4-2 is green and the user gives the go-ahead, go to 4-3) [disambiguated]
+> Process area: IMP, PLAN
 
 ---
 

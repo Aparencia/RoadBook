@@ -1,5 +1,6 @@
 # Card 3-4 · UI and Interaction Design (required before building any UI)
 > Trigger: UI work starts after scope is confirmed | Output: docs/UI.md | Next: 3-5 Color and Style
+> Process area: DES
 
 ---
 

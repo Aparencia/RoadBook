@@ -1,5 +1,6 @@
 # Card 1-3 · Onboard an existing project (for legacy code only; run once per project)
 > Trigger: the project already has code but lacks the AGENTS.md/STATE.md/docs structure | Output: constitution + STATE + docs skeleton + start anchor commit | Next: wait for a new intent
+> Process area: PLAN
 
 ---
 

@@ -1,5 +1,6 @@
 # Card 4-3 · Verification (mandatory for all tiers)
 > Trigger: after 4-1 is green (**tier S: after 4-1 is green go straight to 4-3 (skipping 4-2); tiers M/L: after 4-2 is green and the user gives the go-ahead, go to 4-3**) ｜ Output: docs/specs/<date>_<slug>/VERIFY.md ｜ Next: 5-1 archive [disambiguated]
+> Process area: VER
 
 ---
 

@@ -1,5 +1,6 @@
 # Card 6-4 · Regression verification (required for all tiers)
 > Trigger: after the 6-3 Bugfix is complete ｜ Output: docs/specs/<date>_<slug>/VERIFY.md ｜ Next: 5-1 Archive
+> Process area: VER, OPS
 
 ---
 

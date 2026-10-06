@@ -43,7 +43,7 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 730) "行数 $selfN <= 730 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；上调须同时改本行与 design §8）"
+Check ($selfN -le 790) "行数 $selfN <= 790 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -156,6 +156,54 @@ Check (-not $badRef) "中文卡无母版内部引用（问题：$($badRef -join 
 Check (-not $badTail) "每张动作卡有固定收尾语（缺：$($badTail -join ', ')）"
 Check (-not $badEn) "英文卡 H1/四段/收尾语与中文版逐段对应（问题：$($badEn -join '；')）"
 Check (-not $badRefEn) "英文卡无母版内部引用（问题：$($badRefEn -join '；')）"
+# ── 过程域覆盖（2026-10-06 增；判据 = design/playbook-contract.md §1.1 词表 + v6-design.md §18）──
+# 三层分工：**词表定义在 contract、数据在卡头第 3 行、汇总在本脚本**。这里不读任何手写矩阵——
+# 手抄一份必然与卡漂移（矩阵说有覆盖、卡里没有）。缺口的唯一合法出口是「§18 显式点名」。
+$paVocab = @('REQ','DES','ARCH','IMP','VER','REL','OPS','CM','QA','RISK','PLAN','KNOW','AGENT')
+$paContract = [IO.File]::ReadAllText((Join-Path $root 'design\playbook-contract.md'), [Text.Encoding]::UTF8)
+Check ($paContract.Contains('### 1.1 受控过程域词表')) '写作契约含 §1.1 受控过程域词表（卡头第 3 行的取值域）'
+$paDesign = [IO.File]::ReadAllText((Join-Path $root 'design\v6-design.md'), [Text.Encoding]::UTF8)
+$paAt = $paDesign.IndexOf('## 18. 过程域覆盖矩阵')
+$paSection = if ($paAt -ge 0) { $paDesign.Substring($paAt) } else { '' }
+Check ($paSection.Length -gt 0) 'design/v6-design.md 含 §18 过程域覆盖矩阵（派生视图说明 + 缺口登记）'
+$paMissing = @(); $paBad = @(); $paMismatch = @(); $paUsed = @{}
+foreach ($c in $cards) {
+    if ($c -eq '0-1-驱动卡') { continue }   # 驱动卡是常驻入口、无四段结构，与 H1/四段同款豁免
+    $no = [regex]::Match($c, '^(\d+-\d+)-').Groups[1].Value
+    $zhTags = @(); $enTags = @()
+    $p = Join-Path $pb "$c.md"
+    if (Test-Path $p) {
+        $zl = @([System.IO.File]::ReadAllLines($p, [Text.Encoding]::UTF8) | Where-Object { $_.StartsWith('> 过程域：') })
+        # '> 过程域：' = 6 个字符（> / 空格 / 过 / 程 / 域 / ：）——少算一位会把全角冒号带进取值
+        if ($zl.Count -eq 0) { $paMissing += $c } else { $zhTags = @(($zl[0].Substring(6)).Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) }
+    }
+    $ep = Join-Path $pen $enMap[$no]
+    if (Test-Path $ep) {
+        $el2 = @([System.IO.File]::ReadAllLines($ep, [Text.Encoding]::UTF8) | Where-Object { $_.StartsWith('> Process area:') })
+        if ($el2.Count -eq 0) { $paMissing += "$no EN" } else { $enTags = @(($el2[0].Substring(15)).Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) }
+    }
+    foreach ($t in $zhTags) { if ($paVocab -notcontains $t) { $paBad += "$no=$t" } else { $paUsed[$t] = $true } }
+    foreach ($t in $enTags) { if ($paVocab -notcontains $t) { $paBad += "$no EN=$t" } }
+    if (($zhTags -join ',') -ne ($enTags -join ',')) { $paMismatch += $no }
+}
+Check (-not $paMissing) "每张动作卡有过程域行（缺：$($paMissing -join ', ')）"
+Check (-not $paBad) "过程域取值在受控词表内（越界：$($paBad -join ', ')）"
+Check (-not $paMismatch) "中英同卡号过程域取值一致（不一致：$($paMismatch -join ', ')）"
+$paCovered = @($paVocab | Where-Object { $paUsed.ContainsKey($_) })
+$paDeclared = @($paVocab | Where-Object { -not $paUsed.ContainsKey($_) -and $paSection.Contains('`' + $_ + '`') })
+$paHole = @($paVocab | Where-Object { -not $paUsed.ContainsKey($_) -and -not ($paSection.Contains('`' + $_ + '`')) })
+Check (-not $paHole) "每个过程域要么有卡覆盖、要么在 §18 被显式点名（无人认领：$($paHole -join ', ')）"
+Observe "过程域覆盖：$($paCovered.Count)/$($paVocab.Count) 项有卡覆盖；待补/裁剪 $($paDeclared.Count) 项（$($paDeclared -join ', ')）"
+# ── 子包 version 跟随伞包（配置管理的第一个症状：四个子包长期停 0.1.x 而伞包已 0.7.2）──
+$rootVer = ([regex]'"version"\s*:\s*"([^"]+)"').Match([IO.File]::ReadAllText((Join-Path $root 'package.json'), [Text.Encoding]::UTF8)).Groups[1].Value
+$subDrift = @()
+foreach ($sp in @('roadbook-autoload','roadbook-atlas','roadbook-evolve','roadbook-team')) {
+    $spf = Join-Path $root "plugin\$sp\package.json"
+    if (-not (Test-Path $spf)) { continue }
+    $v = ([regex]'"version"\s*:\s*"([^"]+)"').Match([IO.File]::ReadAllText($spf, [Text.Encoding]::UTF8)).Groups[1].Value
+    if ($v -ne $rootVer) { $subDrift += "$sp=$v" }
+}
+Check (-not $subDrift) "子包 version 跟随伞包 $rootVer（不一致：$($subDrift -join ', ')；子包都不独立发行 —— 版本不跟随就是死元数据）"
 # 合理化红旗表：规则唯一正文是 AGENTS.md（D3），英文口径在 glossary-en；段标记只保证标题在，表头断言保证表本身在（中英同批）
 $rfZh = [IO.File]::ReadAllText((Join-Path $root 'template\AGENTS.md'), [Text.Encoding]::UTF8)
 $rfEn = [IO.File]::ReadAllText((Join-Path $root 'design\glossary-en.md'), [Text.Encoding]::UTF8)

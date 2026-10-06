@@ -1,5 +1,6 @@
 # Card 5-5 · Backup and restore drill (run additionally on a schedule / after a data-structure change)
 > Trigger: on a schedule (every 90 days by default) or after a data-structure change ｜ Output: the "备份与恢复演练" (backup and restore drill) section of `docs/RUNBOOK.md` + the drill record ｜ Next: awaiting a new intent (drill record expired → 6-6 process audit; restore failed and users are already affected → 6-1 incident response)
+> Process area: OPS
 
 ---
 

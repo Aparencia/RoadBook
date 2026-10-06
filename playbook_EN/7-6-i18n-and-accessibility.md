@@ -1,5 +1,6 @@
 # Card 7-6 · Internationalization and accessibility (required for multi-language / accessibility requirements)
 > Trigger: a second language must be supported / accessibility requirements exist / public launch ｜ Output: docs/I18N.md + the accessibility annotation in the "影响面" (impact surface) column of docs/registry/COMPONENTS.md ｜ Next: 4-1 Batch coding / 7-1 UI change
+> Process area: DES, QA
 
 ---
 

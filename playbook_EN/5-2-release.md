@@ -1,5 +1,6 @@
 # Card 5-2 · Release
 > Trigger: a milestone / a batch of features has accumulated / the user says "release / go live / let others use it" ｜ Output: docs/versions/vX.Y.Z.md + the root CHANGELOG.md + tag (tagged by the agent) + RUNBOOK update ｜ Next: awaiting a new intent (an incident → 6-1 incident response)
+> Process area: REL
 
 ---
 

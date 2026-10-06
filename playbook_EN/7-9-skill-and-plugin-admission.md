@@ -1,5 +1,6 @@
 # Card 7-9 · Skill and Plugin Admission
 > Trigger: installing, enabling or first-running any third-party skill / editor or host plugin / MCP server / external coding CLI (including ones the agent clones for temporary use); re-run when upgrading these external items ｜ Deliverable: docs/decisions/<date>_<name>-admission.md + one summary line in STATE.md ｜ Next: back to the main line of the current tier (S → 4-1; M → 4-1; L → 3-1; incident track → 6-1)
+> Process area: RISK, AGENT
 
 ---
 

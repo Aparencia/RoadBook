@@ -1,5 +1,6 @@
 # Card 3-6 · Motion and Microinteraction (every animation needs a value and an opt-out)
 > Trigger: motion is fixed after 3-5 locks the visual values | Output: docs/MOTION.md | Next: 4-1 Batch coding
+> Process area: DES
 
 ## ① Start confirmation
 

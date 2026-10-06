@@ -1,5 +1,6 @@
 # Card 6-2 · Root cause analysis (required for all tiers)
 > Trigger: Bug / error / wrong behavior ｜ Output: docs/specs/<date>_<slug>/RCA.md ｜ Next: 6-3 Bugfix (for P0, stop the bleeding first: rollback before fix)
+> Process area: OPS
 
 ---
 

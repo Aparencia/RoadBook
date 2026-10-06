@@ -1,5 +1,6 @@
 # Card 1-1 · Idea research (the only entry point of the project phase; Kill is a legitimate outcome)
 > Trigger: the user says "启动/立项/调研一下" ("start / kick off / look into it") about a concrete idea, or only asks "这能不能做 / 可不可行" ("can this be done / is it feasible") (→ §② Action 0.5 probe branch) | Output: docs/decisions/IDEA_<日期>_<主题>.md | Next: Go → 1-2 stack init; Pivot → re-run this card (≤2 rounds); Kill → flow ends
+> Process area: REQ
 
 ---
 

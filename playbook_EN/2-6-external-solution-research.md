@@ -1,5 +1,6 @@
 # Card 2-6 · External solution research
 > Trigger: for a new feature, page, or API, look for a ready-made wheel before comparing approaches | Output: the "external solutions" section of RESEARCH.md (docs/specs/<日期>_<slug>/) | Next: 2-1 feature research (the conclusion feeds the approach comparison)
+> Process area: REQ, RISK
 
 ---
 

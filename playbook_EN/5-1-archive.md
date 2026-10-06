@@ -1,5 +1,6 @@
 # Card 5-1 · Archive (mandatory for all tiers; after each task passes acceptance)
 > Trigger: after 4-3 / 6-4 passes acceptance ｜ Output: docs/archive/<date>_<slug>/ + STATE rolling + an atomic commit ｜ Next: awaiting a new intent [disambiguated]
+> Process area: PLAN, CM, QA
 
 ---
 

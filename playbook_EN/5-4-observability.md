@@ -1,5 +1,6 @@
 # Card 5-4 · Observability (always run after a release; the release is only complete once the observation window closes)
 > Trigger: 5-2 release completed, or 5-3 finished rolling out to full volume ｜ Output: `docs/OBSERVABILITY.md` + the "观测与告警" (observability and alerting) and "出事先看哪" (what to look at first when something breaks) sections of `docs/RUNBOOK.md` ｜ Next: 5-5 backup and restore drill (optional) → awaiting a new intent
+> Process area: OPS
 
 ---
 

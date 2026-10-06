@@ -1,5 +1,6 @@
 # Card 2-2 · Scope definition (mandatory for feature-tier work; tier S uses the simplified version)
 > Trigger: the approach from 2-1 feature research is approved by the user | Output: docs/specs/<日期>_<slug>/SCOPE.md | Next: 2-4 non-functional requirements (tiers M/L); tier S → 4-1 batch coding; tier L → 3-1 design after 2-4
+> Process area: REQ
 
 ---
 

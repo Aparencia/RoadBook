@@ -1,5 +1,6 @@
 # Card 6-6 · Process audit (system self-evolution; triggered once every 15 archives)
 > Trigger: STATE.md audit counter ≥ 15 (accumulated by card 5-1 Archive) ｜ Output: docs/decisions/PROCESS_<date>_体检.md + proposals landed ｜ Next: 5-1 Archive (this round's revisions go through archiving)
+> Process area: QA, KNOW
 
 ---
 

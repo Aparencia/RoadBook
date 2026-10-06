@@ -1,5 +1,6 @@
 # Card 2-3 · Requirement elicitation (add it when the requirement is vague or there are real users; tier S skips it)
 > Trigger: the requirement description is vague (three or more reasonable interpretations exist) or there are reachable real users for this task (tiers M/L; tier S skips this card) ｜ Output: docs/specs/<date>_<slug>/ELICIT.md ｜ Next: 2-2 Requirement scope
+> Process area: REQ
 
 ---
 

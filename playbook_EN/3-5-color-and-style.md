@@ -1,5 +1,6 @@
 # Card 3-5 · Color and Style (fix the values before any UI work)
 > Trigger: visual values are fixed after 3-4 locks the screen structure | Output: docs/DESIGN_TOKENS.md | Next: 3-6 Motion and Microinteraction
+> Process area: DES
 
 ## ① Start confirmation
 

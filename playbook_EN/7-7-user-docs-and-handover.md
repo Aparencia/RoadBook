@@ -1,5 +1,6 @@
 # Card 7-7 · User documentation and handover (mandatory before delivery / handover)
 > Trigger: delivery acceptance / someone else takes over ｜ Output: docs/USER_GUIDE.md (six sections, including the six-column handover checklist) ｜ Next: 5-1 Archive
+> Process area: KNOW
 
 ---
 

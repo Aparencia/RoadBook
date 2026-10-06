@@ -1,5 +1,6 @@
 # Card 7-5 · Compliance and privacy (required when collecting personal data / publishing publicly)
 > Trigger: collecting personal information / launching a public service / adding a third-party SDK ｜ Output: docs/PRIVACY.md + root LICENSE ｜ Next: 4-1 Batch coding (when code must change) / 5-1 Archive (pure governance)
+> Process area: RISK, QA
 
 ---
 
