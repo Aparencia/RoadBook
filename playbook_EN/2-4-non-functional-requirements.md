@@ -1,5 +1,5 @@
 # Card 2-4 · Non-functional requirements (mandatory for tiers M/L; tier S does not run it — its performance / security rows go straight into SCOPE)
-> Trigger: after 2-2 Requirement scope is confirmed by the user (tiers M/L) ｜ Output: docs/specs/<date>_<slug>/NFR.md ｜ Next: 2-5 Risk and stakeholders (tier L or ≥2 parties), otherwise 3-3 Test strategy
+> Trigger: after 2-2 Requirement scope is confirmed by the user (tiers M/L) ｜ Output: docs/specs/<date>_<slug>/NFR.md ｜ Next: 2-5 Risk and stakeholders (tier L or ≥2 parties), otherwise 3-7 Architecture definition (first shaping / structural change) → 3-3 Test strategy
 > Process area: REQ, QA
 
 ---

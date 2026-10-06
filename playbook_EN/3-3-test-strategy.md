@@ -1,5 +1,5 @@
 # Card 3-3 · Test strategy (tiers M/L; walked after the design is approved)
-> Trigger: tier M/L and the design is approved (tier L = 3-1 Design has been walked; with 3-2 present, walk 3-2 first) ｜ Output: docs/specs/<date>_<slug>/TESTPLAN.md ｜ Next: 4-1 Batch coding
+> Trigger: tier M/L and the design is approved (tier L = 3-1 Design has been walked; tier M never walks 3-1, so "approved" = 2-2 scope confirmed, and the UI line 3-4~3-6 comes after this card; with 3-2 present, walk 3-2 first) ｜ Output: docs/specs/<date>_<slug>/TESTPLAN.md ｜ Next: 4-1 Batch coding
 > Process area: VER, QA
 
 ---

@@ -97,12 +97,13 @@ export const STEPS = [
   { card: '1-1', anchor: '立项', when: (f) => f.greenfield === 'new', why: '空的新想法 → 先做能不能做的调研' },
   { card: '1-2', anchor: '1-1', when: (f) => f.greenfield === 'new', why: 'Go 之后选型、生成骨架、连远端' },
   { card: '1-3', anchor: '已有代码', when: (f) => f.greenfield === 'existing', why: '已有代码 → 反推结构、装守护脚本' },
+  { card: '2-6', anchor: '先查外面有没有现成轮子', when: (f) => tierOf(f).tier !== 'S', why: '轮子先行五查：先查外面有没有现成的，再决定自研 / 接入 / 抄思路（S 档裁剪，见 §4 外部方案线）' },
   { card: '2-1', anchor: '驱动卡收到新功能类意图', when: () => true, why: '新功能意图的固定入口（也是定档位的地方）' },
   { card: '2-3', anchor: 'S 档不走本卡', when: (f) => f.vague === true, why: '需求说不清（三种以上合理解释）' },
   { card: '2-2', anchor: 'S 档用简版', when: () => true, why: '定边界与验收标准（S 档走简版三节）' },
   { card: '2-4', anchor: '（M/L 档）', when: (f) => tierOf(f).tier !== 'S', why: 'M/L 档必走：给非功能需求定可测阈值' },
   { card: '2-5', anchor: '档位 = L', when: (f) => tierOf(f).tier === 'L' || f.team === true, why: 'L 档或不止一方参与' },
-  { card: '3-7', anchor: '项目首次成型', when: (f) => f.greenfield === 'new' || f.structChange === true, why: '首次成型或结构变更 → 边界 / 干系人关注点 / 四张视图 / 质量属性权衡' },
+  { card: '3-7', anchor: '项目首次成型', when: (f) => tierOf(f).tier !== 'S' && (f.greenfield === 'new' || f.structChange === true), why: '首次成型或结构变更 → 边界 / 干系人关注点 / 四张视图 / 质量属性权衡（S 档裁剪：结构即文件清单）' },
   { card: '7-9', anchor: '首次运行任何第三方技能', when: (f) => f.newDependency === true, why: '装/启用外部件必须先过准入，结论由人裁决' },
   { card: '3-1', anchor: '档位 = L', when: (f) => tierOf(f).tier === 'L', why: 'L 档加走：动手前把数据/接口/组件钉死' },
   { card: '3-2', anchor: '红线域', when: (f) => f.redLine === true, why: '红线域强制升 L 并做威胁建模' },
@@ -115,15 +116,17 @@ export const STEPS = [
   { card: '4-1', anchor: '2-2 需求范围获用户确认后', when: () => true, why: '写代码（分批 + 净增量账本）' },
   { card: '4-2', anchor: 'M/L 档必走', when: (f) => tierOf(f).tier !== 'S', why: 'M/L 档：合入前审查，独立会话执行' },
   { card: '4-3', anchor: '全档必走', when: () => true, why: '验证：完成的唯一定义（check 退出码 0）' },
-  { card: '4-6', anchor: '交付前要给人用', when: (f) => f.hasUI === true && f.goLive === true, why: '有界面且要给人用 → 交付前拿给人走一遍，看他在哪卡住' },
+  { card: '4-6', anchor: '交付前要给人用', when: (f) => tierOf(f).tier !== 'S' && f.hasUI === true && f.goLive === true, why: '有界面且要给人用 → 交付前拿给人走一遍，看他在哪卡住（S 档裁剪：自己冷启动走一遍即可）' },
   { card: '4-4', anchor: '首次搭建 CI', optional: true, when: (f) => f.hasCI === false && f.goLive === true, why: '上线但没 CI → 至少把门禁接到每次提交' },
   { card: '4-5', anchor: '需要新环境', when: (f) => f.goLive === true, why: '上线 = 要有 prod 环境与配置/密钥来源' },
+  { card: '7-7', anchor: '交付验收', when: (f) => f.team === true, why: '要交接给别人 → 用户文档与交接清单（在归档之前，产物才进得了这一轮的归档）' },
   { card: '5-1', anchor: '验收通过后', when: () => true, why: '收尾入库（归档十一查 + 孤儿五张清单）' },
+  { card: '5-6', anchor: '要定版本号', when: (f) => tierOf(f).tier === 'L', why: 'L 档发版前先定版本号与升级注意（§4 L 线：基线先行）' },
+  { card: '5-7', anchor: '同一事实在两处说法不一致', when: (f) => tierOf(f).tier === 'L', why: 'L 档把号与产物钉成基线（与 5-6 同批），**然后**才发布' },
   { card: '5-2', anchor: '上线/让别人用', when: (f) => f.goLive === true, why: '里程碑发版（tag 由人打）' },
   { card: '5-3', anchor: 'L 档发布', when: (f) => f.goLive === true && tierOf(f).tier === 'L', why: 'L 档/高风险发布：放量阶梯与回滚预案' },
   { card: '5-4', anchor: '5-2 发布完成', when: (f) => f.goLive === true, why: '发完进观测窗（默认 24h）' },
   { card: '5-5', anchor: '改数据结构后', when: (f) => f.goLive === true && tierOf(f).tier === 'L', why: 'L 档或改过数据结构 → 恢复演练' },
-  { card: '7-7', anchor: '交付验收', when: (f) => f.team === true, why: '要交接给别人 → 用户文档与交接清单' },
 ]
 
 /** 2-1 判据表的 L 行，逐条镜像；命中任一即入 L。 */
@@ -138,6 +141,21 @@ const L_JUDGE = [
 /** 门禁：0-1 硬规则 8 —— 个人档默认轻确认，只有 L 档与红线域用裁决。 */
 const HARD_VERDICT = new Set(['2-1', '2-2', '4-3']) // 卡自带「停下等确认 / 用户说了确认 / 等用户验收」
 const HUMAN_ACTION = new Set(['5-2']) // 执行发布部署在不可委托清单里（打 tag 自 2026-10-05.2 起由 agent 在发布流程内执行）
+
+/**
+ * 允许「不被任何进入条件引用」的卡：入口卡 + **事件线**（事故/治理）+ **横向卡**（按需插入）。
+ *
+ * 名单之外的卡不可达 = **判红**。2026-10-06 实测事故：`2-6` / `5-6` / `5-7` 三张**主线必走卡**
+ * 长期躺在「正常：事故线/回访线/治理线」那一行里（`--audit` 判绿、测试也判绿），于是 L 链里
+ * `5-1 归档` 之后直接跳到 `5-2 发布`，而设计 §4 写着这两张「L 档必走」——「路由到不了它」
+ * 与「它本来就按需触发」在输出上长得一模一样。白名单唯一职责就是把这个区别**显式化**：
+ * 名单要人写，写漏一张即红，不会再有第四张主线卡静默溜进「正常」那一行。
+ */
+export const UNREACHABLE_OK = [
+  '0-1', '0-2', // 入口卡：驱动卡 + 会话生命周期
+  '6-1', '6-2', '6-3', '6-4', '6-5', '6-6', '6-7', '6-8', // 事故线 + 治理线（事件/时间触发）
+  '7-1', '7-2', '7-3', '7-4', '7-8', '7-10', // 特殊变更期：按需触发，各自闭环
+]
 
 /* ───────────────────────────── 读盘 ───────────────────────────── */
 
@@ -308,7 +326,14 @@ export function audit(cn = scanDir(CN_DIR), en = scanDir(EN_DIR)) {
   const dup = ids.filter((x, i) => ids.indexOf(x) !== i)
   if (dup.length) problems.push(`链里有重复卡：${[...new Set(dup)].join(', ')}`)
   const unused = [...cn.keys()].filter((id) => !ids.includes(id)).sort()
-  return { problems, cardsCn: cn.size, cardsEn: en.size, unused }
+  // 「不可达」分两种，输出上必须分得开：白名单内 = 按需触发的正常态；白名单外 = 主线卡漏在链外。
+  const unreachableOk = unused.filter((id) => UNREACHABLE_OK.includes(id))
+  for (const id of unused) {
+    if (!UNREACHABLE_OK.includes(id)) {
+      problems.push(`不可达卡：${id} 既不在任何进入条件里，也不在 UNREACHABLE_OK 白名单里——主线卡漏进「正常」那一行 = 路由永远到不了它（要么补进 STEPS，要么显式登记进白名单并写理由）`)
+    }
+  }
+  return { problems, cardsCn: cn.size, cardsEn: en.size, unused, unreachableOk }
 }
 
 /* ───────────────────────────── 预设场景 ───────────────────────────── */
@@ -479,13 +504,13 @@ function loadFacts(opts) {
 function runAudit(opts) {
   const cn = scanDir(CN_DIR)
   const en = scanDir(EN_DIR)
-  const { problems, cardsCn, cardsEn, unused } = audit(cn, en)
+  const { problems, cardsCn, cardsEn, unreachableOk } = audit(cn, en)
   if (opts.json) {
-    console.log(JSON.stringify({ schema: SCHEMA, mode: 'audit', cardsCn, cardsEn, mirroredSteps: STEPS.length, problems, unused }, null, 2))
+    console.log(JSON.stringify({ schema: SCHEMA, mode: 'audit', cardsCn, cardsEn, mirroredSteps: STEPS.length, problems, unreachableOk, unreachableOkWhitelist: UNREACHABLE_OK }, null, 2))
   } else {
     console.log('Roadbook route 自检回执')
     console.log(`playbook/ ${cardsCn} 张 · playbook_EN/ ${cardsEn} 张 · 镜像覆盖 ${STEPS.length} 条进入条件（锚点只取 H1 与触发行）`)
-    console.log(`未被任何进入条件引用的卡（正常：事故线/回访线/治理线）：${unused.join(', ') || '无'}`)
+    console.log(`按需触发、不占事实链的卡（白名单 ${UNREACHABLE_OK.length} 张）：${unreachableOk.join(', ') || '无'}`)
     console.log(problems.length ? `判红 ${problems.length} 条：` : '判绿：镜像锚点与卡一致，双语无缺份，无幽灵引用。')
     for (const p of problems) console.log(`  ✗ ${p}`)
   }

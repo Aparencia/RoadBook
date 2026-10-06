@@ -43,13 +43,11 @@
           "1-2",
           "2-1",
           "2-2",
-          "3-7",
           "3-4",
           "3-5",
           "3-6",
           "4-1",
           "4-3",
-          "4-6",
           "4-4",
           "4-5",
           "5-1",
@@ -57,14 +55,14 @@
           "5-4"
         ],
         "ledger": {
-          "cards": 16,
-          "lines": 2543,
-          "chars": 105007,
-          "tokensApprox": 52504,
-          "checkboxes": 61,
-          "psBlocks": 50,
-          "stops": 22,
-          "actions": 126,
+          "cards": 14,
+          "lines": 2211,
+          "chars": 94030,
+          "tokensApprox": 47015,
+          "checkboxes": 38,
+          "psBlocks": 46,
+          "stops": 20,
+          "actions": 110,
           "missing": []
         }
       }
@@ -85,6 +83,7 @@
         "chain": [
           "1-1",
           "1-2",
+          "2-6",
           "2-1",
           "2-2",
           "2-4",
@@ -103,20 +102,22 @@
           "4-4",
           "4-5",
           "5-1",
+          "5-6",
+          "5-7",
           "5-2",
           "5-3",
           "5-4",
           "5-5"
         ],
         "ledger": {
-          "cards": 24,
-          "lines": 3675,
-          "chars": 147783,
-          "tokensApprox": 73892,
-          "checkboxes": 92,
-          "psBlocks": 70,
-          "stops": 34,
-          "actions": 173,
+          "cards": 27,
+          "lines": 4147,
+          "chars": 163619,
+          "tokensApprox": 81810,
+          "checkboxes": 104,
+          "psBlocks": 80,
+          "stops": 37,
+          "actions": 182,
           "missing": []
         }
       }
@@ -142,6 +143,7 @@
         "chain": [
           "1-1",
           "1-2",
+          "2-6",
           "2-1",
           "2-3",
           "2-2",
@@ -163,22 +165,24 @@
           "4-6",
           "4-4",
           "4-5",
+          "7-7",
           "5-1",
+          "5-6",
+          "5-7",
           "5-2",
           "5-3",
           "5-4",
-          "5-5",
-          "7-7"
+          "5-5"
         ],
         "ledger": {
-          "cards": 29,
-          "lines": 4360,
-          "chars": 171099,
-          "tokensApprox": 85550,
-          "checkboxes": 130,
-          "psBlocks": 87,
-          "stops": 40,
-          "actions": 208,
+          "cards": 32,
+          "lines": 4832,
+          "chars": 186935,
+          "tokensApprox": 93468,
+          "checkboxes": 142,
+          "psBlocks": 97,
+          "stops": 43,
+          "actions": 217,
           "missing": []
         }
       }
@@ -194,6 +198,7 @@
         "chain": [
           "1-1",
           "1-2",
+          "2-6",
           "2-1",
           "2-2",
           "2-4",
@@ -213,14 +218,14 @@
           "5-4"
         ],
         "ledger": {
-          "cards": 19,
-          "lines": 2959,
-          "chars": 123308,
-          "tokensApprox": 61654,
+          "cards": 20,
+          "lines": 3087,
+          "chars": 127503,
+          "tokensApprox": 63752,
           "checkboxes": 71,
-          "psBlocks": 57,
-          "stops": 26,
-          "actions": 138,
+          "psBlocks": 60,
+          "stops": 27,
+          "actions": 139,
           "missing": []
         }
       }
@@ -242,7 +247,6 @@
           "1-2",
           "2-1",
           "2-2",
-          "3-7",
           "3-4",
           "3-5",
           "3-6",
@@ -251,14 +255,14 @@
           "5-1"
         ],
         "ledger": {
-          "cards": 11,
-          "lines": 1884,
-          "chars": 80355,
-          "tokensApprox": 40178,
-          "checkboxes": 49,
-          "psBlocks": 35,
-          "stops": 17,
-          "actions": 94,
+          "cards": 10,
+          "lines": 1722,
+          "chars": 75022,
+          "tokensApprox": 37511,
+          "checkboxes": 38,
+          "psBlocks": 33,
+          "stops": 16,
+          "actions": 86,
           "missing": []
         }
       }
@@ -274,6 +278,7 @@
         "chain": [
           "1-1",
           "1-2",
+          "2-6",
           "2-1",
           "2-2",
           "2-4",
@@ -288,14 +293,14 @@
           "5-1"
         ],
         "ledger": {
-          "cards": 14,
-          "lines": 2300,
-          "chars": 98656,
-          "tokensApprox": 49328,
+          "cards": 15,
+          "lines": 2428,
+          "chars": 102851,
+          "tokensApprox": 51426,
           "checkboxes": 59,
-          "psBlocks": 42,
-          "stops": 21,
-          "actions": 106,
+          "psBlocks": 45,
+          "stops": 22,
+          "actions": 107,
           "missing": []
         }
       }
@@ -313,6 +318,7 @@
         "chain": [
           "1-1",
           "1-2",
+          "2-6",
           "2-1",
           "2-2",
           "2-4",
@@ -327,17 +333,19 @@
           "4-1",
           "4-2",
           "4-3",
-          "5-1"
+          "5-1",
+          "5-6",
+          "5-7"
         ],
         "ledger": {
-          "cards": 17,
-          "lines": 2761,
-          "chars": 114100,
-          "tokensApprox": 57050,
-          "checkboxes": 69,
-          "psBlocks": 50,
-          "stops": 26,
-          "actions": 129,
+          "cards": 20,
+          "lines": 3233,
+          "chars": 129936,
+          "tokensApprox": 64968,
+          "checkboxes": 81,
+          "psBlocks": 60,
+          "stops": 29,
+          "actions": 138,
           "missing": []
         }
       }

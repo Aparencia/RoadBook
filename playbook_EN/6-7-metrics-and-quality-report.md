@@ -1,5 +1,5 @@
 # Card 6-7 · Metrics and quality report (once per quarter or per milestone)
-> Trigger: end of each quarter / end of each milestone ｜ Output: docs/decisions/QUALITY_<date>_<topic>.md ｜ Next: 6-6 Process audit (when the process must change); no proposal = 5-1 Archive
+> Trigger: end of each quarter / end of each milestone ｜ Output: docs/decisions/QUALITY_<date>_<topic>.md ｜ Next: 6-8 Decision retrospective (5+ decision cards / after a milestone / review date due) → 6-6 Process audit (when the process must change); no proposal = 5-1 Archive
 > Process area: QA
 
 ---

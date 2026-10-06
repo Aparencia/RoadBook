@@ -1,5 +1,5 @@
 # Card 2-5 · Risk and stakeholders (tier L, or this task involves ≥2 parties)
-> Trigger: tier = L, or someone other than the user — another person / a team / an external system — takes part in this task ｜ Output: docs/specs/<date>_<slug>/RISK.md + the STATE.md `风险摘要` line ｜ Next: 3-1 Design (tier L); non-L tiers → 3-3 Test strategy
+> Trigger: tier = L, or someone other than the user — another person / a team / an external system — takes part in this task ｜ Output: docs/specs/<date>_<slug>/RISK.md + the STATE.md `风险摘要` line ｜ Next: 3-7 Architecture definition (first shaping / structural change) → 3-1 Design (tier L); non-L tiers → 3-3 Test strategy
 > Process area: RISK
 
 ---

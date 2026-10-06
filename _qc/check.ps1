@@ -49,8 +49,8 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-$selfCap = 850
-Check ($selfN -le $selfCap) "行数 $selfN <= $selfCap ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；2026-10-06 由 790 上调到 810：§18 矩阵的**反向核对**（表里列的每张卡必须真带该过程域 / 表的覆盖集合必须等于卡头实际集合——§18 自称"派生视图不手抄"却又手抄了一份矩阵，反向核对是不删那份矩阵的前提）+ 四张新卡（3-7 / 4-6 / 5-7 / 6-8）的中英 needle；2026-10-06 再由 810 上调到 850：**四段分隔线断言**（写作契约 §1 早就写着"四段用 --- 分隔"，但此前没有任何断言盯着它，于是 3-5/3-6/3-7/4-6/5-7/6-8 六张卡全没有分隔线而门禁一直判绿——又一处"契约说了、机器不管"）+ design §8 行数上限与断言的**同源核对**（此前已漂过一次：设计写 ≤730 而断言已 790）；上调须同时改本行与 design §8）"
+$selfCap = 900
+Check ($selfN -le $selfCap) "行数 $selfN <= $selfCap ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；2026-10-06 由 790 上调到 810：§18 矩阵的**反向核对**（表里列的每张卡必须真带该过程域 / 表的覆盖集合必须等于卡头实际集合——§18 自称"派生视图不手抄"却又手抄了一份矩阵，反向核对是不删那份矩阵的前提）+ 四张新卡（3-7 / 4-6 / 5-7 / 6-8）的中英 needle；2026-10-06 再由 810 上调到 850：**四段分隔线断言**（写作契约 §1 早就写着"四段用 --- 分隔"，但此前没有任何断言盯着它，于是 3-5/3-6/3-7/4-6/5-7/6-8 六张卡全没有分隔线而门禁一直判绿——又一处"契约说了、机器不管"）+ design §8 行数上限与断言的**同源核对**（此前已漂过一次：设计写 ≤730 而断言已 790）；2026-10-06 再由 850 上调到 900：**顺序三载体同源断言**（执行顺序被手抄在三处——design §3 总图 / design §4 档位线与专线 / `route.mjs` 的 `STEPS` + 白名单——而此前没有任何断言盯着它们彼此一致，实测 9 张卡不在总图上、`2-6`/`5-6`/`5-7` 三张主线卡不可达却被 `--audit` 印成「正常」、L 链静默少掉发版前的两张基线卡、`START-HERE.md` 的 M/L 线与 §4 各写一套）+ 三条断言（§3 总图必须画全 / §4 线表点名的卡必须能被 route 到达 / START-HERE 与 §4 档位线同源）；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -96,6 +96,41 @@ $skCntTxt = [IO.File]::ReadAllText((Join-Path $root 'SKILL.md'), [Text.Encoding]
 Check ($rmCntTxt -match "$cardCnt 张") "README.md 卡数 = §4 表 $cardCnt 张（同源，防漂移）"
 Check ($shCntTxt -match "$cardCnt 张") "START-HERE.md 卡数 = §4 表 $cardCnt 张（同源，防漂移）"
 Check ($skCntTxt -match "$cardCnt 张") "SKILL.md 卡数 = §4 表 $cardCnt 张（同源，防漂移）"
+
+# ── 顺序的三处载体必须同源（2026-10-06 增；判据正文见 design §17.6）─────────────────
+# 执行顺序被手抄在三处——design §3 总图 / design §4 档位线与专线 / route.mjs 的 STEPS 数组——
+# 而此前没有任何断言盯着它们彼此一致。实测后果：9 张卡不在 §3 总图上（人第一眼看的就是它，
+# 图上没有 ≈ 不存在）；2-6 / 5-6 / 5-7 三张主线卡在 route.mjs 里不可达却被印成「正常」；
+# L 链静默少掉发版前的两张基线卡；START-HERE.md 的 M/L 线又与 §4 各写一套。
+$sec3 = [regex]::Match($designTxt, '(?sm)^## 3\..*?(?=^## 4\.)').Value
+Check ($sec3.Length -gt 0) 'design §3 生命周期总图可定位（顺序断言的前提）'
+$notDrawn = @($cardNo | Where-Object { $sec3 -notmatch ('(?<![\d-])' + [regex]::Escape($_) + '(?![\d-])') })
+Check (-not $notDrawn) "§3 总图画出 §4 表里的每一张卡（缺：$($notDrawn -join ', ')；图上没有 = 读图的人不认为它存在）"
+
+$sec4 = [regex]::Match($designTxt, '(?sm)^## 4\..*?(?=^## 5\.)').Value
+$lineIds = @()
+foreach ($b in @($sec4 -split "`n" | Where-Object { $_ -match '^-\s+\*\*' })) {
+    foreach ($m in [regex]::Matches($b, '(?<![\d-])\d+-\d+(?![\d-])')) { $lineIds += $m.Value }
+}
+$lineIds = @($lineIds | Select-Object -Unique | Sort-Object)
+$routeSrc = [IO.File]::ReadAllText((Join-Path $root 'skills\roadbook\bin\route.mjs'), [Text.Encoding]::UTF8)
+$stepsIds = @([regex]::Matches($routeSrc, "card:\s*'(\d+-\d+)'") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+$wlBlock = [regex]::Match($routeSrc, '(?s)UNREACHABLE_OK\s*=\s*\[(.*?)\]')
+$wlIds = @([regex]::Matches($wlBlock.Groups[1].Value, "'(\d+-\d+)'") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+$routable = @($stepsIds + $wlIds | Select-Object -Unique)
+$orphanIds = @($lineIds | Where-Object { $routable -notcontains $_ })
+Check (-not $orphanIds) "§4 档位线与专线点名的卡号 route.mjs 必须能到（缺：$($orphanIds -join ', ')；不在 STEPS 也不在白名单 = 路由永远到不了它）"
+Observe ($true) "顺序口径：§4 线表点名 $($lineIds.Count) 张 · route 可达 $($routable.Count) 张（STEPS $($stepsIds.Count) + 白名单 $($wlIds.Count)）"
+
+$tierLines = @($sec4 -split "`n" | Where-Object { $_ -match '^-\s+\*\*[SML]\*\*' })
+Check ($tierLines.Count -eq 3) "§4 档位线解析出 S / M / L 三条（实际 $($tierLines.Count)）"
+$tierIds = @()
+foreach ($b in $tierLines) { foreach ($m in [regex]::Matches($b, '(?<![\d-])\d+-\d+(?![\d-])')) { $tierIds += $m.Value } }
+$tierIds = @($tierIds | Select-Object -Unique)
+$shTierTxt = (@([IO.File]::ReadAllLines($sh, [Text.Encoding]::UTF8) | Where-Object { $_ -match '^[SML] 档' }) -join "`n")
+$shTierIds = @([regex]::Matches($shTierTxt, '(?<![\d-])\d+-\d+(?![\d-])') | ForEach-Object { $_.Value } | Select-Object -Unique)
+$tierMiss = @($tierIds | Where-Object { $shTierIds -notcontains $_ })
+Check (-not $tierMiss) "START-HERE.md 的 S/M/L 三行与 §4 档位线同源（缺：$($tierMiss -join ', ')）"
 
 $sections = @('## ① 开工确认','## ② 执行','## ③ 证据回执','## ④ 状态回写')
 $enSections = @('## ① Start confirmation','## ② Execution','## ③ Evidence receipt','## ④ State write-back')

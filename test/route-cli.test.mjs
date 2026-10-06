@@ -23,7 +23,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { CN_DIR, EN_DIR, STEPS, audit, route, scanDir } from '../skills/roadbook/bin/route.mjs'
+import { CN_DIR, EN_DIR, STEPS, UNREACHABLE_OK, audit, route, scanDir } from '../skills/roadbook/bin/route.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..')
@@ -321,4 +321,51 @@ test('反向对照：非法事实不许被静默补默认值（错的事实必�
   const j = cliJson(['--facts', '{"goLive":true}', '--json'])
   assert.equal(j.facts.goLive, true)
   assert.equal(j.facts.redLine, false, '未给的事实按默认值补齐')
+})
+
+/* ── A12 顺序：卡号大小 ≠ 执行顺序（design §4 L 线 / §17.6） ── */
+// 起因：2-6 / 5-6 / 5-7 是补卡，号在阶段末尾，执行位置却在 2-1 / 5-2 之前。
+// 这三张一度全都不在链里：--audit 把「不可达」印成「正常」，于是 L 链里
+// `5-1 归档` 之后直接 `5-2 发布`，而 design §4 写着这两张「L 档必走」。
+test('A12 顺序：L 档链含 2-6 / 5-6 / 5-7，且次序 2-6 < 2-1、5-6 < 5-7 < 5-2', () => {
+  const cards = chainOf('public-saas')
+  for (const card of ['2-6', '5-6', '5-7']) {
+    assert.ok(cards.includes(card), `L 档链缺 ${card}（design §4 L 线写着必走）\n链：${cards.join(' ')}`)
+  }
+  const at = (c) => cards.indexOf(c)
+  assert.ok(at('2-6') < at('2-1'), `轮子先行：2-6 必须排在 2-1 之前\n链：${cards.join(' ')}`)
+  assert.ok(at('5-6') < at('5-7') && at('5-7') < at('5-2'),
+    `发版前基线先行：5-6 定号 → 5-7 钉基线 → 5-2 发布，不许反序\n链：${cards.join(' ')}`)
+  // S 档裁剪：这三张 M/L 卡不得溜进 S 链（design §4 每条专线都写了 S 档裁剪）
+  const sCards = chainOf('endpoint')
+  for (const card of ['2-6', '3-7', '4-6']) {
+    assert.ok(!sCards.includes(card), `S 档不该走 ${card}（§4 写着 S 档裁剪）\n链：${sCards.join(' ')}`)
+  }
+})
+
+/* ── A13 反向对照：主线卡不可达必须判红（此前它被印成「正常」） ── */
+test('A13 反向对照：既不在 STEPS 也不在白名单的卡 ⇒ 审计判红「不可达卡」', () => {
+  const cn = scanDir(CN_DIR)
+  const en = scanDir(EN_DIR)
+  assert.deepEqual(audit(cn, en).problems, [], '正常态先判绿，否则反向对照没有基线')
+  assert.ok(!cn.has('9-9') && !en.has('9-9'), '夹具假设：9-9 这张卡在双语目录里不存在')
+  const cn2 = new Map(cn)
+  cn2.set('9-9', { id: '9-9', anchorArea: '# 卡 9-9 · 假卡\n> 触发：假' })
+  const en2 = new Map(en)
+  en2.set('9-9', { id: '9-9', anchorArea: '# Card 9-9 · fake' })
+  const problems = audit(cn2, en2).problems
+  assert.ok(
+    problems.some((p) => p.includes('不可达卡') && p.includes('9-9')),
+    `主线卡不可达应判红（旧行为：印成「正常：事故线/回访线/治理线」）\n实得：${JSON.stringify(problems)}`,
+  )
+})
+
+test('A13b 白名单不许腐烂：白名单里的卡必须真的不在 STEPS，且实际不可达集合 ⊆ 白名单', () => {
+  const ids = new Set(STEPS.map((s) => s.card))
+  for (const id of UNREACHABLE_OK) {
+    assert.ok(!ids.has(id), `白名单里的 ${id} 已经在 STEPS 里了——白名单该删这一行，否则它开始骗人`)
+  }
+  const { unreachableOk } = audit(scanDir(CN_DIR), scanDir(EN_DIR))
+  const expected = UNREACHABLE_OK.filter((id) => !ids.has(id)).sort()
+  assert.deepEqual(unreachableOk, expected, '白名单与实际不可达集合必须一致（多一个 = 有卡漏进「正常」那一行）')
 })
