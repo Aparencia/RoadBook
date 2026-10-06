@@ -20,6 +20,24 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
+## [0.9.1] - 2026-10-06
+
+**母版仓自身接入本流程（dogfooding），外加接入时带出的两处守护脚本缺陷。** 按升版判定表「修 bug / 改文档 → 修订号」走 `0.9.0 → 0.9.1`：随包内容里**只有 `template/security.ps1` 一处行为面变化，且是放宽**（少报，不会把原本绿的判红）；其余改动全落在母版仓自身的流程文件上（根 `AGENTS.md` / 根 `STATE.md` / `docs/` / 根 `check.ps1` / 根 `security.ps1`），这些路径**不在 `package.json` 的 `files` 白名单里** —— 装走的用户拿到的包，除版本号外与 `0.9.0` 无差别。**升级注意：不适用**（无破坏性变更：命令参数、回执 schema、目录约定、Loader 行 id 全未动，重启 DSH 即生效）。
+
+### 修复
+
+- **`template/security.ps1`（随包分发）的自身跳过口径从「运行中的那个路径」扩到「逐字节副本」**：母版仓里 `security.ps1` 与 `template/security.ps1` 是同一份脚本的两份副本，只看运行路径时两者互为对方眼里的"自己的副本"——谁跑谁红（恒 5 条 `[红]`、退出码 1）。改为「先比长度、再比 SHA-256」，跳过「运行中的自身 ∪ 逐字节副本」，**内容不同的同名文件照扫**（不给逃逸留口子）。6-4 卡回归三样本实测：逐字节副本零命中 / 改名且改内容的副本照报 5 条红 / 真违规样本全部检出。
+- **根 `check.ps1` 恢复被编辑工具丢弃的 UTF-8 BOM**（仅母版开发自用，不发包）：无 BOM 时 PowerShell 5.1 按系统码页（GBK）解码 → 中文判词乱码并报 `ParserError`，项目门禁直接跑不起来。教训落 `docs/lessons/2026-10-06_编辑工具丢BOM.md`。
+
+### 变更（母版仓自身接入，不影响已装用户）
+
+- 母版仓按 1-3 卡接入本流程：根 `AGENTS.md`（宪法副本，`规则版本：2026-10-05.2`）+ 根 `STATE.md` + `docs/` 骨架（含 registry 三件套、TECH_DEBT、lessons）+ 五个守护脚本（`check` / `doctor` / `gate` / `orphans` / `security.ps1`）+ `.tool-versions`；文件数基线 348。
+
+### 测试与验收
+
+- `powershell -NoProfile -File _qc/check.ps1`：**359 项全绿、退出码 0**（修复过程 356 通过 / 3 失败 → 358 / 1 → 359 / 0；断言总数恒为 359，账目自洽）。
+- 版本口径：根 `package.json` = 四个子包 = `lib/client.js` 的 `PLUGIN_VERSION` = **0.9.1**（`_qc/check.ps1` 与 `test/client-contract.test.mjs` 双重核对）。
+
 ## [0.9.0] - 2026-10-06
 
 **文档域 + 接入自举：把两类「只写在散文里的义务」改成机械判据。** 按升版判定表「加能力 → 次版本」走 `0.8.1 → 0.9.0`（新增 `scaffold` CLI 命令 + 新增 `DOC_MAP.json` 契约 + `gate.ps1` 新增拦截项）。**升级注意：不适用** —— 无破坏性变更（回执 schema、目录约定、Loader 行 id 全未动，重启 DSH 即生效）。
