@@ -23,6 +23,7 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 ### 修 bug
 
 - **`route.mjs` 看不见多位数卡号，而 `--audit` 判「双语无缺份」绿（假绿）**：`ID_RE` 原为 `/^(\d-\d)-(.+)\.md$/`，第二位只认一位数字 —— 2026-10-06 新增的 `7-10-技术栈迁移` 因此对扫描器**不存在**：`--audit` 报「44 张 · 判绿」，而 `playbook/` 与 `playbook_EN/` 各有 45 个文件、`design/v6-design.md` §4 表 45 行、`_qc/check.ps1:63` 断言 45。一张卡对扫描器不存在 = 路由永远到不了它，而门禁与 `roadbook-evolve` 的 S6（只看退出码）**双双判绿**。修法：`ID_RE` 放宽为多位数字；`scanDir` 把认不出的 `*.md` 收进 `unparsed`；`audit` 逐条判红。**防线**：A1 由 `cardsCn >= 41` 改为「扫描到的卡数 = 磁盘上的 `.md` 文件数」，新增 A2b 反向对照（合成一个认不出的文件名 → 必须报红）。
+- **CI 未 pin action、未声明最小权限（违反自己的 4-4 卡）**：`actions/checkout@v4` 与 `actions/setup-node@v4` 跟随浮动 tag，且整个工作流**没有 `permissions:` 段**（不写就继承仓库最大默认权限）。实测 `refs/tags/v4` 已指向 `11d5960a…`，与 `v4.2.2` 的 `11bd7190…` 不是同一个 commit —— 跟着 tag 跑 = 把执行权交给上游。修法：两个 action 各 pin 到 40 位 commit SHA（`checkout` v4.2.2 / `setup-node` v4.4.0）+ 顶层 `permissions: contents: read`。同批把第二步的测试 glob 补齐到与根 `package.json` 的 `scripts.test` 一致 —— 原先漏了 `plugin/roadbook-evolve/test/*.test.mjs`，而那一行的注释写着「同口径」。
 
 ## [0.7.2] - 2026-10-06
 

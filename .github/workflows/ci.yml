@@ -6,17 +6,25 @@
 #   注意：那个键的字面值在本文件里一律不许出现（_qc/check.ps1 按字符串判红）——要引用请写指针，不复述。
 # 因此这里只有两个步骤：① 与本地逐字相同的 `pwsh -NoProfile -File _qc/check.ps1`；
 # ② 仓库自带单测（与根 package.json 的 scripts.test 同口径，`&&` 串联保证前一个红了不放过）。
+# 依赖一律 pin 到 40 位 commit SHA（4-4 卡：tag 可以被上游移动）。实测：`refs/tags/v4` 已指向
+# 11d5960a…，与 v4.2.2 的 11bd7190… 不是同一个 commit —— 跟着浮动 tag 跑 = 把执行权交给别人。
 name: ci
 
 on: [push, pull_request]
+
+# 最小权限：不写这一节就继承仓库的最大默认权限（4-4 卡：默认 contents: read，需要写时只在单个 job 内提权）
+permissions:
+  contents: read
 
 jobs:
   gate:
     name: 母版一致性校验（与本地同口径）
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # v4.2.2 = 11bd71901bbe5b1630ceea73d27597364c9af683（取法见 4-4 卡：git ls-remote <repo> refs/tags/v4.2.2）
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      # v4.4.0 = 49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
       - name: 母版一致性校验（_qc/check.ps1，与本地同一命令）
@@ -24,4 +32,4 @@ jobs:
         run: pwsh -NoProfile -File _qc/check.ps1
       - name: 仓库单测（与 package.json scripts.test 同口径）
         shell: pwsh
-        run: node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs"
+        run: node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
