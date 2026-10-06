@@ -49,8 +49,8 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-$selfCap = 900
-Check ($selfN -le $selfCap) "行数 $selfN <= $selfCap ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；2026-10-06 由 790 上调到 810：§18 矩阵的**反向核对**（表里列的每张卡必须真带该过程域 / 表的覆盖集合必须等于卡头实际集合——§18 自称"派生视图不手抄"却又手抄了一份矩阵，反向核对是不删那份矩阵的前提）+ 四张新卡（3-7 / 4-6 / 5-7 / 6-8）的中英 needle；2026-10-06 再由 810 上调到 850：**四段分隔线断言**（写作契约 §1 早就写着"四段用 --- 分隔"，但此前没有任何断言盯着它，于是 3-5/3-6/3-7/4-6/5-7/6-8 六张卡全没有分隔线而门禁一直判绿——又一处"契约说了、机器不管"）+ design §8 行数上限与断言的**同源核对**（此前已漂过一次：设计写 ≤730 而断言已 790）；2026-10-06 再由 850 上调到 900：**顺序三载体同源断言**（执行顺序被手抄在三处——design §3 总图 / design §4 档位线与专线 / `route.mjs` 的 `STEPS` + 白名单——而此前没有任何断言盯着它们彼此一致，实测 9 张卡不在总图上、`2-6`/`5-6`/`5-7` 三张主线卡不可达却被 `--audit` 印成「正常」、L 链静默少掉发版前的两张基线卡、`START-HERE.md` 的 M/L 线与 §4 各写一套）+ 三条断言（§3 总图必须画全 / §4 线表点名的卡必须能被 route 到达 / START-HERE 与 §4 档位线同源）；上调须同时改本行与 design §8）"
+$selfCap = 910
+Check ($selfN -le $selfCap) "行数 $selfN <= $selfCap ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；2026-10-06 由 790 上调到 810：§18 矩阵的**反向核对**（表里列的每张卡必须真带该过程域 / 表的覆盖集合必须等于卡头实际集合——§18 自称"派生视图不手抄"却又手抄了一份矩阵，反向核对是不删那份矩阵的前提）+ 四张新卡（3-7 / 4-6 / 5-7 / 6-8）的中英 needle；2026-10-06 再由 810 上调到 850：**四段分隔线断言**（写作契约 §1 早就写着"四段用 --- 分隔"，但此前没有任何断言盯着它，于是 3-5/3-6/3-7/4-6/5-7/6-8 六张卡全没有分隔线而门禁一直判绿——又一处"契约说了、机器不管"）+ design §8 行数上限与断言的**同源核对**（此前已漂过一次：设计写 ≤730 而断言已 790）；2026-10-06 再由 850 上调到 900：**顺序三载体同源断言**（执行顺序被手抄在三处——design §3 总图 / design §4 档位线与专线 / `route.mjs` 的 `STEPS` + 白名单——而此前没有任何断言盯着它们彼此一致，实测 9 张卡不在总图上、`2-6`/`5-6`/`5-7` 三张主线卡不可达却被 `--audit` 印成「正常」、L 链静默少掉发版前的两张基线卡、`START-HERE.md` 的 M/L 线与 §4 各写一套）+ 三条断言（§3 总图必须画全 / §4 线表点名的卡必须能被 route 到达 / START-HERE 与 §4 档位线同源）；2026-10-06 由 900 上调到 910：**文档域断言拆出**（_qc/check-docs.ps1：卡产物里的 docs/ 路径必须有对应表槽位 / 对应表每行必须在 design 全文 / 预算表的上限必须与对应表同源）——此前文档登记是一份写死的 4 项清单，新增文档无人问（实测 5-7 卡的 docs/BASELINE.md 五处登记缺四处而门禁全绿）；本脚本只加一行子调用与其结果断言；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -427,13 +427,15 @@ $drmTxt = ''
 $drm = Join-Path $tpl 'docs\README.md'
 if (Test-Path $drm) { $drmTxt = [IO.File]::ReadAllText($drm, [Text.Encoding]::UTF8) }
 Check ($drmTxt -match '产出卡' -and $drmTxt -match '消费卡') 'docs/README.md 是「文档↔卡」对应表（每份文档能指回产出卡与消费卡，无对应 = 分裂文档）'
-# 新增体验/工具文档：必须同时出现在 docs/README.md 对应表与 design §5 目录树，否则 = 孤儿文档或幽灵引用
-$newDocs = @('UI.md','DESIGN_TOKENS.md','MOTION.md','refactor/')
-$missDrm = @($newDocs | Where-Object { $drmTxt -notmatch [regex]::Escape($_) })
-Check (-not $missDrm) "docs/README.md 对应表含新增文档（缺：$($missDrm -join ', ')）"
-$designRaw = [IO.File]::ReadAllText((Join-Path $root 'design/v6-design.md'), [Text.Encoding]::UTF8)
-$missDsn = @($newDocs | Where-Object { $designRaw -notmatch [regex]::Escape($_) })
-Check (-not $missDsn) "design §5 目录树含新增文档（缺：$($missDsn -join ', ')）"
+# 文档域断言拆到 _qc/check-docs.ps1（2026-10-06 改）：此前这里是**写死的 4 项清单**
+# $newDocs = @('UI.md','DESIGN_TOKENS.md','MOTION.md','refactor/')——它是 2026-10-04 加 UI/UX
+# 文档时钉下的，之后再新增文档没有任何机制会问一句：实测 5-7 卡的产物 docs/BASELINE.md
+# 五处登记缺了四处，而门禁照旧全绿。卡维度早在 design §10 第 21 条就改成了「从 §4 表解析、
+# 不硬编码卡名」；本次是文档维度的同一次改造。判据在那边，这里只取退出码（不复制第二份）。
+$docExit = 1
+$docPs1 = Join-Path $root '_qc\check-docs.ps1'
+if (Test-Path $docPs1) { & powershell -NoProfile -File $docPs1; $docExit = $LASTEXITCODE }
+Check ($docExit -eq 0) '文档域断言全绿（_qc/check-docs.ps1：A1a 卡产物→对应表 / A1b 对应表→design / A1c $budget↔上限同源；逐条见上方 [docs] 行）'
 $ckTxt = ''
 $ckp = Join-Path $tpl 'check.ps1'
 if (Test-Path $ckp) { $ckTxt = [IO.File]::ReadAllText($ckp, [Text.Encoding]::UTF8) }
@@ -811,7 +813,7 @@ Check (-not $dupErr) "零成本字面近似层：任意两张卡的「什么时�
 Observe ($dupWarn.Count -eq 0) "本轮观测项（不拦红）：字面近似 50%~75% 的卡对 $($dupWarn.Count) 组 $($dupWarn -join ', ')"
 
 Write-Host "== 7. 脚本可执行性与口径统一 =="
-$ps1s = @('_qc\check.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1','template\security.ps1')
+$ps1s = @('_qc\check.ps1','_qc\check-docs.ps1','_qc\selftest.ps1','_qc/baseline/run.ps1','template\check.ps1','template\doctor.ps1','template\gate.ps1','template\orphans.ps1','template\security.ps1')
 foreach ($rel in $ps1s) {
     $p = Join-Path $root $rel
     if (-not (Test-Path $p)) { Check $false "脚本存在：$rel"; continue }
