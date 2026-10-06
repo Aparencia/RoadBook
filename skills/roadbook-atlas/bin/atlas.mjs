@@ -163,11 +163,29 @@ function assertType(type) {
   if (!TYPES.includes(type)) fail(`未知图类型 "${type}"，可用：${TYPES.join(', ')}`, 2);
 }
 
-/** 跑 vendored CLI，拿它的 --json 回执；非 0 退出原样透传，绝不吞。 */
+/**
+ * 跑 vendored CLI，拿它的 --json 回执；非 0 退出原样透传，绝不吞。
+ *
+ * `spawnError` 与 `status` 必须分开（2026-10-06 实测修的缺陷）：子进程**根本没起来**时
+ * spawnSync 返回 `status: null` + `error.code`（EPERM / ENOENT / …），而旧代码把它压成
+ * `status: 1` 并丢掉 error —— 于是受限环境里 `atlas doctor` 只报一句「vendored doctor 退出码 1」
+ * 且无任何原因，`guide` 直接静默退出 1，`validate --json` 给出 `{"ok":false,"raw":""}` 这种
+ * 不可证伪的红。那是把**仪器故障**显示成**渲染器判失败**，本仓最反对的一类假象。
+ * 退出码仍然是 1（起不来的仪器不许判绿），但调用方**必须**把原因说出来。
+ */
 function runArchify(args, cwd) {
   ensureVendor();
   const result = spawnSync(process.execPath, [ARCHIFY_CLI, ...args], { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  return { status: result.status === null ? 1 : result.status, stdout: result.stdout || '', stderr: result.stderr || '' };
+  const spawnError = result.error ? String(result.error.code || result.error.message || 'unknown') : '';
+  return { status: result.status === null ? 1 : result.status, spawnError, stdout: result.stdout || '', stderr: result.stderr || '' };
+}
+
+/** 子进程起不来时的统一说明：这是环境问题，不要按规格问题去改图纸。 */
+function spawnErrorLine(spawnError) {
+  return [
+    `渲染器进程起不来（${spawnError}）：${ARCHIFY_CLI}`,
+    '这是环境问题，不是规格问题 —— 先确认本机能起 node 子进程（管道 stdio），再回来查规格。',
+  ].join('\n');
 }
 function parseJsonOutput(text) {
   const trimmed = text.trim();
@@ -201,13 +219,22 @@ function commandRender(argv) {
   const run = runArchify(args, root);
   const rendererReceipt = parseJsonOutput(run.stdout);
   if (run.status !== 0 || !rendererReceipt || rendererReceipt.ok !== true) {
+    if (run.spawnError !== '') console.error(spawnErrorLine(run.spawnError));
     if (run.stderr.trim() !== '') console.error(run.stderr.trim());
     if (run.stdout.trim() !== '' && !rendererReceipt) console.error(run.stdout.trim());
     if (rendererReceipt && rendererReceipt.validation) {
       console.error(`校验未通过：errors=${rendererReceipt.validation.errors} warnings=${rendererReceipt.validation.warnings} status=${rendererReceipt.validation.compositionStatus}`);
     }
-    console.error(`渲染失败（退出码 ${run.status}）：${specPath}`);
-    console.error('没有写入回执 —— 图纸与回执都不可信，先修规格再重跑。');
+    console.error(
+      run.spawnError !== ''
+        ? `没有渲染（退出码 ${run.status}，原因见上）：${specPath}`
+        : `渲染失败（退出码 ${run.status}）：${specPath}`,
+    );
+    console.error(
+      run.spawnError !== ''
+        ? '没有写入回执 —— 本次没有产出，别当成图纸已更新。'
+        : '没有写入回执 —— 图纸与回执都不可信，先修规格再重跑。',
+    );
     process.exit(1);
   }
   const receipt = {
@@ -245,9 +272,21 @@ function commandRender(argv) {
   console.log(`  图类型 ${type} · 渲染器 archify ${receipt.renderer.version}（vendored）`);
   console.log('  下一步 在侧边栏「图册」里预览/导出；需要写进文档时对 agent 说清楚挂到哪一份。');
 }
+/**
+ * root 下的相对路径（回执与屏幕输出用）。
+ *
+ * 越界时**退回绝对路径**，不做字符串切片（2026-10-06 修）：旧实现是
+ * `resolve(target).slice(resolve(root).length)`，只要 target 不在 root 前缀下（`--root` 指到上级、
+ * 或规格用绝对路径指到别处），它就会产出**截断后的错路径**并写进回执 —— 那时回执指向的文件
+ * 根本不存在，比直接报错更难查。
+ */
 function relativePath(root, target) {
-  const rel = resolve(target).slice(resolve(root).length).replace(/^[\\/]+/, '');
-  return rel === '' ? '.' : rel;
+  const rootAbs = resolve(root);
+  const targetAbs = resolve(target);
+  const rel = relative(rootAbs, targetAbs);
+  if (rel === '') return '.';
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return targetAbs;
+  return rel;
 }
 function short(hash) {
   return typeof hash === 'string' && hash.length > 12 ? `${hash.slice(0, 8)}…${hash.slice(-4)}` : String(hash || '');
@@ -266,9 +305,14 @@ function commandValidate(argv) {
   const quality = options.quality || 'showcase';
   const run = runArchify(['validate', type, specPath, '--quality', quality, '--repo-root', root, '--json'], root);
   const parsed = parseJsonOutput(run.stdout);
-  if (options.json) console.log(JSON.stringify(parsed || { ok: run.status === 0, raw: run.stdout }, null, 2));
-  else if (parsed) console.log(JSON.stringify(parsed, null, 2));
+  if (options.json) {
+    // spawnError 必须进 JSON：否则 {"ok":false,"raw":""} 分不清「规格不过」与「渲染器没起来」。
+    const payload = parsed || { ok: run.status === 0, raw: run.stdout };
+    if (run.spawnError !== '') payload.spawnError = run.spawnError;
+    console.log(JSON.stringify(payload, null, 2));
+  } else if (parsed) console.log(JSON.stringify(parsed, null, 2));
   else if (run.stdout.trim() !== '') console.log(run.stdout.trim());
+  if (run.spawnError !== '') console.error(spawnErrorLine(run.spawnError));
   if (run.stderr.trim() !== '') console.error(run.stderr.trim());
   process.exit(run.status === 0 ? 0 : 1);
 }
@@ -376,6 +420,7 @@ function commandGuide(argv) {
   if (options.lang) args.push('--lang', options.lang);
   const run = runArchify(args, process.cwd());
   if (run.stdout.trim() !== '') console.log(run.stdout.trim());
+  if (run.spawnError !== '') console.error(spawnErrorLine(run.spawnError));
   if (run.stderr.trim() !== '') console.error(run.stderr.trim());
   process.exit(run.status === 0 ? 0 : 1);
 }
@@ -402,9 +447,24 @@ function commandDoctor(argv) {
     console.log('  --- vendored 渲染器自检 ---');
     if (run.stdout.trim() !== '') console.log(run.stdout.trim());
     if (run.stderr.trim() !== '') console.error(run.stderr.trim());
-    console.log(`  vendored doctor 退出码 ${run.status}`);
+    if (run.spawnError !== '') {
+      // 起不来 ≠ 判失败：旧文案只报「退出码 1」，会把人引去查渲染器是不是缺文件。
+      console.log(`  vendored doctor 起不来（${run.spawnError}）· 环境问题，不是渲染器缺陷`);
+      console.log(`  渲染器文件    ${facts.vendorPresent ? '在位' : '缺失'}：${ARCHIFY_CLI}`);
+    } else {
+      console.log(`  vendored doctor 退出码 ${run.status}`);
+    }
   } else {
-    console.log(JSON.stringify({ ...facts, rendererDoctor: { status: run.status, stdout: run.stdout.trim(), stderr: run.stderr.trim() } }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ...facts,
+          rendererDoctor: { status: run.status, spawnError: run.spawnError, stdout: run.stdout.trim(), stderr: run.stderr.trim() },
+        },
+        null,
+        2,
+      ),
+    );
   }
   process.exit(facts.vendorPresent && run.status === 0 ? 0 : 1);
 }

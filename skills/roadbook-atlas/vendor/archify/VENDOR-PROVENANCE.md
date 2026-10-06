@@ -48,10 +48,12 @@ copied license is the same text either way.
 
 ## Vendored contents
 
-58 files, 1 657 356 bytes (≈1.7 MiB of file content).
+57 upstream-derived files, 1 642 885 bytes (≈1.6 MiB of file content), plus this record
+itself (58 entries total; the record's own size is deliberately **not** recorded — it changes
+whenever this file is edited, see the table below).
 
 Upstream `skills/archify/` is 62 files / 4 847 150 bytes, so this copy is upstream minus
-four files — see *Excluded paths and why*.
+five files — see *Excluded paths and why*.
 
 ### Top-level entries with aggregate SHA-256
 
@@ -61,7 +63,7 @@ is the SHA-256 of the file itself. This makes every subtree independently checka
 
 | Entry | Files | Bytes | SHA-256 |
 | --- | ---: | ---: | --- |
-| `VENDOR-PROVENANCE.md` | 1 | 14 471 | *(this file — its hash changes whenever it is edited, so it is not self-recorded)* |
+| `VENDOR-PROVENANCE.md` | 1 | — | *(this file — its size and hash change whenever it is edited, so neither is self-recorded)* |
 | `LICENSE` | 1 | 1 146 | `2f724fa953b4eaa8ec75fa56919ce474b57adce54d2456a3791510bc53735cbd` |
 | `SKILL.md` | 1 | 13 036 | `295b8662379fd0d23ae1220c5eb4c6e00c9c133f8303b8b107eadeca1047fd68` |
 | `package.json` | 1 | 303 | `5bfc71c103a1b9f925c18e942196a7e142b24082a4105525f86feecabde30d6f` |
@@ -77,12 +79,19 @@ is the SHA-256 of the file itself. This makes every subtree independently checka
 
 Whole-tree aggregate over the 57 upstream-derived files (same rule, rooted at this
 directory, `VENDOR-PROVENANCE.md` itself excluded because a file cannot contain its own
-hash) = `d431d364db62bf52573c9f0c5e9d48958ed10ba88fcd20ba0039877e5139ddef`.
+hash) = `7e97b779b31dcb57cf0b375f0c9bd1dd6cae8d17ad138041aee05e904733cb44`.
 
-One-liner to recompute it from this directory:
+**规则必须说全（2026-10-06 订正）**：上面这个值 = 把「路径按**字节序**（C locale）升序排好」
+之后，逐行 `<文件 sha256><两个空格><相对本目录的路径>` 用 `\n` 连接、**末尾带一个 `\n`**，
+再对这个文本取 SHA-256。此前这里只写 "sorted lines"，而 `sort` 在 UTF-8 locale 下是字典序
+—— 同一批文件在不同 locale 下会算出不同的聚合值。**旧值 `d431d364…` 用任何常见排序/行格式
+都无法从这棵树复现**（12 种组合实测全不符），因此按上述确定性规则重算并写明；逐文件表才是
+真正的完整性判据，聚合值只是它的一行摘要，由 `test/vendor-provenance.test.mjs` 每次门禁复算。
+
+One-liner to recompute it from this directory (注意 `LC_ALL=C`，它保证排序口径不随机器变)：
 
 ```bash
-find . -type f ! -name VENDOR-PROVENANCE.md | sort | while read -r f; do
+LC_ALL=C find . -type f ! -name VENDOR-PROVENANCE.md | LC_ALL=C sort | while read -r f; do
   printf '%s  %s\n' "$(sha256sum "$f" | cut -d' ' -f1)" "${f#./}"
 done | sha256sum
 ```
@@ -151,7 +160,7 @@ done | sha256sum
 
 ## Excluded paths and why
 
-Exactly four upstream files are not vendored. All four are pre-rendered sample **artifacts**
+Exactly five upstream files are not vendored. All five are pre-rendered sample **artifacts**
 under `examples/` — finished HTML documents that exist to be looked at, never read by the
 render path:
 

@@ -18,6 +18,10 @@ import { readFileSync } from 'node:fs'
 const FILES = [
   ['根 SKILL.md', new URL('../SKILL.md', import.meta.url)],
   ['镜像 skills/roadbook/SKILL.md', new URL('../skills/roadbook/SKILL.md', import.meta.url)],
+  // 2026-10-06 补：atlas 技能此前**不在**这份清单里，于是它多带的 `license:` 键一直没人拦
+  // （宿主只注入 name + description，非标准键一律删——同 §763 对根 SKILL.md 的口径）。
+  // 漏一个技能文件 = 那个技能能否被宿主读出来没人管，正是 BUG-001（技能从未进技能目录）那一类洞。
+  ['atlas 技能 skills/roadbook-atlas/SKILL.md', new URL('../skills/roadbook-atlas/SKILL.md', import.meta.url)],
 ]
 
 /** frontmatter 行：首行 `---` 到下一个 `---` 之间。 */

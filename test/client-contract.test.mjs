@@ -1294,3 +1294,114 @@ test('详情页判定：有新版时出徽标、能更新；待重启单列一�
     assert.equal(checking.action.labelKey, 'detail.checking');
 });
 
+// ── 2026-10-06：图册空态「让 agent 生成架构图」按钮 ──────────────────────────
+// 用户诉求：侧栏图册里**还没有架构图**时，给一个能点的入口把 agent 叫起来（此前只有「复制提示词」，
+// 人还得自己切窗口粘）。方案 A = 复用 better-sidebar 现成的 `sidechat.start`（开一个继承当前
+// 会话上下文的子会话，不污染主对话），因此本组要钉住三件事：**什么时候出现**（判据）、
+// **发出去的请求长什么样**（形状）、**失败怎么显示**（不许静默）。
+// 判定与渲染都抽成了纯函数 —— 假 React 不跑 effect，「目录读完了」那一帧在 Node 里驱动不到。
+
+/** 从语言注册里取回两份表（同「双语表注册」用例的做法）。 */
+function dictionariesOf(exports) {
+    const dicts = {};
+    exports.apply(sidebarCtx({
+        locale: { register: (ns, locale, dict) => { dicts[locale] = dict; return () => {}; } },
+        betterSidebar: { features: [], registerTab: () => () => {} },
+    }));
+    return dicts;
+}
+
+test('空态生成按钮：没有架构图才出现（空目录 / 只有非架构图），已有架构图就不打扰', () => {
+    const { exports } = loadBundle();
+    const { generateBlockFor } = exports.__internals;
+    const t = (key) => key;
+    const ready = (items) => ({ status: 'ready', items });
+
+    // V1 空目录 → 出现，且文案来自语言表
+    const empty = generateBlockFor(ready([]), { status: 'idle' }, t, () => {});
+    assert.ok(empty, '空目录必须有生成入口');
+    assert.ok(collectLabels(empty).includes('action.generate'), '按钮文案要来自语言表');
+
+    // V2 只有非架构图 → 仍然出现（用户要的是「没有架构图」，不是「目录为空」）
+    const workflowOnly = generateBlockFor(ready([{ slug: 'a', type: 'workflow' }]), { status: 'idle' }, t, () => {});
+    assert.ok(workflowOnly, '只有 workflow 图纸时也要能一键生成架构图');
+
+    // V3 已有架构图 → 不出现
+    assert.equal(
+        generateBlockFor(ready([{ slug: 'a', type: 'architecture' }]), { status: 'idle' }, t, () => {}),
+        null,
+        '已有架构图不再引导'
+    );
+
+    // 未读完 / 读失败时不抢错误态的位置
+    assert.equal(generateBlockFor({ status: 'loading', items: [] }, { status: 'idle' }, t, () => {}), null);
+    assert.equal(generateBlockFor({ status: 'error', items: [], error: 'x' }, { status: 'idle' }, t, () => {}), null);
+});
+
+test('生成按钮点下去：POST /sidebar/api/sidechat.start，body 带 sessionId / cwd / question', async () => {
+    const requests = [];
+    const { exports } = loadBundle({
+        fetch: async (url, init) => {
+            requests.push({ url: String(url), method: init && init.method, body: JSON.parse(init.body) });
+            return { ok: true, status: 200, json: async () => ({ ok: true, value: { childId: 'session-x' } }) };
+        },
+    });
+    const dicts = dictionariesOf(exports);
+    const t = (key) => dicts.zh[key] || key;
+
+    const result = await exports.__internals.startSidechatGenerate({ sessionId: 'session-1', cwd: '/repo' }, 'docs/diagrams', t);
+    assert.deepEqual(result, { childId: 'session-x' });
+    assert.equal(requests.length, 1, '只发一次请求');
+    assert.equal(requests[0].url, '/sidebar/api/sidechat.start', '走现成的侧聊 seam，不自建接口');
+    assert.equal(requests[0].method, 'POST');
+    assert.equal(requests[0].body.sessionId, 'session-1');
+    assert.equal(requests[0].body.cwd, '/repo');
+    assert.match(requests[0].body.question, /roadbook-atlas/, '提示词要点名技能');
+    assert.match(requests[0].body.question, /docs\/diagrams/, '提示词要带上用户配置的图纸目录');
+});
+
+test('生成按钮失败：如实把宿主给的原因传上来并显示（409 不许静默）', async () => {
+    const { exports } = loadBundle({
+        fetch: async () => ({
+            ok: false,
+            status: 409,
+            json: async () => ({ error: { code: 'sidechat-error', message: 'parent session "session-1" is not running' } }),
+        }),
+    });
+    const dicts = dictionariesOf(exports);
+    const t = (key) => dicts.zh[key] || key;
+
+    await assert.rejects(
+        () => exports.__internals.startSidechatGenerate({ sessionId: 'session-1', cwd: '/repo' }, 'docs/diagrams', t),
+        /is not running/,
+        '宿主的原因必须原样传上来'
+    );
+
+    const failed = exports.__internals.generateBlockFor(
+        { status: 'ready', items: [] },
+        { status: 'error', error: 'is not running' },
+        t,
+        () => {}
+    );
+    const labels = collectLabels(failed).join(' ');
+    assert.match(labels, /没能唤起 agent/, '界面要说清是「没唤起」，不是「画失败了」');
+    assert.match(labels, /is not running/, '原因要显示出来，不许吞');
+});
+
+test('生成中：同一颗按钮禁用 + 文案切换（不新开入口）', () => {
+    const { exports } = loadBundle();
+    const view = { status: 'ready', items: [] };
+
+    for (const status of ['starting', 'started']) {
+        const block = exports.__internals.generateBlockFor(view, { status, error: '' }, (key) => key, () => {});
+        const buttons = collectElements(block, 'button');
+        assert.equal(buttons.length, 1, '仍然只有一颗生成按钮');
+        assert.equal(buttons[0].props.disabled, true, `${status} 时必须禁用，防连点`);
+        assert.equal(buttons[0].children[0], 'action.generating');
+    }
+
+    const idle = collectElements(exports.__internals.generateBlockFor(view, { status: 'idle' }, (key) => key, () => {}), 'button');
+    assert.equal(idle[0].props.disabled, false, 'idle 时可点');
+    assert.equal(idle[0].children[0], 'action.generate');
+});
+

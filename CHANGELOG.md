@@ -20,6 +20,30 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 
 ## [未发布]
 
+### 2026-10-06 · 图册空态一键生成（新能力；升版待裁）
+
+**需求**（用户指令「开始建设，选用方案A」）：图册里**还没有架构图**时，给一颗能点的按钮把 agent 叫起来（此前只有「复制提示词」，人还得自己切窗口粘）。调研与范围见 `design/atlas-generate-button.md`（2-1 + 2-2 合并件，档位 **M**）。
+
+- **判据**：目录读完了、且**没有任何 `architecture` 类型图纸**（空目录、以及「只有非架构图」都算）。
+- **机制**：`lib/client.js` → `POST /sidebar/api/sidechat.start`，body 带 `sessionId` / `cwd` / `question`（提示词里带上用户配置的图纸目录）。它开的是 `origin: subagent` 的子会话（不进主会话列表），图纸落盘后由图册既有的 15 秒指纹轮询自动出现。**不新增宿主接口、不触「新增对外接口」红线**——被否的方案 B（自建宿主路由注入主会话）理由见该文件 §2。
+- **失败如实上报**：父会话不在 `agents` 注册表时宿主回 409、侧聊服务缺席时 404，两种都把宿主原文显示出来，不许静默；生成中同一颗按钮禁用 + 文案切换。
+- **可测性**：判定与渲染抽成纯函数 `generateBlockFor` / `startSidechatGenerate` 并进 `__internals`（假 React 跑不了 effect，「目录读完了」那一帧在 Node 里驱动不到），新增 4 条契约断言。**变异验证**：把「已有架构图就不再引导」改坏 → 语法正常、**恰好该条判红**、其余 44 条照旧全绿。
+
+### 2026-10-06 · atlas 修复批（我们自己的代码；`vendor/**` 代码一字不动）
+
+- **P1 · CLI 把「进程起不来」伪装成「渲染器判失败」**（`skills/roadbook-atlas/bin/atlas.mjs`）：旧代码把 `status: null` 压成 `1` 并丢掉 `result.error` ⇒ `doctor` 只报一句无原因的「vendored doctor 退出码 1」、`guide` 静默退出 1、`validate --json` 给出 `{"ok":false,"raw":""}` 这种**不可证伪的红**。现在 spawn 失败单列 `spawnError`，四处（doctor / render / validate / guide）都说明「这是环境问题，不是规格问题」。断言用不存在的 `--root` 确定性复现（真机沙箱曾以 EPERM 命中此路径）。
+- **P5 · `relativePath()` 越界切片**：`resolve(target).slice(resolve(root).length)` 在 target 不在 root 下时产出**截断后的错路径**并写进回执。改为越界退回绝对路径；断言跑一次真实渲染，要求回执里的路径**指向真实文件**。
+- **P7 · 规格 >512 KB 被截断时静默丢信息**（`lib/client.js`）：`readJson` 见截断返回 `null`，调用方于是静默丢 title/type、且「规格已改」恒判没变。现在截断单列（`{truncated:true}`）→ `specChangedAfterRender` 判 `unknown`（不许拿截断长度比出 changed、也不许对空文本算哈希），行上明说 `spec truncated (>512 KB read limit)`。
+- **P3 · `plugin/roadbook-atlas/README.md` 四处与磁盘不符**：供应商清单路径写错（真身在 `vendor/archify/` 下）、「四个子行」实为六行、测试清单「34 项」只列 6 个文件（实际 12 个）、冒烟测试被描述成「断言 9/9 与三次同 SHA」（实际只断言 exit 0 + >100 KB + `ok!==false`）。全部按实测改写，并写明「条数以命令输出为准，不要手抄」。
+- **P4 · atlas 的 `SKILL.md` 不在 frontmatter 仪器覆盖内**：`test/skill-frontmatter.test.mjs` 的 FILES 只列了两份 `roadbook` 的 SKILL.md，于是 atlas 多带的 `license:` 键没人拦（宿主只注入 name + description，非标准键一律删）。纳入清单 + 删该键——这道仪器正是 BUG-001（技能因非法 YAML 从未进技能目录）留下的。
+- **P2 · 供应商清单从「声明」变「判据」**：新增 `test/vendor-provenance.test.mjs`——逐文件字节数 + SHA-256 双向比对（含两个方向的孤儿）、全树聚合值按写明口径复算、汇总算术自洽。同批订正记录：汇总字节数此前把**记录文件自身**按旧尺寸计入（1 657 356 → 实测 57 个派生文件 **1 642 885**），记录自身尺寸改为不记；**全树聚合值旧值 `d431d364…` 用任何常见排序 / 行格式都复现不出来**（三种排序 × 四种行格式共 12 种组合实测全不符），改为按确定性规则（字节序排序 + `<sha>␠␠<路径>` + 末尾一个换行）重算，并把规则写全、一行命令补 `LC_ALL=C`。
+- **P9 · 记录自相矛盾**：`VENDOR-PROVENANCE.md` 写 "Exactly **four** upstream files are not vendored"，而紧随的表列 **5** 行、下文又写 "these **five** HTML files"；上游 62 − 5 = 57 才对得上账。已改为 five，并把这算术做成新测试的断言（4/5 之争就是这么来的）。
+- **登记为技术债（上游 archify，本批不动）**：`scripts/generate-validators.mjs` 被 `schemas/README.md` 引用但未 vendored（383 KB 生成物无法复现漂移检查）；`assets/template.html` 有真实外链（Google Fonts）而 9 项产物检查**无一项查外链**；`check-render-output.mjs` 在无图例时 `legend_clearance` 无条件通过（「9/9」不是统一标尺）；`bin/archify.mjs:1444` 硬编码 `/dev/null`（Windows 隐患，对 atlas CLI 无实际影响）；退出码 2 语义重载。整表见 `design/atlas-generate-button.md` §6.2，下次 vendor 升级时即升级清单。
+
+**本批测试与门禁**：`node --test "test/*.test.mjs"` **160/160**、`plugin/roadbook-autoload/test/*.test.mjs` **94/94**、`plugin/roadbook-evolve/test/*.test.mjs` **33/33**；`powershell -NoProfile -File _qc/check.ps1` 退出码 0（本机需 `-ExecutionPolicy Bypass`，见下）。
+
+**环境记录（本机实测，供下一个人）**：本机 `powershell -NoProfile -File _qc/check.ps1` 被一条**路径级**执行策略挡住（`The file ... is not digitally signed`），而 `%TEMP%` 下的**同内容**脚本可以跑；该文件无 MOTW 数据流、无重解析点、`Get-ExecutionPolicy` 报 `RemoteSigned`。等价命令 = `powershell -NoProfile -ExecutionPolicy Bypass -File _qc/check.ps1`（**进程级**，不改机器状态）。CI 用的是 `pwsh`（本机 PATH 上没有）。
+
 ### 新能力
 
 - **卡数 45 → 49：过程域缺口全部收口（4 张新卡，中英各一份）**。§18 登记的"1 项待补 + 3 项薄覆盖"**不是新发现**——它们在上一轮就已经写下；本轮只是执行 §18 自己列的合法处置之一（补卡），判据是**先有缺口登记、后有卡**。逐项对应：

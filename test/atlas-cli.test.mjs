@@ -92,3 +92,42 @@ test('失败路径：缺规格 exit 1 且不写回执；未知命令 exit 2；�
         fs.rmSync(workDir, { recursive: true, force: true });
     }
 });
+
+test('仪器故障：渲染器起不来时退出码 1 **且说出原因**，不许只报退出码', () => {
+    // 确定性制造 spawnSync 的 error：把一个**不存在**的目录当 --root，spawn 的 cwd 就非法。
+    // 不依赖沙箱、不依赖平台。旧实现把 status:null 压成 1 并丢掉 error.code，于是这里只会得到
+    // {"ok":false,"raw":""} 与空 stderr —— 分不清「规格不过」与「渲染器根本没起来」，
+    // 而 doctor 会报一句无原因的「vendored doctor 退出码 1」，把人引去查渲染器是不是缺文件。
+    const spec = path.join(PLUGIN_ROOT, 'skills', 'roadbook-atlas', 'vendor', 'archify', 'examples', 'web-app.architecture.json');
+    const bogusRoot = path.join(os.tmpdir(), `atlas-no-such-root-${process.pid}`);
+    assert.ok(!fs.existsSync(bogusRoot), '前置条件：这个根必须不存在');
+
+    const result = run(['validate', spec, '--root', bogusRoot, '--json']);
+    assert.equal(result.status, 1, '起不来的仪器不许判绿');
+    assert.match(result.stderr, /渲染器进程起不来/, '必须说出是仪器起不来');
+    assert.match(result.stderr, /环境问题，不是规格问题/, '必须点明该往哪查');
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.ok, false);
+    assert.equal(parsed.spawnError, 'ENOENT', '真相要进 JSON，机器消费者才分得清两类失败');
+});
+
+test('越界路径：--root 指到图纸目录之外时，回执写**绝对路径**而不是截断后的错路径', () => {
+    // 旧实现是 resolve(target).slice(resolve(root).length)：target 不在 root 前缀下时会切出一个
+    // 谁也对不上的相对路径并写进回执 —— 比报错更难查。判据：回执里的路径必须**指向真实文件**。
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-cli-outside-'));
+    const otherRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-cli-otherroot-'));
+    try {
+        assert.equal(run(['new', 'architecture', 'outside', '--title', '越界测试'], workDir).status, 0);
+        const specPath = path.join(workDir, 'docs', 'diagrams', 'outside.atlas.json');
+        const rendered = run(['render', specPath, '--root', otherRoot], workDir);
+        assert.equal(rendered.status, 0, `${rendered.stdout}\n${rendered.stderr}`);
+
+        const receipt = JSON.parse(fs.readFileSync(path.join(workDir, 'docs', 'diagrams', 'outside.receipt.json'), 'utf8'));
+        assert.ok(path.isAbsolute(receipt.spec.path), `越界时必须是绝对路径，实际拿到 ${receipt.spec.path}`);
+        assert.equal(receipt.spec.path, specPath);
+        assert.ok(fs.existsSync(receipt.spec.path), '回执里的路径必须指向真实文件');
+    } finally {
+        fs.rmSync(workDir, { recursive: true, force: true });
+        fs.rmSync(otherRoot, { recursive: true, force: true });
+    }
+});

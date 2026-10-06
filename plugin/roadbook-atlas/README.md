@@ -13,7 +13,7 @@
 
 ## 安装与开关
 
-安装只有一条路：**装主插件**（DSH 侧栏「插件」→「添加插件」→ Git 地址填本仓库根，或本地绝对路径指向仓库根）——根 `package.json` 声明了组合包，装完在插件面板里能看到四个子行。
+安装只有一条路：**装主插件**（DSH 侧栏「插件」→「添加插件」→ Git 地址填本仓库根，或本地绝对路径指向仓库根）——根 `package.json` 声明了组合包，装完在插件面板里能看到**六行**（1 条主行 `roadbook` + 5 条可独立开关的子行：`roadbook-skills` / `roadbook-autoload` / `roadbook-atlas` / `roadbook-team` / `roadbook-evolve`）。
 
 关掉本子插件有三种粒度，都在插件面板或 profile 里，不需要改本目录：
 
@@ -61,7 +61,7 @@ node skills/roadbook-atlas/bin/atlas.mjs doctor
 
 `skills/roadbook-atlas/vendor/archify/` 是上游 [tt-a1i/archify](https://github.com/tt-a1i/archify)（MIT）的 vendor 副本，**只读**：
 
-- 清单与 SHA-256：`skills/roadbook-atlas/VENDOR-PROVENANCE.md`（58 文件 / 1,657,356 B；只排除 5 个预渲染 HTML 演示，保留 13 份 JSON 夹具）。
+- 清单与 SHA-256：`skills/roadbook-atlas/vendor/archify/VENDOR-PROVENANCE.md`（57 行逐文件表 + 上游排除清单；只排除 5 个预渲染 HTML 演示，保留 13 份 JSON 夹具）。**逐文件字节数与哈希由 `test/vendor-provenance.test.mjs` 每次门禁现算**——清单里的汇总数字不要手抄进文档，它会随记录文件自身增长而失效。
 - 升级 = 整目录替换，然后从仓库根跑 `node --test "test/*.test.mjs"` 复验。
 - 上游没有可 import 的渲染 API（`bin/archify.mjs` 零 export），所以 CLI 用 `spawnSync` 调 `deliver --json`，路径从自己模块位置解析。
 
@@ -69,13 +69,15 @@ node skills/roadbook-atlas/bin/atlas.mjs doctor
 
 ```bash
 cd <仓库根>
-node --test "test/*.test.mjs"                          # 34 项：CLI 端到端 3 + 客户端契约 15 + 渲染冒烟 1（内含 5 类渲染）+ 伞包契约 8 + 镜像 2 + 打包契约 5
-node --test "plugin/roadbook-autoload/test/*.test.mjs" # 自动加载子插件的离线测试（61 项）
+node --test "test/*.test.mjs"                          # 伞包侧全套件（12 个测试文件）
+node --test "plugin/roadbook-autoload/test/*.test.mjs" # 自动加载子插件的离线测试
+node --test "plugin/roadbook-evolve/test/*.test.mjs"   # 自进化子插件的离线测试
 ```
+条数以命令输出为准，**不要在文档里手抄**（此前这里写「34 项」并列了 6 个文件，早已与磁盘不符）。
 
 - `test/atlas-cli.test.mjs`：退出码纪律 + **项目根陷阱回归守卫**（本机 `%TEMP%` 里有游离 `.git`，`git rev-parse` 会把图纸写到项目外；CLI 拒绝家目录/临时目录做根，退回 cwd）。
 - `test/client-contract.test.mjs`：在 `vm` 里跑客户端 bundle，校验 ModuleLoader 形状、`ctx.effect` 注册、标签页根节点高度契约、双语；2026-10-05 起另钉预览 URL 算法（`/sidebar/html`、绝对路径、逐段编码）、语言快照字段、目录指纹、规格过期判定。
-- `test/render-smoke.test.mjs`：五类各渲染一次，断言 9/9 校验通过、`showcase:pass`、三次运行同 SHA-256。
+- `test/render-smoke.test.mjs`：五类各渲染一次，断言 exit 0 + 回执可解析且 `ok !== false` + 产物 > 100 KB。**不**断言校验计数、也**不**做「三次运行同 SHA-256」比对（此前 README 那么写，与代码不符）。
 - `test/packaging.test.mjs`：**运行时引用的路径 ⊆ 发布白名单**（`playbook/`、`playbook_EN/`、`template/` 与 `host-fallback.js` 都漏过一次）。
 
 ## 版本

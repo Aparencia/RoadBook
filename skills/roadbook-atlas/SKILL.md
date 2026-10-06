@@ -1,7 +1,6 @@
 ---
 name: roadbook-atlas
 description: 把 typed JSON 规格渲染成自包含交互式 HTML 图纸（架构 / 流程 / 时序 / 数据流 / 状态机五类），落进项目图纸目录并产出可核对的回执；成品在 better-sidebar 的「图册」标签页里预览、打开、导出。用户说「画一张架构图 / 流程图 / 时序图 / 数据流图 / 状态机」「把这条链路画出来」「把系统结构画成一张图」时使用。渲染器随包 vendored，不依赖外部安装。
-license: MIT
 ---
 
 # Roadbook Atlas（路书·图册）
