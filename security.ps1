@@ -2,7 +2,7 @@
 # 退出码契约：0 = 无红项（可有黄项，不拦）；1 = 有红项（拦下，先修再提交）；2 = 环境／参数错
 #   （-RepoRoot 不存在或不是 git 工作树；-SkillDir 给了但目录不存在）；-ReportOnly = 只报不拦（有红也 exit 0）。
 # 主扫范围 = git 跟踪 ∪ 未忽略的未跟踪文件（ls-files / ls-files --others --exclude-standard），非 git 仓库 = exit 2；
-#   二进制（扩展名黑名单）与 >2MB 文件跳过；读不了的文件按黄项报（不许静默当通过）。本脚本自身含模式字面量，两种模式都跳过自身。
+#   二进制（扩展名黑名单）与 >2MB 文件跳过；读不了的文件按黄项报（不许静默当通过）。本脚本自身含模式字面量，两种模式都跳过自身**及其逐字节副本**——母版里根与 template/ 各存一份同一脚本，只排除"运行中的那个路径"会把另一份的规则字面量当违规（2026-10-06 实测母版恒 5 红）。
 # 用法：powershell -NoProfile -File security.ps1 -RepoRoot . ｜ … -SkillDir "$env:TEMP/third-party-skill"
 # 输出：[红] 相对路径:行号 类别: 脱敏片段 ｜ 修：一句话修复建议（密钥片段只留前 4 后 4，中间 ****）
 # 消歧：危险执行链落在 .md/.txt 里只报黄（文档常把反例写成"待拒清单"，如 7-9 卡），落在代码/配置里一律红；密钥在任何文件里都红。
@@ -10,6 +10,8 @@ param([string]$RepoRoot = '.', [string]$SkillDir = '', [switch]$ReportOnly)
 chcp 65001 > $null; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $script:Red = 0; $script:Yellow = 0
 $self = ''; if ($PSCommandPath) { $self = [IO.Path]::GetFullPath($PSCommandPath) }
+# 跳过口径 = 运行中的自身路径 ∪ 与自身逐字节相同的副本（先比长度再比 SHA-256；同内容才跳，不同内容照扫——免得给逃逸留口子）
+function Test-SelfCopy($p) { if ($self -and [IO.Path]::GetFullPath($p) -eq $self) { return $true }; if (-not $self) { return $false }; try { if ((Get-Item -LiteralPath $p).Length -ne (Get-Item -LiteralPath $self).Length) { return $false } } catch { return $false }; $a = [string](Get-FileHash -LiteralPath $p -ErrorAction SilentlyContinue).Hash; $b = [string](Get-FileHash -LiteralPath $self -ErrorAction SilentlyContinue).Hash; return ($a.Length -gt 0 -and $a -eq $b) }
 # 规则纪律：P 里的分组一律写 (?:…)，唯一例外 = 要单独展示的那个捕获组（取最后一组的值当片段）。
 function Show($s, $secret) {
     $t = [string]$s
@@ -84,7 +86,7 @@ $skillRules = @(  # -SkillDir 准入机检；每条给命中模式 ID
 if ($SkillDir -ne '') {
     if (-not (Test-Path -LiteralPath $SkillDir -PathType Container)) { Fail-Env "-SkillDir 不存在：$SkillDir" }
     $sroot = [IO.Path]::GetFullPath($SkillDir)
-    $slist = @(Get-ChildItem -LiteralPath $sroot -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' -and $_.Name -match '(?i)\.(md|json|js|mjs|cjs|ts|py|ps1|sh|yml|yaml|txt)$' -and (-not $self -or $_.FullName -ne $self) })
+    $slist = @(Get-ChildItem -LiteralPath $sroot -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' -and $_.Name -match '(?i)\.(md|json|js|mjs|cjs|ts|py|ps1|sh|yml|yaml|txt)$' -and -not (Test-SelfCopy $_.FullName) })
     Write-Host ('[i] -SkillDir 模式：扫描 {0} 个文件（扩展名白名单，含隐藏文件，跳过 .git/ 与自身）' -f $slist.Count)
     foreach ($sf in $slist) {
         $rel = ($sf.FullName.Substring($sroot.Length).TrimStart('\','/')) -replace '\\','/'
@@ -100,7 +102,7 @@ if ($SkillDir -ne '') {
     $files = @()
     foreach ($f in $all) {
         $full = Join-Path $RepoRoot $f
-        if (-not (Test-Path -LiteralPath $full -PathType Leaf) -or ($self -and [IO.Path]::GetFullPath($full) -eq $self)) { continue }
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf) -or (Test-SelfCopy $full)) { continue }
         if ($binExt -contains [IO.Path]::GetExtension($full).ToLower()) { continue }
         if ((Get-Item -LiteralPath $full).Length -le 2097152) { $files += $f }
     }
@@ -112,7 +114,7 @@ if ($SkillDir -ne '') {
     }
     foreach ($f in @($all | Where-Object { $_ -match '\.ps1$' })) {
         $fp = Join-Path $RepoRoot $f
-        if (-not (Test-Path -LiteralPath $fp -PathType Leaf) -or ($self -and [IO.Path]::GetFullPath($fp) -eq $self)) { continue }
+        if (-not (Test-Path -LiteralPath $fp -PathType Leaf) -or (Test-SelfCopy $fp)) { continue }
         $b = [IO.File]::ReadAllBytes($fp)
         if ($b.Length -lt 3 -or $b[0] -ne 239 -or $b[1] -ne 187 -or $b[2] -ne 191) { Hit $true $f 0 '.ps1 无 BOM' $f $fBom $false }
     }
