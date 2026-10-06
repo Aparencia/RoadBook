@@ -20,6 +20,12 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
+## [未发布]
+
+### 修 bug
+
+- **图册在默认设置下恒报「读取失败：`docs/diagrams is not an absolute path`」**（`lib/client.js`，真机 **BUG-002**，根因链与复现见 `_qc/rca-2026-10-06-atlas-relative-dir.md`）：图纸目录的口径是「相对项目根」（可移植，本身没错），而 `fs.tree` / `fs.read` 落在 better-sidebar **宿主侧**的 `requireAbsolute()`（`dsh-better-sidebar/lib/index.js:363`）上、**只收绝对路径** —— 请求体里那个 `cwd` 只是作用域，宿主不会拿它补 ⇒ **默认设置下列不出任何图纸**（手填一个绝对路径就能绕过，于是缺陷跟着设置一起被"个人化"了；`git blame` 实测它自 `bbf2fe4`（2026-10-04 插件初版）就在，**不是 0.8.0 的回归**）。修法：新增 `isAbsolutePath` / `resolveSidebarPath`，**与 `dsh-better-sidebar/lib/client.js:848 / :912` 同判据同算法**（同 `htmlUrl` 与宿主 `encodeHtmlUrl` 的关系），两处 fs 调用点（列表 / 15 秒轮询）先折算；显示层照旧显示配置原文。契约测试补三条：折算边界表 + `listDiagrams` **生产路径**（**加完先跑见红**：`actual 'docs/diagrams'` vs `expected 'C:/proj/docs/diagrams'`，fail 1 / pass 45）+ **接线守卫**（源码里再出现 `"fs.tree", { path: dir }` 这种原样透传即判红 —— 假 `/sidebar API` 从不执行宿主的校验，这条链路此前**零覆盖**）。
+
 ## [0.8.0] - 2026-10-06
 
 **图册空态一键生成（新能力）+ 过程域缺口收口（45 → 49 张卡）+ atlas 修复批（P1/P2/P3/P4/P5/P7/P9）。** 按升版判定表「加能力 → 次版本」走 `0.7.2 → 0.8.0`；`vendor/**` 上游代码一字不动。本节 = `v0.7.2` 之后那个 `[未发布]` 节累积的全部条目（对照 `git log --oneline v0.7.2..HEAD`）。

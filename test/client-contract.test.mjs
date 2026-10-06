@@ -1410,3 +1410,48 @@ test('生成中：同一颗按钮禁用 + 文案切换（不新开入口）', ()
     assert.equal(idle[0].children[0], 'action.generate');
 });
 
+// ── 2026-10-06 真机 BUG（用户截图）：图册默认目录是「相对项目根」，而 better-sidebar 的 fs API 只收绝对路径 ──
+// 真机原文：读取失败：docs/diagrams is not an absolute path
+// 宿主判据：dsh-better-sidebar/lib/index.js 的 requireAbsolute() —— !isAbsolute(path) 直接 400。
+// 为什么此前全绿：契约测试的假 /sidebar API 从不执行那道校验，于是「没人做折算」在测试里是隐形的
+// —— 又一次「接线层必须有自己的测试」。
+test('图册列目录：相对目录必须先按 cwd 折算成绝对路径再调 fs.tree（默认 docs/diagrams 不能开箱即坏）', async () => {
+    const requests = [];
+    const { exports } = loadBundle({
+        fetch: async (url, init) => {
+            requests.push({ url: String(url), body: JSON.parse(init.body) });
+            return { ok: true, status: 200, json: async () => ({ ok: true, value: { path: 'C:/proj/docs/diagrams', entries: [] } }) };
+        },
+    });
+    await exports.__internals.listDiagrams({ sessionId: 'session-1', cwd: 'C:/proj' }, 'docs/diagrams');
+    assert.equal(requests[0].url, '/sidebar/api/fs.tree');
+    assert.equal(requests[0].body.path, 'C:/proj/docs/diagrams', '相对目录必须折算成绝对路径，否则宿主 400：is not an absolute path');
+});
+
+test('折算算法与 better-sidebar 同判据：isAbsolutePath 三种绝对写法 + resolveSidebarPath 边界表', () => {
+    const { isAbsolutePath, resolveSidebarPath } = loadBundle().exports.__internals;
+    // 绝对判据（对齐 dsh-better-sidebar/lib/client.js:848）：POSIX 根 / 盘符 / UNC 两种写法
+    for (const value of ['/home/u/proj', 'C:/proj', 'C:\\proj', '\\\\srv\\share', '//srv/share']) {
+        assert.equal(isAbsolutePath(value), true, `${value} 必须判成绝对，否则会被拼到 cwd 后面`);
+    }
+    for (const value of ['docs/diagrams', './docs', 'C:foo', '']) {
+        assert.equal(isAbsolutePath(value), false, `${value} 必须判成相对（C:foo 是盘符相对，宿主同样拒收）`);
+    }
+    // 折算（对齐 dsh-better-sidebar/lib/client.js:912）
+    assert.equal(resolveSidebarPath('C:/proj', 'docs/diagrams'), 'C:/proj/docs/diagrams');
+    assert.equal(resolveSidebarPath('C:\\proj', 'docs\\diagrams'), 'C:\\proj\\docs\\diagrams', 'base 是反斜杠 → 用反斜杠连接');
+    // 分隔符只由 base 决定，相对路径**原文里的**分隔符一个都不改（与宿主逐字同算法）：
+    // Windows 的 isAbsolute 认混合写法，宿主随后还会 resolve() 归一，所以这里不去"顺手修正"。
+    assert.equal(resolveSidebarPath('C:\\proj', 'docs/diagrams'), 'C:\\proj\\docs/diagrams', '原文分隔符不动（混合写法宿主照样认）');
+    assert.equal(resolveSidebarPath('/home/u/proj/', 'docs/diagrams'), '/home/u/proj/docs/diagrams', 'base 末尾分隔符只 trim');
+    assert.equal(resolveSidebarPath('C:/proj', 'D:/other/x'), 'D:/other/x', '已是绝对 → 原样返回（一个字符都不动）');
+    assert.equal(resolveSidebarPath('', 'docs/diagrams'), 'docs/diagrams', '没有 cwd 不硬拼：保持旧行为，让宿主的报错如实冒上来');
+    assert.equal(resolveSidebarPath(undefined, 'docs/diagrams'), 'docs/diagrams', 'cwd 缺席同理');
+});
+
+// 接线守卫：BUG-002 的形状（配置原文原样进 fs API）不许在源码里再出现 ——
+// 任何一处漏折算都当场判红，而不是等真机上再看见一次「读取失败」。
+test('接线守卫：fs 调用的 path 不许原样透传配置原文（BUG-002 的形状）', () => {
+    assert.ok(!/"fs\.(tree|trees|read|list|write)", \{ path: dir \}/.test(SOURCE), 'fs API 的 path 必须先经 resolveSidebarPath 折算');
+});
+
