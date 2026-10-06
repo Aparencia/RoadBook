@@ -23,3 +23,14 @@ docs/diagrams/
 .env.local
 *.pem
 *.key
+
+# agent 配置与凭据落点（4-5 卡要求 `git check-ignore -v .mcp.json .claude .codex` 必须有输出；
+# 无输出 = 照卡做必红）：这三处放 MCP / agent 配置与令牌，混进历史即 D15 违规。
+# 三条都不写尾斜杠：尾斜杠只匹配「已存在的目录」，而探针命令必须在目录尚未生成时也能命中。
+.mcp.json
+.claude
+.codex
+
+# 并行工作区（4-1 卡要求开工作区前先 `git check-ignore -q .worktrees`；
+# 未忽略就开 = 整棵工作树被提交进仓库，所以先忽略、单独一笔提交，再开工作区）。
+.worktrees

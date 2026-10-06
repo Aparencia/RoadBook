@@ -1,0 +1,46 @@
+{
+  "schema": "roadbook-docmap/1",
+  "note": "文档义务的机器判据。按「形态」索引而不是按「变更类型」索引：agent 手里的事实是「我改了哪个路径」，脚本能机械判的是「本批新增了哪些文件 / 哪些行」——两者对得上才不会漏；此前义务只写在散文里（AGENTS.md 的 D13 回写义务表 + docs/README.md 的对应表），索引键是语义类型，路径→语义这一步靠判断，漏了没有痕迹（实测：5-7 卡的产物 docs/BASELINE.md 在五处登记里缺了四处，而门禁照旧全绿）。source=added-file 取「本批新增的文件」（已提交的 A 项 ∪ 未跟踪，排除 docs/ 前缀——docs 下的文档由 5-1 归档第 ⑧ 查管）；source=new-line 取「本批新增的行」。pattern 是正则，docs 里任意一份同批出现在变更清单里即算履行。每条规则的 d13 字段逐字引用 D13 回写义务表的行首，绑定由 _qc/check-docs.ps1 反向核对（防本文件引用一条不存在的义务）。项目裁剪掉某张注册表时，给该条加 \"disabled\": true 并在 STATE.md 裁剪记录写一行理由。",
+  "rules": [
+    {
+      "id": "new-file",
+      "source": "added-file",
+      "pattern": ".+",
+      "docs": ["docs/registry/COMPONENTS.md"],
+      "d13": "新建文件",
+      "why": "新增文件必须同批登记注册表（4-1 卡「新增即登记」）；未登记 = 孤儿，5-1 卡第 ⑧ 查会报"
+    },
+    {
+      "id": "new-export",
+      "source": "new-line",
+      "pattern": "^\\+\\s*(export\\s|def\\s|func\\s|pub\\s+fn\\s|class\\s)",
+      "docs": ["docs/registry/COMPONENTS.md"],
+      "d13": "新建文件",
+      "why": "新导出的符号是「新的可复用件」，与新增文件同口径——不登记就等着平行新建"
+    },
+    {
+      "id": "new-route",
+      "source": "new-line",
+      "pattern": "(?i)(router|app)\\.(get|post|put|delete|patch)\\s*\\(|@app\\.route|@(Get|Post|Put|Delete)Mapping",
+      "docs": ["docs/registry/APIS.md"],
+      "d13": "接口/错误码",
+      "why": "新增对外接口属红线域（AGENTS.md C3）：接口清单必须同批登记，新错误码也要登记"
+    },
+    {
+      "id": "new-env-key",
+      "source": "new-line",
+      "pattern": "^\\+[A-Z][A-Z0-9_]*=",
+      "docs": ["docs/RUNBOOK.md", ".env.example"],
+      "d13": "环境与配置",
+      "why": "新增配置项必须同批写进 RUNBOOK §3 与 .env.example 键名（4-5 卡）；只写代码不写键名 = 别人装不起来"
+    },
+    {
+      "id": "new-migration",
+      "source": "added-file",
+      "pattern": "(?i)(^|/)(migrations?|alembic|prisma/migrations)/|\\.sql$",
+      "docs": ["docs/registry/DATA_DICT.md"],
+      "d13": "表/字段",
+      "why": "迁移文件 = 表结构变更（红线域）：数据字典必须同批回写表/字段/类型/校验/敏感度"
+    }
+  ]
+}
