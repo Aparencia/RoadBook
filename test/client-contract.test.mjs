@@ -1333,9 +1333,14 @@ test('空态生成按钮：没有架构图才出现（空目录 / 只有非架�
         '已有架构图不再引导'
     );
 
-    // 未读完 / 读失败时不抢错误态的位置
+    // 目录还不存在（首次使用 / 新项目）→ **也要出现**：这正是最需要它的时刻
+    const missingDir = generateBlockFor({ status: 'error', items: [], error: 'ENOENT', missingDir: true }, { status: 'idle' }, t, () => {});
+    assert.ok(missingDir, '目录不存在时更要给入口（新项目就是这种）');
+
+    // 其余读取失败不抢错误态的位置
     assert.equal(generateBlockFor({ status: 'loading', items: [] }, { status: 'idle' }, t, () => {}), null);
     assert.equal(generateBlockFor({ status: 'error', items: [], error: 'x' }, { status: 'idle' }, t, () => {}), null);
+    assert.equal(generateBlockFor({ status: 'error', items: [], error: 'x', missingDir: false }, { status: 'idle' }, t, () => {}), null);
 });
 
 test('生成按钮点下去：POST /sidebar/api/sidechat.start，body 带 sessionId / cwd / question', async () => {
