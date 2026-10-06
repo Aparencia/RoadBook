@@ -1,6 +1,6 @@
 {
   "name": "roadbook-atlas",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "private": true,
   "description": "RoadBook 主插件 roadbook 的图纸子插件（宿主半）：随主插件安装，技能、CLI 与渲染器在伞包 skills/roadbook-atlas/，客户端半在伞包 lib/client.js。",
   "license": "MIT",

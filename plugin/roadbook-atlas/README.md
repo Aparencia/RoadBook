@@ -82,6 +82,7 @@ node --test "plugin/roadbook-evolve/test/*.test.mjs"   # 自进化子插件的�
 
 ## 版本
 
-伞包根 `package.json` 的 `version` 是**唯一事实源**（当前 `0.2.3`）：客户端半的 `PLUGIN_VERSION`（标签页页脚显示它）
-与宿主半的 `pluginVersion()`（启动日志里的 `roadbook v0.2.3: ready`）由测试强制与它一致，漏改即判红。
+伞包根 `package.json` 的 `version` 是**唯一事实源**（本文件**不手抄具体数字** —— 2026-10-06 实测手抄的那份
+已漂到 `0.2.3`，而当时盘上是 `0.7.2`）：客户端半的 `PLUGIN_VERSION`（标签页页脚显示它）
+与宿主半的 `pluginVersion()`（启动日志里的 `roadbook v<版本>: ready`）由测试强制与它一致，漏改即判红。
 升版规则（加能力 → 次版本，修 bug → 修订号）与逐版本记录见仓库根的 [`CHANGELOG.md`](../../CHANGELOG.md)。
