@@ -90,6 +90,26 @@ foreach ($k in @($budget.Keys | Where-Object { $_.StartsWith('docs/') })) {
 Check (-not $noRow) "A1c `$budget 的 docs/ 项都有对应表行（缺：$($noRow -join ', ')）"
 Check (-not $badCap) "A1c 行数上限两处同源（不一致：$($badCap -join '；')）"
 
+# ── B2：文档义务表 DOC_MAP.json（机器判据数据；template/gate.ps1 读它做提交前拦截）──────
+# 这里只核对「判据数据自洽且不悬空」；真正拦提交的是 gate.ps1（项目侧），本脚本是母版侧。
+$mapPath = Join-Path $root 'template\DOC_MAP.json'
+$map = $null
+if (Test-Path -LiteralPath $mapPath) { try { $map = [IO.File]::ReadAllText($mapPath, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $map = $null } }
+Check ($null -ne $map) 'template/DOC_MAP.json 存在且 JSON 合法（文档义务的机器判据数据）'
+if ($null -ne $map) {
+    Check ([string]$map.schema -eq 'roadbook-docmap/1') "DOC_MAP schema = roadbook-docmap/1（实际：$($map.schema)）"
+    $gotIds = @($map.rules | ForEach-Object { [string]$_.id })
+    $missIds = @(@('new-file', 'new-export', 'new-route', 'new-env-key', 'new-migration') | Where-Object { $gotIds -notcontains $_ })
+    Check (-not $missIds) "DOC_MAP 五条硬形态齐（缺：$($missIds -join ', ')；只做能机械判定的形态——路径 glob 会把改 typo 也判红 = 假红）"
+    $agTxt2 = if (Test-Path (Join-Path $root 'template\AGENTS.md')) { [IO.File]::ReadAllText((Join-Path $root 'template\AGENTS.md'), [Text.Encoding]::UTF8) } else { '' }
+    $badRules = @($map.rules | Where-Object { @($_.docs).Count -eq 0 -or ($_.d13 -and $agTxt2 -notmatch [regex]::Escape([string]$_.d13)) } | ForEach-Object { [string]$_.id })
+    Check (-not $badRules) "DOC_MAP 每条规则都给了 docs、且 d13 逐字引用 AGENTS.md 的义务行首（问题项：$($badRules -join ', ')；引用一条不存在的义务 = 判据悬空）"
+    $dis = @($map.rules | Where-Object { $_.disabled } | ForEach-Object { [string]$_.id })
+    $smTxt2 = if (Test-Path (Join-Path $root 'template\STATE.md')) { [IO.File]::ReadAllText((Join-Path $root 'template\STATE.md'), [Text.Encoding]::UTF8) } else { '' }
+    $disMiss = @($dis | Where-Object { $smTxt2 -notmatch [regex]::Escape($_) })
+    Check (-not $disMiss) "DOC_MAP 里 disabled 的规则在 template/STATE.md 裁剪记录可见（缺：$($disMiss -join ', ')；静默关掉义务 = 判据消失而没人知道）"
+}
+
 Write-Host "文档域：通过 $pass 项；失败 $($fail.Count) 项"
 if ($fail.Count -gt 0) {
     $fail | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }

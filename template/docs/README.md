@@ -31,6 +31,8 @@
 | LICENSE（条件文档） | 7-5 / 5-2 触发 | 7-5 | 对外发布或有对外许可要求时建；不适用写 `N/A（理由）` | 5-2、7-5 | 无硬限 |
 | openapi.yaml（条件文档） | 3-1 触发 | 3-1、4-1 | 有对外接口时建；不适用写 `N/A（理由）` | 4-1、4-2 | 无硬限 |
 | BASELINE.md（条件文档） | 5-7 触发 | 5-7 | 发版前 / 配置项增减 / 同一事实在两处说法不一致时建；不适用写 `N/A（理由）` | 5-2、5-6 | ≤120 |
+> **义务的机器判据 = 根 `DOC_MAP.json` + `gate.ps1`（提交前拦截）**。本表是**人读索引**：这份文档归谁、什么时候动、谁读、多少行；`DOC_MAP.json` 是**机器判据**：本批新建了文件/导出/路由/配置键/迁移时，哪些文档必须**同批**改。两者职责不同（一个是归属、一个是触发形态），不是同一事实的两处副本。改本表 = 改归属；改 `DOC_MAP.json` = 改触发形态；判据一致性由 `_qc/check-docs.ps1`（母版侧）核对。
+
 ## 读取节奏与防膨胀（5-1 归档卡执行，人不用记）
 - 现行状态层按需查：registry 三件套 / TECH_DEBT / pool / .tool-versions；留存历史层（specs、reviews、decisions、lessons、versions、archive）归档后不读，教训按症状检索（`Select-String -Path docs/lessons/*.md -Pattern "关键词"`）。
 - 防膨胀：specs 超 30 天未动提示归档；lessons 与 decisions 各超 30 张时，最旧且 90 天无引用的移入 archive（6 张种子卡豁免）；COMPONENTS 单页超限就拆组件；README、ARCHITECTURE、RUNBOOK 过期检查随 5-1（启动命令跑得通？模块图与目录一致？.env 键全有解释？）。

@@ -1,5 +1,5 @@
 ﻿# gate.ps1 · 机械门禁（零 token 检查：能脚本断言的不进对话；4-1 卡每批提交前后、4-2 卡开工）
-# 判词：红 = exit 1（非 git 工作树 / 锚点无效 / 缺 -Anchor / 缺 -ScopeFiles / 越界 / 行数超限 / lockfile 变更）；
+# 判词：红 = exit 1（非 git 工作树 / 锚点无效 / 缺 -Anchor / 缺 -ScopeFiles / 越界 / 行数超限 / lockfile 变更 / 文档义务未履行）；
 #   黄 = 通过但有需注意项（重命名条目、变更清单为空），仍 exit 0；绿 = exit 0。
 # 用法（复制即用；缺参数或指错仓库时脚本会把这两行原样打回来）：
 #   powershell -NoProfile -File gate.ps1 -Anchor HEAD~1 -ScopeFiles "src/a.ts,src/b.ts" -RepoRoot .
@@ -96,6 +96,41 @@ foreach ($f in $changed) {
 # ⑦ lockfile 变更 = 未请求的依赖变更（AGENTS.md §2.3）：硬红灯，必须单独说明。
 $lk = @($changed | Where-Object { $_ -match '(?i)(lock|package-lock|yarn\.lock|poetry\.lock|uv\.lock|Cargo\.lock)' })
 if ($lk.Count -gt 0) { $fail += "依赖变更：$($lk -join '、')——lockfile 变更必须单独说明并独立提交" }
+
+# ⑧ 文档义务（DOC_MAP.json）：命中形态而对应文档没在同批改动里 = 红。
+#   义务此前只写在散文里（AGENTS.md 的 D13 回写义务表 + docs/README.md 的对应表），索引键是
+#   "变更类型"，而手里的事实是"改了哪个路径"——路径→语义靠判断，这一步最容易漏，且漏了没有
+#   痕迹（实测：5-7 卡的产物 docs/BASELINE.md 在五处登记里缺了四处，而门禁照旧全绿）。
+#   判据数据在 DOC_MAP.json：source=added-file 取本批新增文件（排除 docs/，那些由 5-1 第 ⑧ 查管）
+#   ｜source=new-line 取本批新增行；每条规则的 d13 字段逐字引用 AGENTS.md 的义务行首，
+#   绑定由 _qc/check-docs.ps1 反向核对（防本文件引用一条不存在的义务）。
+$mapFile = Join-Path $RepoRoot 'DOC_MAP.json'
+if (-not (Test-Path -LiteralPath $mapFile)) {
+    $warn += '无 DOC_MAP.json：文档义务没有机械检查（缺它 = 义务仍只靠记性，机器不判）'
+}
+else {
+    $map = $null
+    try { $map = [IO.File]::ReadAllText($mapFile, [Text.Encoding]::UTF8) | ConvertFrom-Json }
+    catch { $fail += "DOC_MAP.json 解析失败：$($_.Exception.Message)" }
+    if ($null -ne $map) {
+        # 比对基准用 $Anchor（工作树 vs 锚点），不用 "$Anchor..HEAD"（只看到已提交）——
+        # 4-1 卡要求"提交前后都能跑"，只认已提交 = 提交前这段永远查不到（假绿）。
+        # 未跟踪文件不进 git diff，由下面的 ls-files --others 补上。
+        $added = @(@(git -C $RepoRoot -c core.quotepath=false diff --name-status --diff-filter=A "$Anchor" 2>$null | ForEach-Object { $c = @([string]$_ -split "`t"); if ($c.Count -ge 2) { $c[1] } }) + @(git -C $RepoRoot -c core.quotepath=false ls-files --others --exclude-standard 2>$null) | Where-Object { $_ } | Select-Object -Unique)
+        $newLines = @(git -C $RepoRoot diff -U0 "$Anchor" 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' })
+        foreach ($rule in @($map.rules)) {
+            if ($rule.disabled) { continue }
+            $pool = @($added | Where-Object { $_ -notmatch '^docs/' })
+            if ([string]$rule.source -eq 'new-line') { $pool = $newLines }
+            $hit = @($pool | Where-Object { $_ -match [string]$rule.pattern })
+            if ($hit.Count -eq 0) { continue }
+            $docs = @($rule.docs)
+            if (@($docs | Where-Object { $changed -contains $_ }).Count -eq 0) {
+                $fail += "文档义务未履行 [$($rule.id)]：本批新增 $($hit.Count) 处（如 $($hit[0])）→ 应同批更新 $($docs -join ' 或 ')（判据 DOC_MAP.json；不适用就给该条加 disabled 并写 STATE.md 裁剪记录）"
+            }
+        }
+    }
+}
 
 if ($fail.Count -gt 0) {
     Write-Host "[RED] 机械门禁不通过（exit 1）：" -ForegroundColor Red
