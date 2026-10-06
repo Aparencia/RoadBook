@@ -10,13 +10,13 @@
 | 组成 | 是什么 | 谁读 |
 | :--- | :--- | :--- |
 | `START-HERE.md` | 人唯一要读的入口（≤60 行） | 你，读一次 |
-| `playbook/` | 45 张流程卡（0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡，每张固定四段）——中文权威版 | agent 按状态自己取用 |
-| `playbook_EN/` | 45 张卡的英文执行版，与中文版逐张对应（agent 先读英文；判据冲突以中文版为准，措辞歧义以英文版为准） | agent 按状态自己取用 |
+| `playbook/` | 49 张流程卡（0-1 驱动卡 + 0-2 会话生命周期 + 47 张动作卡，每张固定四段）——中文权威版 | agent 按状态自己取用 |
+| `playbook_EN/` | 49 张卡的英文执行版，与中文版逐张对应（agent 先读英文；判据冲突以中文版为准，措辞歧义以英文版为准） | agent 按状态自己取用 |
 | `template/` | 新项目的模板（1-2 卡初始化时整套复制，含 check/doctor/gate/orphans/security 五个守护脚本） | 1-2 卡 |
 | `design/` | 设计事实源 `v6-design.md` + 写作契约 + 30 种失败模式报告 | 改流程时才看 |
-| `_qc/check.ps1` | 母版唯一验收口径（结构校验 + 45 张卡中英逐张对齐；断言项数以脚本输出为准） | 每次改完跑一次 |
+| `_qc/check.ps1` | 母版唯一验收口径（结构校验 + 49 张卡中英逐张对齐；断言项数以脚本输出为准） | 每次改完跑一次 |
 | `_qc/baseline/` | 卡行为自测脚手架（压力提示词 → 真实 harness → 原样落盘证据；判定由人填 `judge.md`，脚本不改卡） | 改卡前跑一次；同一失败类型 ≥2 次复现才动卡 |
-| `SKILL.md` | DSH skill 入口：路由表 45 行 + 门禁与铁律**指针** + 双语规则（不含判据；硬规则唯一正文是 `template/AGENTS.md`） | agent 自动加载，或你打 `/roadbook` |
+| `SKILL.md` | DSH skill 入口：路由表 49 行 + 门禁与铁律**指针** + 双语规则（不含判据；硬规则唯一正文是 `template/AGENTS.md`） | agent 自动加载，或你打 `/roadbook` |
 | `rules/rules.json` | 硬规则的机器可读索引（只装标识与机械钩子）——`node skills/roadbook/bin/rules.mjs --audit` 自查；索引 ↔ 正文由 `test/rule-parity.test.mjs` 双向校验 | 改规则时 |
 | `plugin/` | 可选 DSH 插件的子插件宿主半：`roadbook-autoload`（自动加载本流程）、`roadbook-atlas`（图纸工作台）、`roadbook-team`（**Team 策略行：官方 Agent Teams 未挂载时该行不加载，开关设了也不生效**）；主插件 `roadbook` 就是本仓库根 | 你，装一次 |
 | `LICENSE` | MIT 许可（可自由复制、改造、再分发） | 复用前看一眼 |

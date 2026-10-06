@@ -252,18 +252,18 @@ test('A8 每个场景链里的每张卡在 playbook/ 与 playbook_EN/ 都存在'
   assert.deepEqual([...cn.keys()].sort(), [...en.keys()].sort(), '双语卡号集合必须一致')
 })
 
-/* ── A9 问题清单恰好 9 + 2 ── */
-test('A9 --questions 恰好 9 条用户问题 + 2 条 agent 回填', () => {
+/* ── A9 问题清单恰好 9 + 3 ── */
+test('A9 --questions 恰好 9 条用户问题 + 3 条 agent 回填', () => {
   const j = cliJson(['--questions', '--json'])
   assert.equal(j.userQuestions.length, 9, `用户问题应为 9 条，实得 ${j.userQuestions.length}`)
-  assert.equal(j.agentBackfill.length, 2, `agent 回填项应为 2 条，实得 ${j.agentBackfill.length}`)
-  assert.equal(new Set([...j.userQuestions, ...j.agentBackfill].map((q) => q.key)).size, 11, '11 个键必须互不重复')
+  assert.equal(j.agentBackfill.length, 3, `agent 回填项应为 3 条，实得 ${j.agentBackfill.length}`)
+  assert.equal(new Set([...j.userQuestions, ...j.agentBackfill].map((q) => q.key)).size, 12, '12 个键必须互不重复')
   assert.ok(j.userQuestions.every((q) => q.ask && q.def !== undefined), '每条问题都要有问法与推荐答案（0-1 硬规则 10）')
 
   const text = cli(['--questions'])
   assert.equal(text.status, 0, text.stderr)
   assert.equal((text.stdout.match(/^\d+\. /gm) || []).length, 9, `文本回执应有 9 条编号问题：\n${text.stdout}`)
-  assert.equal((text.stdout.match(/^agent·/gm) || []).length, 2, `文本回执应有 2 条 agent 项：\n${text.stdout}`)
+  assert.equal((text.stdout.match(/^agent·/gm) || []).length, 3, `文本回执应有 3 条 agent 项：\n${text.stdout}`)
 })
 
 /* ── A10 端点场景账本等于冻结 fixture ── */

@@ -2,6 +2,8 @@
 > Trigger: visual values are fixed after 3-4 locks the screen structure | Output: docs/DESIGN_TOKENS.md | Next: 3-6 Motion and Microinteraction
 > Process area: DES
 
+---
+
 ## ① Start confirmation
 
 After receiving the start order, echo these five items before touching anything (do not start with an item missing):
@@ -24,6 +26,8 @@ After receiving the start order, echo these five items before touching anything 
    - [ ] ⑫ Dark mode, six rules: background 12–18%, text 92–96%, body weight down 50, accent chroma down and lightness up, elevation +3% per level, hue unchanged
    - [ ] ⑬ Presentation/screen-share where it applies: body ≥18 px, meta ≥14 px, and the output declared to be of the presentation kind
 5. **Landing declaration**: output = `docs/DESIGN_TOKENS.md`; next card = 3-6 Motion and Microinteraction.
+
+---
 
 ## ② Execution
 
@@ -206,6 +210,8 @@ if ($l.Count -gt 110 -or $neutral -lt 10 -or $sema -lt 4 -or $tok -lt 7 -or $raw
 - Never turn dark mode into an inversion; never change hue between the light and dark value sets
 - Never use a pure `#000000` background or pure `#ffffff` text in dark mode
 
+---
+
 ## ③ Evidence receipt (only three kinds of proof count: real command output / file paths / commit hash; missing any one means unfinished)
 
 1. Full path of `docs/DESIGN_TOKENS.md` + line count
@@ -217,6 +223,8 @@ if ($l.Count -gt 110 -or $neutral -lt 10 -or $sema -lt 4 -or $tok -lt 7 -or $raw
 7. The font-family declaration (≤3, including display and body) + the body ratio value + the seven-tier z-index table, verbatim
 8. The light and dark value sets of the six dark-mode rules, verbatim
 9. This round's commit hash
+
+---
 
 ## ④ State write-back
 

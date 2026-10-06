@@ -13,6 +13,12 @@ function Check($ok, $msg) {
     else { Write-Host "  [FAIL] $msg" -ForegroundColor Red; $script:fail += $msg }
 }
 function Observe($ok, $msg) {
+    # 仪器自检（2026-10-06 增）：`Observe "只有一句话"` 这种漏掉第一个参数的写法在 PowerShell 里**不报错**——
+    # 字符串被当成 $ok（真值），$msg 为 $null，于是汇总行打印成一行空的 `[obs]`，而门禁照旧全绿。
+    # 过程域覆盖的汇总行就是这么静默消失了整整一轮：断言一条不少，只有给人看的那一行没了。
+    if ($ok -isnot [bool] -or [string]::IsNullOrWhiteSpace($msg)) {
+        throw "Observe 用法错误：需要 (布尔, 消息) 两个参数，实得 ok=[$ok] msg=[$msg]。漏传第一个参数会让汇总行静默变成空 [obs]。"
+    }
     if ($ok) { Write-Host "  [obs] $msg" }
     else { Write-Host "  [obs] OVER $msg" -ForegroundColor DarkYellow; $script:obs += $msg }
 }
@@ -43,7 +49,8 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN -le 790) "行数 $selfN <= 790 ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；上调须同时改本行与 design §8）"
+$selfCap = 850
+Check ($selfN -le $selfCap) "行数 $selfN <= $selfCap ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；2026-10-06 由 790 上调到 810：§18 矩阵的**反向核对**（表里列的每张卡必须真带该过程域 / 表的覆盖集合必须等于卡头实际集合——§18 自称"派生视图不手抄"却又手抄了一份矩阵，反向核对是不删那份矩阵的前提）+ 四张新卡（3-7 / 4-6 / 5-7 / 6-8）的中英 needle；2026-10-06 再由 810 上调到 850：**四段分隔线断言**（写作契约 §1 早就写着"四段用 --- 分隔"，但此前没有任何断言盯着它，于是 3-5/3-6/3-7/4-6/5-7/6-8 六张卡全没有分隔线而门禁一直判绿——又一处"契约说了、机器不管"）+ design §8 行数上限与断言的**同源核对**（此前已漂过一次：设计写 ≤730 而断言已 790）；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
 Check (-not $noName) "项目名「Roadbook（路书）」写在身份文件与项目模板（缺：$($noName -join ', ')）"
@@ -52,6 +59,10 @@ Write-Host "== 2. 卡清单（唯一事实源：design §4 表 + §4.1 表）=="
 $designLines = [System.IO.File]::ReadAllLines($dsg, [Text.Encoding]::UTF8)
 $designTxt = [string]::Join("`n", $designLines)
 Check ($designTxt -match '(?m)^## 16\.') 'design 有 §16 标准 SDLC 覆盖对照（补了哪些域、落在哪张卡，可审计）'
+# 上限写在两处（design §8 的说明 + 本脚本的断言），历史上有过一次"只改一处"（设计写 ≤730 而断言已 790）。
+# 这类数字没有机器盯着就必然再漂一次，所以这里把它接上：两处不一致直接判红。
+$d8Cap = [regex]::Match($designTxt, '自身 ≤(\d+) 行').Groups[1].Value
+Check ($d8Cap -eq "$selfCap") "design §8 的 check.ps1 行数上限 = 断言里的 $selfCap（design 实际写 '$d8Cap'；两处必须同批改）"
 $cardNo = @(); $cardName = @(); $enMap = @{}
 foreach ($ln in $designLines) {
     $t = $ln.Trim()
@@ -60,7 +71,7 @@ foreach ($ln in $designLines) {
     if ($cells.Count -eq 7 -and $cells[0] -match '^\d+-\d+$') { $cardNo += $cells[0]; $cardName += $cells[1] }
     elseif ($cells.Count -eq 2 -and $cells[0] -match '^\d+-\d+$' -and $cells[1] -match '\.md$') { $enMap[$cells[0]] = $cells[1] }
 }
-Check ($cardNo.Count -eq 45) "design §4 表解析出 45 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
+Check ($cardNo.Count -eq 49) "design §4 表解析出 49 张卡（实际 $($cardNo.Count)；改表即改校验口径）"
 Check ($enMap.Count -eq $cardNo.Count) "design §4.1 表为每张卡给出英文文件名（实际 $($enMap.Count) 条）"
 $cards = @()
 for ($i = 0; $i -lt $cardNo.Count; $i++) { $cards += ($cardNo[$i] + '-' + ($cardName[$i] -replace '\s', '')) }
@@ -154,6 +165,26 @@ Check (-not $badH1) "中文卡 H1 卡号与 §4 表一致（不一致：$($badH1
 Check (-not $badSec) "四段结构齐全（问题：$($badSec -join '；')）"
 Check (-not $badRef) "中文卡无母版内部引用（问题：$($badRef -join '；')）"
 Check (-not $badTail) "每张动作卡有固定收尾语（缺：$($badTail -join ', ')）"
+# ── 四段分隔线（2026-10-06 增）──
+# 写作契约 §1 写着"正文结构 = 四段，用 `---` 分隔"，但此前**没有任何断言盯着它**，于是
+# 3-5 / 3-6 两张卡（以及本轮新写的 4 张）全都没有分隔线而门禁一直判绿——又一处"契约说了、机器不管"。
+# 判据：每张动作卡（0-1 无常驻四段，豁免）的四个段标题，**向上跳空行后的第一条非空行必须是 `---`**。
+$badHr = @()
+foreach ($c in $cards) {
+    if ($c -eq '0-1-驱动卡') { continue }
+    $p = Join-Path $pb "$c.md"
+    if (-not (Test-Path $p)) { continue }
+    $lines2 = [System.IO.File]::ReadAllLines($p, [Text.Encoding]::UTF8)
+    foreach ($h in $sections) {
+        $hi = -1
+        for ($i = 0; $i -lt $lines2.Count; $i++) { if ($lines2[$i].StartsWith($h)) { $hi = $i; break } }
+        if ($hi -lt 0) { continue }   # 缺段由 $badSec 报，这里不重复报
+        $k = $hi - 1
+        while ($k -ge 0 -and $lines2[$k].Trim() -eq '') { $k-- }
+        if ($k -lt 0 -or $lines2[$k].Trim() -ne '---') { $badHr += "$c 的「$h」前缺 ---" }
+    }
+}
+Check (-not $badHr) "四段之间用 --- 分隔（缺：$($badHr -join '；')）"
 Check (-not $badEn) "英文卡 H1/四段/收尾语与中文版逐段对应（问题：$($badEn -join '；')）"
 Check (-not $badRefEn) "英文卡无母版内部引用（问题：$($badRefEn -join '；')）"
 # ── 过程域覆盖（2026-10-06 增；判据 = design/playbook-contract.md §1.1 词表 + v6-design.md §18）──
@@ -193,7 +224,35 @@ $paCovered = @($paVocab | Where-Object { $paUsed.ContainsKey($_) })
 $paDeclared = @($paVocab | Where-Object { -not $paUsed.ContainsKey($_) -and $paSection.Contains('`' + $_ + '`') })
 $paHole = @($paVocab | Where-Object { -not $paUsed.ContainsKey($_) -and -not ($paSection.Contains('`' + $_ + '`')) })
 Check (-not $paHole) "每个过程域要么有卡覆盖、要么在 §18 被显式点名（无人认领：$($paHole -join ', ')）"
-Observe "过程域覆盖：$($paCovered.Count)/$($paVocab.Count) 项有卡覆盖；待补/裁剪 $($paDeclared.Count) 项（$($paDeclared -join ', ')）"
+Observe $true "过程域覆盖：$($paCovered.Count)/$($paVocab.Count) 项有卡覆盖$(if ($paDeclared.Count -gt 0) { "；待补/裁剪 $($paDeclared.Count) 项（$($paDeclared -join ', ')）" } else { '；无待补、无缺口' })"
+# ── §18 矩阵的反向核对（2026-10-06 增）──
+# §18 自称"派生视图，不手抄"，实际手抄了一份 area→卡 的矩阵。**不删它的前提是它不再能漂**：
+# ① 表里列出的每张卡必须真带该过程域（卡头第 3 行）；② 表覆盖的过程域集合必须等于卡头实际出现的集合。
+# 少了这两条，矩阵就是第二份事实源——而两份事实源必然有一天不一致，且不一致时没人知道该信哪份。
+$pa2Bad = @(); $pa2Ids = @()
+foreach ($ln2 in ($paSection -split "\r?\n")) {
+    $t2 = $ln2.Trim()
+    if (-not $t2.StartsWith('|')) { continue }
+    $cells2 = @($t2.Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+    if ($cells2.Count -lt 3) { continue }
+    $area2 = $cells2[0].Trim([char]96)
+    if ($paVocab -notcontains $area2) { continue }   # 只认受控词表里的行；裁剪表与收口表的首列不是词表 id
+    $pa2Ids += $area2
+    foreach ($cn2 in @($cells2[2] -split ',')) {
+        $no2 = $cn2.Trim()
+        if ($no2 -notmatch '^\d+-\d+$') { continue }
+        $hit2 = @($cards | Where-Object { $_ -like "$no2-*" })
+        if ($hit2.Count -eq 0) { $pa2Bad += "$area2→$no2 卡不存在"; continue }
+        $p2 = Join-Path $pb "$($hit2[0]).md"
+        $tl2 = @([System.IO.File]::ReadAllLines($p2, [Text.Encoding]::UTF8) | Where-Object { $_.StartsWith('> 过程域：') })
+        $tags2 = if ($tl2.Count -eq 0) { @() } else { @(($tl2[0].Substring(6)).Split(',') | ForEach-Object { $_.Trim() }) }
+        if ($tags2 -notcontains $area2) { $pa2Bad += "$area2→$no2（该卡卡头写的是 $($tags2 -join ',')）" }
+    }
+}
+Check (-not $pa2Bad) "§18 矩阵列的每张卡都真带该过程域（不符：$($pa2Bad -join '；')）"
+$pa2Ids = @($pa2Ids | Select-Object -Unique)
+$pa2Diff = @(@($pa2Ids | Where-Object { $paCovered -notcontains $_ }) + @($paCovered | Where-Object { $pa2Ids -notcontains $_ }))
+Check (-not $pa2Diff) "§18 矩阵覆盖的过程域 = 卡头实际出现的集合（不一致：$($pa2Diff -join ', ')；矩阵与卡头必须同批改）"
 # ── 子包 version 跟随伞包（配置管理的第一个症状：四个子包长期停 0.1.x 而伞包已 0.7.2）──
 $rootVer = ([regex]'"version"\s*:\s*"([^"]+)"').Match([IO.File]::ReadAllText((Join-Path $root 'package.json'), [Text.Encoding]::UTF8)).Groups[1].Value
 $subDrift = @()
@@ -280,6 +339,16 @@ $intl = [ordered]@{
     'playbook_EN/5-6-version-and-changelog-management.md' = @('version-bump decision table', 'unreleased section', 'git tag -f')
     'playbook/7-10-技术栈迁移.md'            = @('迁移八步', '差异为零')
     'playbook_EN/7-10-tech-stack-migration.md' = @('Eight migration steps', 'zero difference')
+    # 过程域缺口收口批次（2026-10-06 第二轮，4 张新卡）：needle 取每条卡**独有**的判据词，
+    # 不取通用词——通用词在别的卡里也有，删掉本卡这一句 needle 照样命中，等于没接。
+    'playbook/3-7-架构定义.md'              = @('干系人与关注点', '质量属性场景', '权衡记录', '依赖方向', '演化口子', '上下文')
+    'playbook_EN/3-7-architecture-definition.md' = @('stakeholder', 'concern', 'quality-attribute scenario', 'trade-off', 'dependency direction', 'Context view')
+    'playbook/4-6-可用性验证.md'            = @('冷启动', '阻断', '摩擦', '皮痛', '原话', '可执行改动')
+    'playbook_EN/4-6-usability-verification.md' = @('cold-start', '阻断 (blocker)', '摩擦 (friction)', '皮痛 (paper cut)', 'verbatim', 'actionable')
+    'playbook/5-7-配置管理与基线.md'        = @('配置项', '单一事实源', '死元数据', '基线', '变更控制', '状态记账')
+    'playbook_EN/5-7-configuration-and-baseline.md' = @('configuration item', 'single source of truth', 'dead metadata', 'baseline', 'change control', 'status accounting')
+    'playbook/6-8-决策复盘.md'              = @('侥幸成立', '四值', '决策卡', '复核', '落到具体文件')
+    'playbook_EN/6-8-decision-retrospective.md' = @('Right by luck', 'four-value', 'decision card', 'review date', 'land on a specific file')
     '_qc/baseline/README.md'                = @('对照组', '行号')
 }
 $missIntl = @()
@@ -296,7 +365,7 @@ Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04-security.md')) '�
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 120; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90; 'security.ps1' = 130 }
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 120; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 40; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 110; 'orphans.ps1' = 90; 'security.ps1' = 130 }
 foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
@@ -359,7 +428,7 @@ Check (Test-Path $sk) 'SKILL.md 存在（DSH skill 入口）'
 if (Test-Path $sk) {
     $skRaw = [System.IO.File]::ReadAllText($sk, [Text.Encoding]::UTF8)
     $skLines = [System.IO.File]::ReadAllLines($sk, [Text.Encoding]::UTF8)
-    Check ($skLines.Count -le 120) "行数 $($skLines.Count) <= 120 ：SKILL.md"
+    Check ($skLines.Count -le 130) "行数 $($skLines.Count) <= 130 ：SKILL.md（2026-10-06 由 120 上调：卡数 45 → 49，路由表 +4 行；路由表一行一卡，涨的是卡不是条目——真要压回 120 就得合并行，那会破掉「触发词唯一」的形态）"
     Check ($skRaw -match '^---\r?\n') 'SKILL.md 首行严格为 ---（前置 BOM 或空行会被 DSH 静默忽略）'
     $skName = [regex]::Match($skRaw, '(?m)^name:\s*(\S+)\s*$')
     Check ($skName.Success -and $skName.Groups[1].Value -eq 'roadbook' -and $skName.Groups[1].Value -match '^[a-z0-9]+(?:-[a-z0-9]+)*$') "SKILL.md frontmatter name=roadbook（实际：$($skName.Groups[1].Value)）"

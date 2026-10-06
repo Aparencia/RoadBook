@@ -69,7 +69,7 @@ Get-ChildItem "$proj/*.ps1" | Select-Object Name, Length
 - The `file-count baseline` = `@(git ls-files).Count` (including `docs/` and the five guard scripts), **sampled only after the Action 8 first commit**, then written into STATE.md; orphans.ps1's summary "file count" excludes `docs/` and the guard scripts and **must not** be written into the baseline. Onboarding the whole template raises the file count far beyond the 20 check.ps1 allows, so sampling before the commit always prints FAIL — the only legal timing is after the onboarding commit, using the measured value, **never** the pre-onboarding one.
 - If the user trims this mechanism away → write in the STATE.md "trim record": "孤儿五张清单与文件数预算不适用 + 原因" ("the orphan five-list and the file-count budget do not apply + reason").
 
-**Action 6: reverse-engineer a first version of ARCHITECTURE.md (≤120 lines)**
+**Action 6: reverse-engineer a first version of ARCHITECTURE.md (≤150 lines)**
 Three sections: module diagram (mermaid, boxes = actual top-level directories) + layering notes (one sentence per layer: what it does) + data flow (one sentence: user action → which layer → stored where). Every module must be labeled with its real directory path; anything you cannot state accurately gets `<!-- 待确认 -->` ("to be confirmed"), and fabricating is forbidden.
 ❌ Counter-example: drawing a three-layer architecture diagram when the directory has no service layer at all
 ✅ Example: "src/components（UI）→ src/lib（逻辑）→ IndexedDB（存储）——与目录树一致" ("src/components (UI) → src/lib (logic) → IndexedDB (storage) — consistent with the directory tree")
@@ -120,7 +120,7 @@ Before the first push, also run the two git history checks (`git ls-files` only 
 At wrap-up, give item by item:
 1. A summary of the file count/directory count from the directory-tree scan + the extension statistics table
 2. Stack probing evidence: the file path used as evidence + the verbatim key line
-3. Generated-file list: AGENTS.md (line count ≤240) / STATE.md (line count ≤45) / ARCHITECTURE.md (line count ≤120) / the registry three-piece set / the five guard scripts (check·doctor·gate·orphans·security, with the verbatim orphans output + the check.ps1 output re-run after committing + the security.ps1 exit code)
+3. Generated-file list: AGENTS.md (line count ≤240) / STATE.md (line count ≤45) / ARCHITECTURE.md (line count ≤150) / the registry three-piece set / the five guard scripts (check·doctor·gate·orphans·security, with the verbatim orphans output + the check.ps1 output re-run after committing + the security.ps1 exit code)
 4. The user's verbatim answers to the five trimming questions + the current content of the STATE "trim record"
 5. The start anchor commit hash (or "git already existed, anchor = hash") + the remote determination (verbatim `git remote -v`, or "local-only + verbatim trim record") + the complete `git status --porcelain` output (**must be empty**)
 

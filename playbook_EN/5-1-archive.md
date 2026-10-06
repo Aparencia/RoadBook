@@ -41,7 +41,7 @@ Expected: the last line reads `<N> markers, <M> with no trigger.` (N/M are real 
 
 **5. Standing-document staleness and over-limit check (run item by item; update anything over the limit or inconsistent)**:
 ```powershell
-$budget = @{ 'AGENTS.md' = 240; 'docs/ARCHITECTURE.md' = 120; 'docs/RUNBOOK.md' = 100 }
+$budget = @{ 'AGENTS.md' = 240; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100 }
 foreach ($f in $budget.Keys) { "$f = $([IO.File]::ReadAllLines($f, [Text.Encoding]::UTF8).Count) lines (limit $($budget[$f]))" }
 Select-String -Path README.md -Pattern 'powershell'
 ```

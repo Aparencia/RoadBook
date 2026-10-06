@@ -2,6 +2,8 @@
 > Trigger: motion is fixed after 3-5 locks the visual values | Output: docs/MOTION.md | Next: 4-1 Batch coding
 > Process area: DES
 
+---
+
 ## ① Start confirmation
 
 After receiving the start order, echo these five items before touching anything (do not start with an item missing):
@@ -24,6 +26,8 @@ After receiving the start order, echo these five items before touching anything 
    - [ ] ⑫ Correctness: motion can be interrupted by input, state must not depend on `animationend`/`transitionend`, autoplay must be pausable
    - [ ] ⑬ If this is a presentation/screen-share artifact: enter 400–600ms, autoplay total ≤8s, static-first and screenshot-safe
 5. **Landing declaration**: output = `docs/MOTION.md`; next card = 4-1 Batch coding.
+
+---
 
 ## ② Execution
 
@@ -155,6 +159,8 @@ if ($l.Count -gt 100 -or $btn -lt 6 -or $dur -lt 6 -or $ease -lt 4 -or $off -lt 
 - Writing only the `reduce` branch and skipping the `no-preference` positive gate is banned
 - ❌ Counter-example: a 1.2-second full-screen confetti burst after a save, with the button dead for the whole time | ✅ Good example: a 300ms tick inside the button plus a 3s Toast, with interaction available throughout
 
+---
+
 ## ③ Evidence receipt (only three kinds of proof count: real command output / file paths / commit hash; missing any one means unfinished)
 
 1. Full path of `docs/MOTION.md` + line count
@@ -165,6 +171,8 @@ if ($l.Count -gt 100 -or $btn -lt 6 -or $dur -lt 6 -or $ease -lt 4 -or $off -lt 
 6. Real output of the Action 9 command (≤100 lines, button motion ≥6, durations ≥6, easings ≥4, opt-out ≥1, positive gate ≥1; exit code 0) + this round's commit hash
 7. The five interaction states and the focus-ring values (`outline: 2px solid var(--color-focus)` + `outline-offset: 2px`, instant at 0ms)
 8. Open-questions list (the motion trade-offs the user has not settled, one line each)
+
+---
 
 ## ④ State write-back
 

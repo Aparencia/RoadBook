@@ -58,7 +58,7 @@ const EXIT = { ok: 0, red: 1, usage: 2 }
 
 /* ───────────────────────── 事实：问用户的问题 ───────────────────────── */
 
-/** 用户能回答的 9 个是非题 + 2 个 agent 回填项。0-1 硬规则 10：问题自带推荐答案。 */
+/** 用户能回答的 9 个是非题 + 3 个 agent 回填项。0-1 硬规则 10：问题自带推荐答案。 */
 export const FACTS = [
   { key: 'greenfield', who: 'user', type: 'enum', values: ['new', 'existing'], def: 'new',
     ask: '这个项目是全新的（还没代码），还是已有一堆代码要接进来？' },
@@ -82,6 +82,8 @@ export const FACTS = [
     ask: '（agent 填）第一版规模：tiny=≤3 文件 ≤100 行；singlepage=1 入口页/无后端/无依赖 ≤5 文件 ≤400 行；normal=普通功能；large=多模块' },
   { key: 'hasCI', who: 'agent', type: 'bool', def: false,
     ask: '（agent 填）项目已经有自动检查（CI / check.ps1）吗？' },
+  { key: 'structChange', who: 'agent', type: 'bool', def: false,
+    ask: '（agent 填）这次改动会不会改变系统结构？（新增或移除模块、换存储、拆或合服务——结构变了才要回 3-7 架构定义）' },
 ]
 
 /* ─────────────────── 卡表：进入条件 = 卡片自己写的触发行 ─────────────────── */
@@ -100,6 +102,7 @@ export const STEPS = [
   { card: '2-2', anchor: 'S 档用简版', when: () => true, why: '定边界与验收标准（S 档走简版三节）' },
   { card: '2-4', anchor: '（M/L 档）', when: (f) => tierOf(f).tier !== 'S', why: 'M/L 档必走：给非功能需求定可测阈值' },
   { card: '2-5', anchor: '档位 = L', when: (f) => tierOf(f).tier === 'L' || f.team === true, why: 'L 档或不止一方参与' },
+  { card: '3-7', anchor: '项目首次成型', when: (f) => f.greenfield === 'new' || f.structChange === true, why: '首次成型或结构变更 → 边界 / 干系人关注点 / 四张视图 / 质量属性权衡' },
   { card: '7-9', anchor: '首次运行任何第三方技能', when: (f) => f.newDependency === true, why: '装/启用外部件必须先过准入，结论由人裁决' },
   { card: '3-1', anchor: '档位 = L', when: (f) => tierOf(f).tier === 'L', why: 'L 档加走：动手前把数据/接口/组件钉死' },
   { card: '3-2', anchor: '红线域', when: (f) => f.redLine === true, why: '红线域强制升 L 并做威胁建模' },
@@ -112,6 +115,7 @@ export const STEPS = [
   { card: '4-1', anchor: '2-2 需求范围获用户确认后', when: () => true, why: '写代码（分批 + 净增量账本）' },
   { card: '4-2', anchor: 'M/L 档必走', when: (f) => tierOf(f).tier !== 'S', why: 'M/L 档：合入前审查，独立会话执行' },
   { card: '4-3', anchor: '全档必走', when: () => true, why: '验证：完成的唯一定义（check 退出码 0）' },
+  { card: '4-6', anchor: '交付前要给人用', when: (f) => f.hasUI === true && f.goLive === true, why: '有界面且要给人用 → 交付前拿给人走一遍，看他在哪卡住' },
   { card: '4-4', anchor: '首次搭建 CI', optional: true, when: (f) => f.hasCI === false && f.goLive === true, why: '上线但没 CI → 至少把门禁接到每次提交' },
   { card: '4-5', anchor: '需要新环境', when: (f) => f.goLive === true, why: '上线 = 要有 prod 环境与配置/密钥来源' },
   { card: '5-1', anchor: '验收通过后', when: () => true, why: '收尾入库（归档十一查 + 孤儿五张清单）' },
@@ -246,7 +250,7 @@ export function route(rawFacts = {}) {
     chain.push({
       card: s.card, why: s.why, gate: gateOf(s.card, facts, effTier),
       optional: !!s.optional,
-      tentative: tier === 'pending' && ['2-4', '3-3', '4-2'].includes(s.card),
+      tentative: tier === 'pending' && ['2-4', '3-3', '4-2', '4-6'].includes(s.card),
     })
   }
   const warnings = []

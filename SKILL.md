@@ -1,9 +1,9 @@
 ---
 name: roadbook
-description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 45 张卡（0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡）上（中文权威版 playbook/、英文执行版 playbook_EN/），含门禁、完成的唯一定义（DoD）、红灯与红线规则。当用户要求按这套流程推进开发、问「下一步走哪张卡 / 流程上该做什么」、要开工或收工（归档验收 / 体检清理 / 依赖升级 / 项目重构），或需要按卡逐条执行并留证据时加载。Use when the user wants development run through this card-based process, wants the next card, or wants the process enforced. Do not use when no process is wanted: a one-off question, a single command, casual chat, an unrelated project, or an explicit request to skip the process."
+description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 49 张卡（0-1 驱动卡 + 0-2 会话生命周期 + 47 张动作卡）上（中文权威版 playbook/、英文执行版 playbook_EN/），含门禁、完成的唯一定义（DoD）、红灯与红线规则。当用户要求按这套流程推进开发、问「下一步走哪张卡 / 流程上该做什么」、要开工或收工（归档验收 / 体检清理 / 依赖升级 / 项目重构），或需要按卡逐条执行并留证据时加载。Use when the user wants development run through this card-based process, wants the next card, or wants the process enforced. Do not use when no process is wanted: a one-off question, a single command, casual chat, an unrelated project, or an explicit request to skip the process."
 ---
 
-# Roadbook（路书）· skill 路由（45 张卡：0-1 驱动卡 + 0-2 会话生命周期 + 43 张动作卡，中英双语）
+# Roadbook（路书）· skill 路由（49 张卡：0-1 驱动卡 + 0-2 会话生命周期 + 47 张动作卡，中英双语）
 
 **基目录 = 本母版根**（`playbook/` 中文权威版、`playbook_EN/` 英文执行版、`template/`、`design/`、`_qc/`）。下面所有相对路径都相对基目录解析。上游仓库：<https://github.com/Aparencia/RoadBook>。
 
@@ -30,7 +30,7 @@ description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 
 - **项目现状**：项目根的 `STATE.md`（唯一事实源：阶段 / 下一步 / 起点锚点 / 文件数基线 / 最近归档 / 未决问题）。
 - **改流程本身**：同时改 `design/v6-design.md` + 该卡中英两份，并跑 `powershell -NoProfile -File _qc/check.ps1`（退出码 0 才算改完；路径一律正斜杠）。
 
-## 双语规则（45 张卡两份，agent 先读英文）
+## 双语规则（49 张卡两份，agent 先读英文）
 
 - **agent 执行任何卡时先读英文执行版**（`playbook_EN/` 目录下与本卡同卡号的那份）；中文版在 `playbook/`，是权威源与人类阅读版。
 - **冲突裁决**：判据冲突以中文版为准；措辞歧义以英文版为准（英文版存在的理由就是把含糊的中文表述显式化）。
@@ -45,7 +45,7 @@ description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 
 - **产物寿命**：写下任何产物先声明属哪一类——持久（进仓库）/ 会话内（临时目录，随时可删）/ 永不入库（只贴回执）；**没有声明按会话内处理**（防临时报告被当成长期事实源）。
 - **分发自检**：装成 DSH skill 的那份是本仓库的 clone，不会自动变新——`git -C "$env:USERPROFILE/.dsh/skills/roadbook" log --oneline -1` 与母版 `git log --oneline -1` 比对，不一致就 `git -C "$env:USERPROFILE/.dsh/skills/roadbook" pull --ff-only`（症状：skill 描述里的卡数与母版不符）。
 
-## 路由：什么场景走哪张卡（45 张全覆盖）
+## 路由：什么场景走哪张卡（49 张全覆盖）
 
 | 场景 | 卡（AI 执行版） |
 | :-- | :-- |
@@ -66,17 +66,20 @@ description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 
 | 有界面 / 新页面：屏幕、8 态、按钮与表单规格 | `playbook_EN/3-4-ui-and-interaction-design.md`（3-4 界面与交互设计） |
 | 定色彩与风格：色阶、语义色、对比度、字号与间距 | `playbook_EN/3-5-color-and-style.md`（3-5 色彩与风格） |
 | 定动效：时长、缓动、按钮动效选项与降级 | `playbook_EN/3-6-motion-and-microinteraction.md`（3-6 动效与微交互） |
+| 项目首次成型 / 结构变更：边界、干系人关注点、四张视图、质量属性权衡 | `playbook_EN/3-7-architecture-definition.md`（3-7 架构定义） |
 | 写代码（分批 / 净增量账本 / 取代即删） | `playbook_EN/4-1-batch-coding.md`（4-1 分批编码） |
 | 合入前审查（七维度 / 越界 / 废弃标记） | `playbook_EN/4-2-code-review.md`（4-2 代码审查） |
 | 功能做完要验证（guardrail + 行为验收） | `playbook_EN/4-3-verification.md`（4-3 验证） |
 | 首次搭 CI / 改门禁（口径与 check.ps1 唯一） | `playbook_EN/4-4-continuous-integration.md`（4-4 持续集成） |
 | 需要新环境 / 配置项与密钥来源 | `playbook_EN/4-5-environments-and-config.md`（4-5 环境与配置） |
+| 交付前要给人用：任务设计、行为观测、问题定级与处置 | `playbook_EN/4-6-usability-verification.md`（4-6 可用性验证） |
 | 一段工作收尾入库（归档十一查 + 孤儿五张清单） | `playbook_EN/5-1-archive.md`（5-1 归档） |
 | 里程碑发版（分级部署 + 回滚预案） | `playbook_EN/5-2-release.md`（5-2 发布） |
 | L 档 / 高风险发布：策略与灰度阶梯 | `playbook_EN/5-3-progressive-delivery.md`（5-3 发布策略与灰度） |
 | 发布后观测窗（健康检查 + 核心指标） | `playbook_EN/5-4-observability.md`（5-4 运行期观测） |
 | 定期 / 改数据结构后做恢复演练 | `playbook_EN/5-5-backup-and-dr.md`（5-5 备份与恢复演练） |
 | 要定版本号 / 要写升级注意 / 归档要往「未发布」节追加一行 / 该打 tag 了 | `playbook_EN/5-6-version-and-changelog-management.md`（5-6 版本与变更日志管理） |
+| 发版前 / 配置项增减 / 同一事实两处说法不一致：单一事实源、死元数据、基线、变更控制 | `playbook_EN/5-7-configuration-and-baseline.md`（5-7 配置管理与基线） |
 | 线上故障 / P0（先定级，止血优先于根因） | `playbook_EN/6-1-incident-response.md`（6-1 事件响应） |
 | 出 bug 找原因（诊断四问 + 五问法） | `playbook_EN/6-2-root-cause-analysis.md`（6-2 根因分析） |
 | 修 bug（最小改动 + 范围双维锁） | `playbook_EN/6-3-bugfix.md`（6-3 修复） |
@@ -84,6 +87,7 @@ description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 
 | 任务或事故后复盘（预防措施落到文件） | `playbook_EN/6-5-retrospective.md`（6-5 复盘） |
 | 定期体检流程本身（每 15 次归档触发） | `playbook_EN/6-6-process-audit.md`（6-6 流程体检） |
 | 每季度 / 里程碑出度量与质量报告 | `playbook_EN/6-7-metrics-and-quality-report.md`（6-7 度量与质量报告） |
+| 决策卡满 5 张 / 里程碑后 / 复核日到期：没出事也回头查决策质量（含「侥幸成立」专项） | `playbook_EN/6-8-decision-retrospective.md`（6-8 决策复盘） |
 | 改界面（查注册表 + 回写注册表） | `playbook_EN/7-1-ui-change.md`（7-1 UI 改动） |
 | 升依赖（理由 + 兼容调研 + lockfile 单独审） | `playbook_EN/7-2-dependency-upgrade.md`（7-2 依赖升级） |
 | 欠账 / 腐化要清（T 批 / P 清理批） | `playbook_EN/7-3-tech-debt-repayment.md`（7-3 债与腐化清偿） |
