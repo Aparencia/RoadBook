@@ -51,6 +51,80 @@
 
 <!-- 上面是母版仓自己的登记行（表头 2026-10-07 由 TD-001 定：路径/用途/归属批次/可访问性）。生成出来的项目照同一表头填自己的文件；纯逻辑/脚本/文档一律 `N/A（纯文本|脚本）`，界面元素才有可访问性验证方式 -->
 
+### 补登记 · 批 6「77 项清偿」（台账 #34 / #54，2026-10-07）
+
+> 上面那张表是**逐批随手登记**的产物；本节是**存量一次性补齐**（`orphans.ps1` 的 `[未登记]` 实测 65 项 → 0）。
+> 判据口径（`orphans.ps1:86`）：文件 basename 在本文件出现过即算登记 —— 启发式，会误判（如 `cli` 撞词），
+> 故本节逐文件按 D13 四列补齐，不靠撞词。归属批次列取**该文件在 git 里首次出现的提交日**（`git log --diff-filter=A`），不是回忆。
+
+| 路径 | 用途 | 归属批次 | 可访问性 |
+| :-- | :-- | :-- | :-- |
+| `_qc/check-docs.ps1` | 文档域断言（固定槽位 ↔ `docs/README.md` 对应表双向核对 / A1d 上限同源；可由 `_qc/check.ps1` 调用，也可单跑） | 母版（2026-10-06 文档双向断言批） | `N/A（脚本）` |
+| `_qc/baseline/run.ps1` | 卡行为 baseline 脚手架（跑压力提示词组 / 原样落盘证据 + 机械指纹 / RED 追加台账；不改卡、不出结论） | 母版（2026-10-03 卡行为自测批） | `N/A（脚本）` |
+| `_qc/loader-accept.mjs` | 真 Loader 验收（拿 DSH 安装里那份真 cordis 当接收点，判 `lib/client.js` 的导出能否收成 ACTIVE fiber） | 母版（2026-10-05 真机根因批） | `N/A（脚本）` |
+| `_qc/migrations/fix-card-headers-2026-10-03.mjs` | 一次性迁移补漏（卡片 H1 里的旧两位数卡号）—— 用完即弃 | 母版（2026-10-03 卡号重编批） | `N/A（一次性脚本）` |
+| `_qc/migrations/fix-stale-card-numbers-2026-10-03.mjs` | 一次性修补（漏网的裸两位旧卡号 + 与 §4 链不一致的「下一张」头部行）—— 用完即弃 | 母版（2026-10-03 卡号重编批） | `N/A（一次性脚本）` |
+| `_qc/migrations/renumber-2026-10-03.mjs` | 一次性迁移留痕（卡号两位序号 → 阶段-行为序号；第一步）—— 用完即弃 | 母版（2026-10-03 卡号重编批） | `N/A（一次性脚本）` |
+| `_qc/migrations/renumber-2026-10-03.sh` | 同上（bash 版第一步）—— 用完即弃 | 母版（2026-10-03 卡号重编批） | `N/A（一次性脚本）` |
+| `plugin/roadbook-autoload/trigger.js` | 门控三层纯逻辑（不 import dsh 包，普通 node 可单测） | 母版（2026-10-03 插件首版） | `N/A（纯逻辑）` |
+| `plugin/roadbook-autoload/team.js` | Team 消费层纯逻辑（三层分工开关；不 import dsh 包） | 母版 0.5.0（2026-10-05 硬规则唯一化） | `N/A（纯逻辑）` |
+| `plugin/roadbook-autoload/host-fallback.js` | 宿主包的本地等价实现（只在 `@deepseek-ai/*` 真解析不到时启用） | 母版（2026-10-04 子行平铺批） | `N/A（宿主兜底）` |
+| `plugin/roadbook-autoload/test/trigger.test.mjs` | 门控三层行为测试 | 母版（2026-10-03 插件首版） | `N/A（测试）` |
+| `plugin/roadbook-autoload/test/index.test.mjs` | 子行入口装配测试（含宿主 peer 缺失时的降级） | 母版（2026-10-03 审计修复批） | `N/A（测试）` |
+| `plugin/roadbook-autoload/test/host-fallback.test.mjs` | 宿主兜底实现测试 | 母版（2026-10-04 子行平铺批） | `N/A（测试）` |
+| `plugin/roadbook-autoload/test/banner.test.mjs` | 常驻微提示（banner）行为测试 | 母版 0.3.0（2026-10-05） | `N/A（测试）` |
+| `plugin/roadbook-autoload/test/gate.test.mjs` | 动作闸（`pre-execute` 判 deny / ask）行为测试 | 母版 0.5.0（2026-10-05） | `N/A（测试）` |
+| `plugin/roadbook-autoload/test/state.test.mjs` | 状态检查（`stateCheck` 字段）行为测试 | 母版 0.5.0（2026-10-05） | `N/A（测试）` |
+| `plugin/roadbook-autoload/test/team.test.mjs` | Team 消费层行为测试 | 母版 0.5.0（2026-10-05） | `N/A（测试）` |
+| `plugin/roadbook-autoload/test/dsh-stubs/dsh-llm.mjs` | 测试桩：宿主 llm 子行（免装宿主即可单测） | 母版（2026-10-03 审计修复批） | `N/A（测试桩）` |
+| `plugin/roadbook-autoload/test/dsh-stubs/dsh-skill.mjs` | 测试桩：宿主 skill 子行 | 母版（2026-10-03 审计修复批） | `N/A（测试桩）` |
+| `plugin/roadbook-autoload/test/dsh-stubs/hooks.mjs` | 测试用 ESM loader 钩子（把宿主 peerDependencies 换成本目录的桩） | 母版（2026-10-03 审计修复批） | `N/A（测试桩）` |
+| `plugin/roadbook-autoload/test/dsh-stubs/schemastery.mjs` | 测试桩：宿主配置 schema 库 | 母版（2026-10-03 审计修复批） | `N/A（测试桩）` |
+| `plugin/roadbook-evolve/signals.js` | 自进化信号表纯逻辑层（S1–S6 分类与统计；不 import dsh 包） | 母版 0.6.0（2026-10-05 自进化行） | `N/A（纯逻辑）` |
+| `plugin/roadbook-evolve/test/signals.test.mjs` | 信号分类与统计测试 | 母版 0.6.0（2026-10-05） | `N/A（测试）` |
+| `plugin/roadbook-evolve/test/service.test.mjs` | 自进化服务接线测试（路由 + handler） | 母版 0.6.0（2026-10-05） | `N/A（测试）` |
+| `skills/roadbook/bin/rules.mjs` | 硬规则索引机械审计 CLI（结构 / 分类 / 判定钩子 / 落点；零依赖、不 spawn 子进程） | 母版 0.5.0（2026-10-05） | `N/A（CLI）` |
+| `skills/roadbook/bin/scaffold.mjs` | 项目接入 CLI（五级母版解析 + 三分类写入） | 母版 0.9.0（2026-10-06） | `N/A（CLI）` |
+| `test/route-cli.test.mjs` | route CLI 行为测试（项目事实 → 卡片链） | 母版 0.5.0（2026-10-05） | `N/A（测试）` |
+| `test/expected-annotation.test.mjs` | S 链四卡命令块后的 `Expected：` 标注测试（B13） | 母版 0.5.0（2026-10-05） | `N/A（测试）` |
+| `test/rules-audit.test.mjs` | 规则索引（`rules/rules.json`）机械审计测试 | 母版 0.5.0（2026-10-05） | `N/A（测试）` |
+| `test/rule-parity.test.mjs` | 规则索引 ↔ 正文锚点双向对齐测试（B11） | 母版 0.5.0（2026-10-05） | `N/A（测试）` |
+| `test/packaging.test.mjs` | 随包白名单 ↔ 运行时路径（B8）+ `SKILL.md` 相对路径可从包根解析（台账 #6） | 母版 0.3.0（2026-10-05）· 批 6 扩展 | `N/A（测试）` |
+| `test/scaffold-cli.test.mjs` | scaffold CLI 行为测试（母版 → 项目骨架） | 母版 0.9.0（2026-10-06） | `N/A（测试）` |
+| `test/skill-mirror.test.mjs` | `SKILL.md` 双份逐字节镜像（B4） | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
+| `test/skill-frontmatter.test.mjs` | `SKILL.md` 前置元信息能被真 YAML 读出（BUG-001 仪器） | 母版（2026-10-06 6-4 回归批） | `N/A（测试）` |
+| `test/umbrella-contract.test.mjs` | 伞包（主插件）结构契约 | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
+| `test/update.test.mjs` | 自动更新判定与两级传输测试 | 母版 0.4.0（2026-10-05） | `N/A（测试）` |
+| `test/atlas-cli.test.mjs` | atlas CLI 端到端行为测试（真跑渲染） | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
+| `test/render-smoke.test.mjs` | archify vendor 冒烟测试（vendored 渲染器可跑） | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
+| `test/vendor-provenance.test.mjs` | 供应商记录可核对性测试（清单 ↔ 逐文件哈希） | 母版（2026-10-06 atlas 修复批） | `N/A（测试）` |
+| `test/d14-lines.test.mjs` | D14 行数闸（非测试 ≤500 / 测试 ≤1000）+ 豁免清单完整性（台账 #59） | 批 1（2026-10-07 D14 闸） | `N/A（测试）` |
+| `skills/roadbook-atlas/vendor/archify/bin/archify.mjs` | archify 主 CLI：把 typed JSON 规格渲染成自包含 HTML | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/bin/open-artifact.mjs` | 把渲染产物交给宿主打开 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/bin/preview.mjs` | 产物预览（取预览 URL / 本地起服务） | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/bin/visual-check.mjs` | 渲染产物视觉自检 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/delta/architecture-delta.mjs` | 架构差异（base / head 两图对比） | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/recipes/scenarios.mjs` | 场景配方（示例与引导数据） | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/architecture/render-architecture.mjs` | 架构图渲染器 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/architecture/grid.mjs` | 架构图网格布局 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/dataflow/render-dataflow.mjs` | 数据流图渲染器 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/lifecycle/render-lifecycle.mjs` | 生命周期图渲染器 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/sequence/render-sequence.mjs` | 时序图渲染器 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/workflow/render-workflow.mjs` | 流程图渲染器 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/diagnostics.mjs` | 渲染共享层：诊断输出 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/engineering-profiles.mjs` | 渲染共享层：工程档位与预设 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/generated-validators.mjs` | 渲染共享层：生成式校验器 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/geometry.mjs` | 渲染共享层：几何计算 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/layout-report.mjs` | 渲染共享层：布局报告 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/legend.mjs` | 渲染共享层：图例 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/output-path.mjs` | 渲染共享层：输出路径折算 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/repository-evidence.mjs` | 渲染共享层：仓库证据采集 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/text-fit.mjs` | 渲染共享层：文本适配与截断 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/utils.mjs` | 渲染共享层：通用工具 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/renderers/shared/validator.mjs` | 渲染共享层：规格校验入口 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/scripts/check-render-output.mjs` | 渲染产物检查脚本 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+| `skills/roadbook-atlas/vendor/archify/scripts/render-examples.mjs` | 示例批量渲染脚本 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
+
 ## 界面组件（3-4 卡的产品面；"人话标识"列在这里）
 
 | 界面元素 | 人话标识 | 程序名 | 文件 | 搜索词 | 影响面 | 最近确认 |
