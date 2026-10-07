@@ -415,7 +415,11 @@ Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04-security.md')) '�
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 125; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 45; 'docs/archive/INDEX.md' = 120; 'check.ps1' = 120; 'doctor.ps1' = 80; 'gate.ps1' = 145; 'orphans.ps1' = 140; 'security.ps1' = 130 }
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 50; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 125; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 45; 'docs/archive/INDEX.md' = 120; 'check.ps1' = 120; 'doctor.ps1' = 80; 'gate.ps1' = 145; 'orphans.ps1' = 140; 'security.ps1' = 130 }
+# 上限调整记录（只记升高，理由是"判据真的变强了"，不是"文件写长了"）：
+#   2026-10-07 `template/STATE.md` 45 → 50：台账 #4 的双计数器要求 STATE.md 多一行「文件数基线拆分: <源码> / <docs>」——
+#     少了这行，生成出来的项目第一跑就被新判据判红（"基线拆分未初始化"）；+1 行是被判据逼出来的，给 5 行余量。
+#   2026-10-07 `template/check.ps1` 110 → 120：同上，双计数器 + D14 拆分件剔除让这段判据真变强（见方案 §11.4）。
 foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','DOC_MAP.json','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md','docs/archive/INDEX.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
