@@ -63,6 +63,7 @@ $spec = 'docs/specs/20261003_export'
 New-Item -ItemType Directory -Force -Path $spec | Out-Null
 Select-String -Path "$spec/NFR.md" -Pattern '待定|尽量|差不多|可能|应该'
 ```
+Expected: a hit prints `<absolute path>:<line number>:<whole line>` (measured in a sandbox on this machine: `…\docs\specs\20261003_export\NFR.md:3:可用性：可能受网络影响`) — that line number is where you go back and fix it. With the file present and **zero hits it prints nothing at all** (measured: 0 lines, `$?` still True), and printing nothing is exactly the passing shape of this criterion. While `$spec/NFR.md` does not exist yet it prints `Select-String : Cannot find path '<absolute path>' because it does not exist.` (a Chinese host prints `找不到路径“<绝对路径>”，因为该路径不存在。`) and flips `$?` to False, but the **exit code does not move**: this is a non-terminating cmdlet error, so `$LASTEXITCODE` still holds the stale value from the last native command (measured: seed it with 77 and 77 survives; in a process that has run no native command yet it is empty) ⇒ this fence is judged by its output, never by an exit code. To self-check the whole spec directory at once, write `-Path` as `"$spec/*.md"`: measured, that lists every hit per file with its own absolute path and line number.
 
 **Prohibitions:**
 - Leaving a dimension blank is forbidden: every dimension needs a threshold or `N/A（理由）` (blank = nobody owns that requirement)
@@ -100,6 +101,7 @@ git add STATE.md $spec
 git commit -m "2-4 docs(spec): 非功能需求（六维阈值+验证动作）"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add STATE.md $spec` (`$spec` is a directory; measured: the whole directory is staged, NFR.md included) prints 0 lines and exits 0; if any path is missing → `fatal: pathspec '…' did not match any files` with **exit code 128** and **no change to the staging area at all** (measured: the failure is atomic). A successful `git commit` prints `[main <short-hash>] 2-4 docs(spec): 非功能需求（六维阈值+验证动作）` + ` N files changed, M insertions(+)` and exits 0; the close-out is done only when `git status --porcelain` is empty and `check.ps1` ends with `全部通过（退出码 0）：完成声明成立。` (never reorder the three steps: write back, commit, then re-run the gate for a 0).
 `git status --porcelain` empty + check.ps1 exit code 0 = the close-out is done.
 
 Tier note: tiers M/L fill all six dimensions; tier S does not run this card — its performance / security rows go straight into SCOPE (the other dimensions get `N/A（理由）`).

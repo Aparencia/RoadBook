@@ -42,6 +42,7 @@ New-Item -ItemType Directory -Force -Path D:/restore-drill/2026-01-01 | Out-Null
 Copy-Item D:/backup/app/app.db D:/restore-drill/2026-01-01/app.db
 Set-Location D:/restore-drill/2026-01-01
 ```
+Expected: not one line in this fence turns red when it fails, so pasting the real output is the only criterion: ① `Set-Location D:/project/app` pointing at a missing directory raises only a **non-terminating** error `Cannot find path 'D:\project\app' because it does not exist.` (a Chinese host prints `找不到路径“D:\project\app”，因为该路径不存在。`), flips `$?` to False and **leaves the current directory untouched** (measured: still the directory you started in); ② so the `powershell -NoProfile -File doctor.ps1` right after it runs in the **current** directory — measured by having a fake doctor report `$PSScriptRoot`, which came back as that same directory, and that is the mechanical proof behind this card's ❌ counter-example ("running it in the wrong place"); the real doctor.ps1 in an empty directory measured 15 output lines, **exit code 1**, including `[WARN] 缺 .tool-versions：必需工具与期望版本无从判定` and a final `环境自检未通过：1 项问题（…）` (per this card: a missing baseline file, not a failed drill); ③ `Copy-Item` with a missing source (the backup was never really retrieved) likewise raises a non-terminating `Cannot find path 'D:\backup\app\app.db' because it does not exist.` (a Chinese host prints `找不到路径“D:\backup\app\app.db”，因为该路径不存在。`) and **keeps going**, and a script whose only failure is that block measured **process exit code 0** (the console still shows the full `At <script>:<line> char:<column>` error record) ⇒ paste both steps' output; the exit code is not a criterion here.
 All three steps are required, each with real output pasted in:
 1. **Retrieve**: actually retrieve a copy from the storage location (not copying an existing local file and passing it off)
 2. **Restore**: restore it into an environment **isolated from production**, following the restore steps in `docs/RUNBOOK.md`
@@ -108,6 +109,7 @@ git add docs/RUNBOOK.md STATE.md
 git commit -m "5-5 docs(ops): 备份清单与恢复演练记录落档"
 powershell -NoProfile -File check.ps1
 ```
+Expected: both `docs/RUNBOOK.md` and `STATE.md` must be **real, already written** files (the first gains the backup and restore section on this card, the second is the previous step's write-back): if either is missing → `fatal: pathspec '<that one>' did not match any files` with **exit code 128**, and **nothing at all is staged** (measured: the failure is atomic — nothing scanned before the error stays behind). A successful `git commit` prints `[main <short-hash>] 5-5 docs(ops): 备份清单与恢复演练记录落档` + ` N files changed, M insertions(+)` and exits 0 (an empty list prints `On branch main` / `nothing to commit, working tree clean` and exits 1); `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。`
 
 ---
 

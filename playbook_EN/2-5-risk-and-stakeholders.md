@@ -68,6 +68,7 @@ $spec = 'docs/specs/20261003_export'
 New-Item -ItemType Directory -Force -Path $spec | Out-Null
 Select-String -Path "$spec/RISK.md" -Pattern '注意|留意|适时|大概|尽量|可能'
 ```
+Expected: this scan hunts slogan-style mitigation wording: a hit prints `<absolute path>:<line number>:<whole line>` (measured in a sandbox on this machine: `…\20261003_export\RISK.md:1:风险：可能延期`), one line per hit, each to be rewritten as an observable signal (threshold + observer + who gets notified). **On zero hits it prints nothing at all** (measured: 0 lines, `$?` still True) — that silence is the passing shape of "every risk has an observable", so do not read it as "the command never ran". `-Pattern` is a regex, so `|` means "or" (any of the six words hits), and when `$spec/RISK.md` does not exist it prints `Select-String : Cannot find path '<absolute path>' because it does not exist.` (a Chinese host prints `找不到路径“<绝对路径>”，因为该路径不存在。`) and flips `$?` to False while the **exit code does not move** (non-terminating error; `$LASTEXITCODE` keeps its stale value — measured: 77 survives) ⇒ judge this fence by its output only. Scanning the whole spec at once is `-Path "$spec/*.md"` (measured: hits listed per file).
 
 **Prohibitions:**
 - Writing a "risk" as a "worry" is forbidden (a sentence with no observability and no owner = not complete)
@@ -105,6 +106,7 @@ git add STATE.md $spec
 git commit -m "2-5 docs(spec): 风险登记册与干系人（触发信号+通告对象）"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add STATE.md $spec` (`$spec` is a directory; measured: the whole directory is staged) prints 0 lines and exits 0; if any path is missing → `fatal: pathspec '…' did not match any files` with **exit code 128** and nothing at all staged (measured: the failure is atomic). A successful `git commit` prints `[main <short-hash>] 2-5 docs(spec): 风险登记册与干系人（触发信号+通告对象）` + ` N files changed, M insertions(+)` and exits 0; the close-out is done when `git status --porcelain` is empty and `check.ps1` ends with `全部通过（退出码 0）：完成声明成立。`
 `git status --porcelain` empty + check.ps1 exit code 0 = the close-out is done.
 
 Fixed closing line:

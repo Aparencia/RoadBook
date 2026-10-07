@@ -78,6 +78,7 @@ Method: <one of the five> ｜ Participants: <how many, which roles; write "user 
 $spec = 'docs/specs/2026-10-03_export'
 New-Item -ItemType Directory -Force -Path $spec | Out-Null
 ```
+Expected: a successful `New-Item -ItemType Directory -Force … | Out-Null` prints **nothing at all** (measured in a sandbox on this machine: 0 stdout lines, `$?` True). The `-Force` is what keeps "the directory already exists" from being an error — re-running the same line measured 0 lines and exit code 0 again, while dropping `-Force` prints `An item with the specified name <absolute path> already exists.` (a Chinese host prints `具有指定名称 <绝对路径> 的项已存在。`) and flips `$?` to False (a non-terminating error: the process exit code stays 0). The `| Out-Null` is not decoration either: without it a `DirectoryInfo` object leaks into the report as "output" (the console renders it as a directory table). The path expands against the **current directory** — measured, the absolute path created was `<current dir>\docs\specs\2026-10-03_export`, so one slip in another directory plants specs there.
 
 **Prohibitions:**
 - Filling in the user's original words from memory is forbidden; anything not written down is "未获取" ("not obtained")
@@ -115,6 +116,7 @@ git add STATE.md $spec
 git commit -m "2-3 docs(spec): 需求获取记录（原话+说的vs要的+未决项）"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add STATE.md $spec` accepts a **directory**: measured, all 4 files under it were staged (`git diff --cached --name-only` listed `docs/specs/2026-10-03_export/ELICIT.md` and friends), the command itself printed 0 lines and exited 0. If any real path in the list does not exist, the whole `git add` fails **atomically** — `fatal: pathspec '…' did not match any files` with **exit code 128**, and **nothing that was already scanned gets staged** (measured: right after the error `git diff --cached --name-only` was empty, so there is no "half staged" state). A successful `git commit` prints `[main <short-hash>] 2-3 docs(spec): 需求获取记录（原话+说的vs要的+未决项）` + ` N files changed, M insertions(+)` and exits 0 (an empty list prints `On branch main` / `nothing to commit, working tree clean` and exits 1); `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。`
 `git status --porcelain` empty + check.ps1 exit code 0 = the close-out is done.
 
 Tier note: tier S does not run this card (≤3 files, ≤100 lines and clear acceptance criteria; **single-page static app exception**: 1 entry page + no backend + no dependency → ≤5 files and ≤400 lines); tiers M/L run it whenever the requirement is vague or real users exist.
