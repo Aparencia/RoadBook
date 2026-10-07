@@ -1,36 +1,38 @@
 # DESIGN_TOKENS · 设计令牌（Design Tokens；3-5 卡产物；≤110 行）
-> 最近核对 2026-10-07 @ 95068bc
+> 最近核对 2026-10-07 @ 2ad1471（TD-014 结案时重核：6 条令牌换宿主真名、探针元素订正为 `body`、`§3` 的核对方法重写；`95068bc` 是上一轮核对的锚点）
 > 谁写：3-5 色彩与视觉规范 ｜ 谁读：3-4 界面设计、3-6 动效、4-1 每批编码、4-2 审查、7-1 UI 改动 ｜ 何时更新：改品牌色、调色阶、加字号/间距/圆角档、改明暗映射时
 > 不适用时怎么写：无自绘界面（直接用组件库默认主题）→ 各节写一行 `N/A（理由）`，**不许整份不建**；理由要能判定，例：`N/A（用组件库默认主题，未自定义令牌）`。
 
 ## 1. 令牌来源与优先级（宿主变量 → fallback；本项目不自选色）
 
-- 界面 = DSH better-sidebar 的侧栏面板（图册 / 自进化两张标签页）。颜色**不自选**：一律写成 `var(--dsw-alias-<语义>, fallback)`——宿主定义了就用宿主的，宿主没定义才落 fallback；写法见 `lib/client.js:1142`。
+- 界面 = DSH better-sidebar 的侧栏面板（图册 / 自进化两张标签页）。颜色**不自选**：一律写成 `var(--dsw-alias-<语义>, fallback)`——宿主定义了就用宿主的，宿主没定义才落 fallback；写法见 `lib/client.js:1142`（这 6 个名字 2026-10-07 已全部换成宿主真名，见 §3 末）。
 - 唯一令牌表 = `lib/client.js:1142-1147` 的 `TOKEN`（6 条）。自进化页经虚拟模块取同一张表（`lib/client-evolve.js:33` = `host.styles.TOKEN`）⇒ 不存在第二处真相。
 - **没有自选品牌色，也没有色阶**：配色权在宿主——插件与宿主界面同屏，抢配色就是两套体系，插件只借宿主的语义别名。上一版骨架里的 `--color-brand-*` / `--color-neutral-*` 十阶是模板给新建项目的示例值，本项目一个都没用，已删。
-- 实测（复跑方法见 §3 末）：这 6 个名字在宿主安装产物里只有 `--dsw-alias-bg-layer-2` 存在，其余 5 个没有 ⇒ **今天实际渲染的主要是 fallback 值**。改名字属代码侧决定，不在本文档职责内。
+- 实测（复跑方法见 §3 末）：这 6 个名字**全部**是宿主真名（2026-10-07 结案 TD-014）。改前用的 `--dsw-alias-text-1` / `text-2` / `border-1` / `text-accent` / `text-warning` 在宿主的 **120 个**别名里**一个都没有** ⇒ 那时 5/6 条真的走 fallback，既不跟宿主配色也不跟明暗主题（`bg-layer-2` 是当年唯一蒙对的一条）。
 
 ## 2. 令牌表（6 条，出处 `lib/client.js:1142-1147`；"用在哪" 按代码实际用法）
 
 | CSS 变量名 | fallback 值 | 用在哪 |
 | :-- | :-- | :-- |
-| `--dsw-alias-text-1` | `inherit` | 正文与标题：列表项名、非主按钮文字、空态标题、面板根 `color`、区块标题（11 处） |
-| `--dsw-alias-text-2` | `#8a8a8a` | 次要文字：路径、计数、提示、证据细节、页脚版本号（27 处） |
-| `--dsw-alias-border-1` | `rgba(127,127,127,0.28)` | 描边：卡片 / 更新条 / 非主按钮 / 胶囊的 `1px solid`；"判不了" 改 `1px dashed`（9 处） |
+| `--dsw-alias-label-primary` | `inherit` | 正文与标题：列表项名、非主按钮文字、空态标题、面板根 `color`、区块标题（11 处） |
+| `--dsw-alias-label-secondary` | `#8a8a8a` | 次要文字：路径、计数、提示、证据细节、页脚版本号（27 处） |
+| `--dsw-alias-border-l1` | `rgba(127,127,127,0.28)` | 描边：卡片 / 更新条 / 非主按钮 / 胶囊的 `1px solid`；"判不了" 改 `1px dashed`（9 处） |
 | `--dsw-alias-bg-layer-2` | `rgba(127,127,127,0.06)` | 面：卡片、胶囊、iframe 外壳的填充（7 处，最浅的一层） |
-| `--dsw-alias-text-accent` | `#3b82f6` | 强调：主按钮文字 + 描边、正常态门禁徽标与更新条色调（4 处） |
-| `--dsw-alias-text-warning` | `#d97706` | 警示：失败、过期、越界、错误的文字（13 处，永远与文字同现） |
+| `--dsw-alias-link` | `#3b82f6` | 强调：主按钮文字 + 描边、正常态门禁徽标与更新条色调（4 处） |
+| `--dsw-alias-state-warn-label` | `#d97706` | 警示：失败、过期、越界、错误的文字（13 处，永远与文字同现） |
 
 - 只有这 6 条：success / danger / info 三种语义**不设令牌**（面板不表达这三种状态），brand 类不设（宿主给）。
+- 宿主定义值（2026-10-07 实测，亮 = `body` / 暗 = `body[data-ds-dark-theme]`）：`label-primary` = bluish-1000 / bluish-50｜`label-secondary` = bluish-700 / bluish-300｜`border-l1` = `#0000000a` / `#ffffff0f`｜`bg-layer-2` = bluish-00 / bluish-850｜`link` = deepseek-500 / deepseek-400｜`state-warn-label` = amber-600（两主题同值）。**`brand-primary` 没被选**：亮色主题里它 = `label-primary`（近黑），拿它当蓝色强调会丢掉语义。
 
 ## 3. 对比度门禁（谁负责 / 怎么验 / 宿主变量缺失时怎么办）
 
 - **谁负责 = 宿主**：颜色值不由本项目给 ⇒ 本项目不做自选色的对比度承诺（没有自选色可承诺）；宿主换主题时的一致性由宿主主题保证，插件不干预。
 - **算不了的两处，写明为什么**：`border` 与 `surface` 的 fallback 是半透明灰（alpha 0.28 / 0.06），比值必须先与宿主底色合成，而宿主底色在仓库内不可知 ⇒ 算不了；`text` 的 fallback 是 `inherit`，它不是色值 ⇒ 无从计算。
-- fallback 里三个不透明 hex 只能给"假定底色"下的参考值（白底 / `#1e1e1e` 底）：`#8a8a8a` 3.45 / 4.83｜`#3b82f6` 3.68 / 4.53｜`#d97706` 3.19 / 5.23——**白底三档全部低于 4.5:1** ⇒ fallback 只保证"看得见"，不保证 WCAG AA。
+- fallback 里三个不透明 hex 只能给"假定底色"下的参考值（白底 / `#1e1e1e` 底）：`#8a8a8a` 3.45 / 4.83｜`#3b82f6` 3.68 / 4.53｜`#d97706` 3.19 / 5.23——**白底三档全部低于 4.5:1** ⇒ fallback 只保证"看得见"，不保证 WCAG AA。**这组数今天只在"宿主变量缺失"时才生效**：2026-10-07 起 6 条全部命中宿主真名，实际取值改由宿主主题给（例如 `label-secondary` 亮色 = bluish-700，比 `#8a8a8a` 深得多）⇒ AA 由宿主负责。
 - 宿主变量缺失时怎么办：**不补自选色**。`inherit` 与两个半透明灰本就是"随宿主明暗都成立"的中性表达；已知会低于 AA 的只有上面两个固定 hex 强调色——需要 AA 时应当改用宿主别名，而不是换一个 hex。
 - 焦点环：`N/A（焦点环由宿主原生 :focus-visible 提供；两文件 0 处 outline / :focus 规则，本项目不自绘，也不做焦点环对比度承诺）`。
-- 怎么验：拿这 6 个变量名到宿主安装产物 `resources/app.asar`（本机 `D:\AISI\Deepseek harness\`）里做字节级查找——命中 = 宿主定义了这个别名，未命中 = 该 fallback 今天生效（§1 的实测就是这么来的）。
+- 怎么验（2026-10-07 修订，两条都是实测踩出来的）：拿这 6 个变量名到宿主安装产物 `resources/app.asar`（本机 `D:\AISI\Deepseek harness\`）里做字节级查找。① **只数出现次数不够** —— `var(--dsw-alias-x)` 是引用、`--dsw-alias-x:值;` 才是声明，必须按"名字后紧跟冒号"的**声明形态**筛，否则分不清"宿主定义了这个别名"与"别人在引用它"。② **别名声明在 `body`（亮）/ `body[data-ds-dark-theme]`（暗）上，不在 `:root`/`documentElement`** —— 自定义属性只向下继承 ⇒ 运行时探针要查 `getComputedStyle(document.body).getPropertyValue('--dsw-alias-label-secondary')`，查 `documentElement` 恒返回空串，会得出"宿主没注入、都在走 fallback"的**假结论**（TD-014 原定的探针就写的是 `documentElement`，已订正）。
+- 机器判据：这 6 个名字冻结在 `test/chunks.test.mjs` 的 `FROZEN_ALIASES`（改了名字而不改测试 = 判红），证伪过一次：把 `label-primary` 换回 `text-1` ⇒ 恰好红在 `TOKEN.text 必须用宿主真名 …`。
 
 ## 4. 字号阶梯（三档；面板由宿主给标题栏，面板内没有大字号）
 

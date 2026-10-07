@@ -25,6 +25,14 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 **v0.10.0 升级方案（`design/vnext-2026-10-07.md`）的在办改动。版本号由批 6 的 #62 一次升到位**
 （本次不动 `package.json`，所以七处对齐与 `git tag` 都不触发）。
 
+### TD-014 结案 · 宿主令牌改用真名 + 探针元素订正（批 6 收尾后补做）
+
+- **改的是什么**：`lib/client.js:1142-1147` 的 6 条令牌里 5 条的名字宿主**从来没有定义过**（`--dsw-alias-text-1` / `text-2` / `border-1` / `text-accent` / `text-warning`，在宿主 120 个别名里声明形态与引用形态**都是 0**）⇒ 插件一直渲染 fallback 常量、且不跟宿主明暗主题。改成宿主真名：`label-primary`（385）/ `label-secondary`（281）/ `border-l1`（62）/ `bg-layer-2`（33，唯一蒙对的）/ `link`（20）/ `state-warn-label`（25）。**fallback 一字未动** ⇒ 最坏情况与改前逐字节等价。
+- **顺带订正了一处会骗人的探针**：宿主把这些别名声明在 `body`（亮）/ `body[data-ds-dark-theme]`（暗）上，**不在 `:root`/`documentElement`** ⇒ TD-014 原定的 `getComputedStyle(document.documentElement).getPropertyValue('--dsw-alias-text-2')` **恒返空串**，会把已经定义好的令牌判成"没注入"。正确探针查 `document.body`。
+- **怎么证的**：③ 步全在本机真跑 —— ① 全产物扫出 120 个 `--dsw-alias-*` 名字（3053 次引用）；② 按声明形态定位到 `body`（204 条）与 `body[data-ds-dark-theme]`（205 条）两个块并逐条取到定义值；③ `setProperty(` 且窗口内含 `dsw-alias` = **0 处** ⇒ 排掉"运行时拼名注入"这个残留不确定。
+- **机器判据**：`test/chunks.test.mjs` 新增 `FROZEN_ALIASES` 冻结这 6 个名字，**证伪一次**（把 `label-primary` 换回 `text-1` ⇒ 恰好红在 `TOKEN.text 必须用宿主真名 …`，还原后 18/18 绿）。
+- **残余未验**：真实渲染下的颜色没被人眼看过（需重启 DSH，与 #56 同一次做）—— 台账里如实写成观察项。
+
 ### `docs/versions/` 归属卡定稿 + 两份历史回填（台账 #46 / TD-007 —— 批 6 收尾后补做）
 
 - **定稿 = 选项 ①（归 5-6）**：判据正文在 5-6 卡 —— 产物行两处写着 `docs/versions/vX.Y.Z.md`，「三对齐」（`:75-81`）把"本目录命中 1 个 `vX.Y.Z.md`"列为**打 tag 前的机械判据**；根 `docs/README.md` 只是**索引**，索引漏了 5-6 ⇒ 修索引（产出卡补 `5-6`、维护列补 `5-6`、更新条件写实），**不删卡里的判据**（契约 §2「不许删判据腾地方」；且方案 #62 要产出 `docs/versions/v0.10.0.md`）。删判据 = 把"第三次静默跳过"变成合法，这条被否决。

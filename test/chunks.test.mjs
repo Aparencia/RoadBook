@@ -268,6 +268,24 @@ test('核心按生产路径取分块：宿主件一个不缺，导出表齐备�
     for (const key of required) assert.equal(typeof host[key], 'function', `宿主件缺 ${key}`);
     assert.equal(typeof host.styles.TOKEN, 'object', '宿主件缺 styles.TOKEN（分块的配色全从它取）');
     assert.ok(host.styles.TOKEN.text, 'TOKEN 里必须有 text');
+    // TD-014 冻结账本：令牌名必须是宿主真名。宿主 app.asar 里 120 个别名中这 6 个的命中数
+    // （2026-10-07 实测）：label-primary 385 / label-secondary 281 / border-l1 62 / bg-layer-2 33 /
+    // link 20 / state-warn-label 25；改前那 6 个（text-1 / text-2 / border-1 / text-accent /
+    // text-warning）命中数全是 0 —— 宿主根本没定义，插件一直在走 fallback，且不跟宿主明暗主题。
+    const FROZEN_ALIASES = {
+        text: '--dsw-alias-label-primary',
+        muted: '--dsw-alias-label-secondary',
+        border: '--dsw-alias-border-l1',
+        surface: '--dsw-alias-bg-layer-2',
+        accent: '--dsw-alias-link',
+        warn: '--dsw-alias-state-warn-label',
+    };
+    for (const [key, name] of Object.entries(FROZEN_ALIASES)) {
+        assert.ok(
+            host.styles.TOKEN[key].startsWith(`var(${name},`),
+            `TOKEN.${key} 必须用宿主真名 ${name}（名字核不到 = 静默走 fallback，见 docs/DESIGN_TOKENS.md §3）`,
+        );
+    }
     for (const key of ['buttonStyle', 'badgeStyle', 'sectionStyle']) {
         assert.equal(typeof host.styles[key], 'function', `宿主件缺 styles.${key}`);
     }
