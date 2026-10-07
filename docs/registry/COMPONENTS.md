@@ -105,7 +105,7 @@
 | `test/atlas-cli.test.mjs` | atlas CLI 端到端行为测试（真跑渲染） | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
 | `test/render-smoke.test.mjs` | archify vendor 冒烟测试（vendored 渲染器可跑） | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
 | `test/vendor-provenance.test.mjs` | 供应商记录可核对性测试（清单 ↔ 逐文件哈希） | 母版（2026-10-06 atlas 修复批） | `N/A（测试）` |
-| `test/d14-lines.test.mjs` | D14 行数闸（非测试 ≤500 / 测试 ≤1000）+ 豁免清单完整性（台账 #59）+ **`gate.ps1` ⑥ 的判据对象**（临时 git 仓里真跑 gate：600 行 `.md` 绿 / `.js` 红且点名 / `.test.mjs` 绿；TD-021）+ **⑥ 认项目自己的声明**（四档：声明 900 → 绿且打 `[声明]` / 声明 550 → 红在 550 / 空表 → 红在 500 / 收紧 400 → 红在 400）+ `sourceLimits` ↔ 文件自己的 `$selfCap` 同源（TD-024） | 批 1（2026-10-07 D14 闸）· 缺口清偿批 II 扩展 | `N/A（测试）` |
+| `test/d14-lines.test.mjs` | D14 行数闸（非测试 ≤500 / 测试 ≤1000）+ 豁免清单完整性（台账 #59）+ **`gate.ps1` ⑥ 的判据对象**（临时 git 仓里真跑 gate：600 行 `.md` 绿 / `.js` 红且点名 / `.test.mjs` 绿；TD-021）+ **⑥ 认项目自己的声明**（四档：声明 900 → 绿且打 `[声明]` / 声明 550 → 红在 550 / 空表 → 红在 500 / 收紧 400 → 红在 400）+ `sourceLimits` ↔ 文件自己的 `$selfCap` 同源（TD-024）+ **⑧ 的规则面**（临时仓里跑真 gate：缺 `rules` 键 → 绿且黄字点名根因 / `rules: []` → 同口径 / 有一条真规则命中 → 必须红且点名规则 id；TD-026）+ **`orphans.ps1` ④ 的误报边界**（临时 git 仓里跑真扫描器：未来时句子 → 0 项 **且**打印标记词分布 / 现在时的同一条路径 → 必须报出 1 项；TD-025） | 批 1（2026-10-07 D14 闸）· 缺口清偿批 II 扩展 · 检测器误报批扩展（TD-025 / TD-026） | `N/A（测试）` |
 | `test/tech-debt.test.mjs` | 债务台账结构闸：一张连续的表（无空行切断 / 无两竖线粘连）/ 编号连续无重复 / 8 列（转义感知）/ 状态在状态机内 / `closed` 必附偿还证据 + **四个合成负控**（TD-023） | 缺口清偿批（2026-10-07） | `N/A（测试）` |
 | `skills/roadbook-atlas/vendor/archify/bin/archify.mjs` | archify 主 CLI：把 typed JSON 规格渲染成自包含 HTML | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
 | `skills/roadbook-atlas/vendor/archify/bin/open-artifact.mjs` | 把渲染产物交给宿主打开 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |

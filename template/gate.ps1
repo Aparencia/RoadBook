@@ -119,14 +119,15 @@ if ($lk.Count -gt 0) { $fail += "依赖变更：$($lk -join '、')——lockfile
 #   而手里的事实是"改了哪个路径"——路径→语义靠判断，最容易漏且漏了没痕迹（实测：5-7 卡的产物
 #   docs/BASELINE.md 在五处登记里缺了四处，而门禁照旧全绿）。判据数据在 DOC_MAP.json（上面已读）：
 #   source=added-file 取本批新增文件（排除 docs/，那些由 5-1 第 ⑧ 查管）｜source=new-line 取本批新增行；
-#   每条规则的 d13 逐字引用 AGENTS.md 的义务行首，绑定由 _qc/check-docs.ps1 反向核对（防引用不存在的义务）。
+#   每条规则的 d13 逐字引用 AGENTS.md 的义务行首，绑定由 _qc/check-docs.ps1 反向核对（防引用不存在的义务）。**TD-026**：`@($null).Count` 是 **1**（不是 0）⇒ 缺 `rules` 键时 `@($map.rules)` 会拿 `$null` 当一条规则判（`[string]$null` = 空串 ≠ `new-line` ⇒ 池子回落到"本批新增文件"，而空正则匹配一切）⇒ 任何新增文件都被判假红「文档义务未履行 []」，那条红字连规则 id 都印不出来；规则表在下面先归一并去 `$null`，空表 = **没有可判的规则**（黄字点名根因，不是红）。
 if ($null -ne $map) {
     # 比对基准用 $Anchor（工作树 vs 锚点），不用 "$Anchor..HEAD"（只看到已提交）——
     # 4-1 卡要求"提交前后都能跑"，只认已提交 = 提交前这段永远查不到（假绿）。
     # 未跟踪文件不进 git diff，由下面的 ls-files --others 补上。
     $added = @(@(git -C $RepoRoot -c core.quotepath=false diff --name-status --diff-filter=A "$Anchor" 2>$null | ForEach-Object { $c = @([string]$_ -split "`t"); if ($c.Count -ge 2) { $c[1] } }) + @(git -C $RepoRoot -c core.quotepath=false ls-files --others --exclude-standard 2>$null) | Where-Object { $_ } | Select-Object -Unique)
     $newLines = @(git -C $RepoRoot diff -U0 "$Anchor" 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' })
-    foreach ($rule in @($map.rules)) {
+    $ruleList = @(); if ($null -ne $map.rules) { $ruleList = @(@($map.rules) | Where-Object { $null -ne $_ }) }; if ($ruleList.Count -eq 0) { $warn += 'DOC_MAP.json 的 rules 段缺失或为空：⑧ 文档义务没有可判的规则（不像 ⑥ 那样回落到默认值 —— 义务表是项目自己声明的；补 rules，或在 STATE.md 裁剪记录里写明本项目不适用）' }
+    foreach ($rule in $ruleList) {
         if ($rule.disabled) { continue }
         $pool = @($added | Where-Object { $_ -notmatch '^docs/' })
         if ([string]$rule.source -eq 'new-line') { $pool = $newLines }

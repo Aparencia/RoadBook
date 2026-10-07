@@ -16,7 +16,7 @@
 #     是"产物名/工具的泛指"，不是"这个文件此刻在哪"；把它们当引用会让每一次正常引用都变成幽灵
 #     （实测 21 项里绝大多数是这么来的），真幽灵因此被淹掉。带分隔符的才是"我指着某个具体位置"。
 #     代价（明说）：真正的"写了 docs/x.md 但文件不在"仍会被报出（本仓实测 `docs/TOOLING.md` 就是一条真的），漏报面是"裸文件名写错"。
-#   **第二刀（2026-10-07 · TD-002 逐项定性）**：幽灵口径 = **四类机械跳过**（① 以 `/` 或盘符开头 = 虚拟路径/宿主绝对路径 ② 含 `X.Y.Z`/`<`/`*`/`YYYY` = 占位符或模式 ④ 该处前后 60 字符内有非现在时标记词〈拆/删/待建/待填/规划/弃用/废弃〉= 历史或规划 ⑤ 首段目录不在磁盘 = 别的布局〈模板项目的 `src/`、外部包内相对路径〉）+ **文档面收窄到当前态文档**（根四份 + `docs/` 根说明文档 + `docs/registry/` + `docs/pool/`；`CHANGELOG.md` 与 `docs/{specs,versions,reviews,decisions,lessons,archive}/` 是时点记录，拿当前磁盘状态判它 = 要求改写历史，D12 禁）；零引用导出的**引用面加入数据文件**（TD-003）。**逐项定性、每条规则的理由与代价写在 `docs/TECH_DEBT.md` 的 TD-002 / TD-003 行**（含两条实测：整行口径下 113 处提及里 104 处被豁免 = 判据近乎空转；`_qc/selftest-cases.json` 托管的调用点被漏数 3 条）—— 本文件只留机制，不复制散文。
+#   **第二刀（2026-10-07 · TD-002 逐项定性）**：幽灵口径 = **四类机械跳过**（① 以 `/` 或盘符开头 = 虚拟路径/宿主绝对路径 ② 含 `X.Y.Z`/`<`/`*`/`YYYY` = 占位符或模式 ④ 该处前后 60 字符内有非现在时标记词〈拆/删/待建/待填/待补/待做/待定/待实现/未建/未实现/未落地/尚未/还没/规划/计划/排期/后续/下一批/下一版/弃用/废弃〉= 历史或规划——**词表就是上面这一处**（不在别处复制）：TD-025 实测旧表只有 7 个词，一句明确写了「排期」的话被报了幽灵，而误报的代价是反过来训练人改文案去迁就工具（当天就是这么绕过去的）；汇总行按词打印各跳过几处（跳过不静默：收错词一眼看得出） ⑤ 首段目录不在磁盘 = 别的布局〈模板项目的 `src/`、外部包内相对路径〉）+ **文档面收窄到当前态文档**（根四份 + `docs/` 根说明文档 + `docs/registry/` + `docs/pool/`；`CHANGELOG.md` 与 `docs/{specs,versions,reviews,decisions,lessons,archive}/` 是时点记录，拿当前磁盘状态判它 = 要求改写历史，D12 禁）；零引用导出的**引用面加入数据文件**（TD-003）。**逐项定性、每条规则的理由与代价写在 `docs/TECH_DEBT.md` 的 TD-002 / TD-003 行**（含两条实测：整行口径下 113 处提及里 104 处被豁免 = 判据近乎空转；`_qc/selftest-cases.json` 托管的调用点被漏数 3 条）—— 本文件只留机制，不复制散文。
 #   反向幽灵=源码文件没被任何文档提到；未登记=不在 docs/registry/COMPONENTS.md。
 #   **未登记文档**=docs/ 固定槽位（docs 根 + registry/ + pool/）里没进 docs/README.md 对应表的文件
 #     ——docs/ 此前是整体排除目录，原有五张清单里没有一张能发现"没人登记的文档"。
@@ -72,8 +72,8 @@ foreach ($f in @($rel | Where-Object { $txtExt -contains [IO.Path]::GetExtension
 }
 $dataExt = @('.json','.yml','.yaml','.toml','.ini','.cfg'); $refBlob = ''; foreach ($f in @($src) + @($rel | Where-Object { $dataExt -contains [IO.Path]::GetExtension($_).ToLower() })) { $refBlob += $txt[$f] + "`n" }   # 引用面 = 源码 ∪ 数据文件（本仓惯例「数据与引擎分家」，调用点住在 .json 里 —— TD-003）
 $allTxt = $blob.ToString() + "`n" + $docTxt
-$ghost = @{}; $gj = @{ route = 0; ph = 0; hist = 0; alien = 0 }; $ghostMark = '(拆|删|待建|待填|规划|弃用|废弃)'; $ghostRx = '[^/]`([A-Za-z0-9_\-./\\]*[/\\][A-Za-z0-9_\-./\\]+\.[a-z][a-z0-9]{0,7})`'
-foreach ($m in [regex]::Matches($ghostTxt, $ghostRx)) { $p = $m.Groups[1].Value.Replace('\','/') -replace '^\./',''; if ($p -match '^(\.env|node_modules|dist|build|\.git)(/|$)') { continue }; $ws = [Math]::Max(0, $m.Index - 60); $w = $ghostTxt.Substring($ws, [Math]::Min($ghostTxt.Length, $m.Index + $m.Length + 60) - $ws); if ($p -match '^(/|[A-Za-z]:)') { $gj.route++; continue }; if ($p -match 'X\.Y\.Z|<|>|\*|\bYYYY\b') { $gj.ph++; continue }; if ($w -match $ghostMark) { $gj.hist++; continue }; if (-not (Test-Path -LiteralPath (Join-Path $root (($p -split '/')[0])))) { $gj.alien++; continue }; if (-not (Test-Path -LiteralPath (Join-Path $root ($p -replace '/', $sep)))) { $ghost[$p] = 1 } }
+$ghost = @{}; $gj = @{ route = 0; ph = 0; hist = 0; alien = 0 }; $gjMark = @{}; $ghostMark = '(拆|删|待建|待填|待补|待做|待定|待实现|未建|未实现|未落地|尚未|还没|规划|计划|排期|后续|下一批|下一版|弃用|废弃)'; $ghostRx = '[^/]`([A-Za-z0-9_\-./\\]*[/\\][A-Za-z0-9_\-./\\]+\.[a-z][a-z0-9]{0,7})`'
+foreach ($m in [regex]::Matches($ghostTxt, $ghostRx)) { $p = $m.Groups[1].Value.Replace('\','/') -replace '^\./',''; if ($p -match '^(\.env|node_modules|dist|build|\.git)(/|$)') { continue }; $ws = [Math]::Max(0, $m.Index - 60); $w = $ghostTxt.Substring($ws, [Math]::Min($ghostTxt.Length, $m.Index + $m.Length + 60) - $ws); if ($p -match '^(/|[A-Za-z]:)') { $gj.route++; continue }; if ($p -match 'X\.Y\.Z|<|>|\*|\bYYYY\b') { $gj.ph++; continue }; if ($w -match $ghostMark) { $gj.hist++; $mk = $Matches[1]; $gjMark[$mk] = 1 + [int]$gjMark[$mk]; continue }; if (-not (Test-Path -LiteralPath (Join-Path $root (($p -split '/')[0])))) { $gj.alien++; continue }; if (-not (Test-Path -LiteralPath (Join-Path $root ($p -replace '/', $sep)))) { $ghost[$p] = 1 } }
 $freq = @{}
 foreach ($m in [regex]::Matches($refBlob, '[A-Za-z_$][A-Za-z0-9_$]*')) { $k = $m.Value; $freq[$k] = 1 + $freq[$k] }
 $rxExp = [regex]'(?m)^\s*(?:export\s+(?:default\s+)?(?:declare\s+)?(?:async\s+)?(?:function|class|const|let|var|interface|type|enum)|def|function|func\s+(?:\([^)]*\)\s*)?|pub\s+fn|public\s+(?:static\s+|sealed\s+|abstract\s+)*(?:class|interface|enum|void|[A-Z]\w*))\s+([A-Za-z_$][\w$-]*)'
@@ -134,7 +134,7 @@ foreach ($x in $arcCand) { Write-Host "[归档候选] $x" }
 foreach ($x in $bad) { Write-Host "[读取失败] $x" -ForegroundColor Red }
 if ($untracked.Count -gt 0) { Write-Host ("[FAIL] 未跟踪 {0} 个文件：七张清单不完整（先 git add 再复跑）" -f $untracked.Count) -ForegroundColor Red }
 $gjSum = ($gj.Values | Measure-Object -Sum).Sum
-if ($gjSum -gt 0) { Write-Host ("[跳过] 虚拟或宿主路径 {0} 处｜占位符 {1} 处｜历史或规划行 {2} 处｜外部布局（首段目录不在磁盘） {3} 处" -f $gj.route, $gj.ph, $gj.hist, $gj.alien) }
+if ($gjSum -gt 0) { $markTxt = ((@($gjMark.GetEnumerator()) | Sort-Object Value, Key -Descending | ForEach-Object { "$($_.Key)×$($_.Value)" }) -join '｜'); Write-Host ("[跳过] 虚拟或宿主路径 {0} 处｜占位符 {1} 处｜历史或规划行 {2} 处（{4}）｜外部布局（首段目录不在磁盘） {3} 处" -f $gj.route, $gj.ph, $gj.hist, $gj.alien, $markTxt) }
 Write-Host ("孤儿 {0} 项｜零引用导出 {1} 项（另豁免 {2} 项）｜文档幽灵 {3} 项（另跳过 {4} 处）｜反向幽灵 {5} 项｜未登记 {6} 项｜未登记文档 {7} 项｜归档候选 {8} 项｜未跟踪 {9} 项｜读取失败 {10} 项｜文件数 {11}" -f $orphan.Count, $zero.Count, $ven.Count, $ghost.Count, $gjSum, $rev.Count, $unreg.Count, $undoc.Count, $arcCand.Count, $untracked.Count, $bad.Count, $rel.Count)
 if ($bad.Count -gt 0 -or $untracked.Count -gt 0) { Write-Host "[FAIL] 清单不完整（未跟踪文件或读取/解析失败）：计数不可信，先修仪器/先 git add 再解读" -ForegroundColor Red; exit 1 }
 exit 0

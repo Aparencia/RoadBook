@@ -23,7 +23,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -237,12 +237,14 @@ const PROBE_LINES = 600;
  * 放进基线而不是改动清单，是为了让每一档保持单变量：`DOC_MAP.json` 自己不进 ⑥ 的行数段、
  * 也不进 ⑤ 的越界判定。
  *
- * `rules: []` 是必须的（不是装饰）：`@($null).Count` 在 PowerShell 里是 **1**，缺 `rules` 键会让
- * ⑧ 把 `$null` 当成一条规则（`[string]$null` = 空串、空正则匹配一切）⇒ 任何新增文件都被判
- * 「文档义务未履行 []」。这是 `gate.ps1` 的既有边界，已登记 `docs/TECH_DEBT.md` TD-026，
- * 本文件不顺手改它。
+ * `lines` 默认 = `PROBE_LINES`（行数段的探针要够长才碰得到阈值）；⑧ 的探针要的是**小**文件
+ * （600 行的 `.js` 会同时触发 ⑥ 判红，那就不是单变量实验了）。
+ *
+ * ⑧ 的规则面另有两条探针（见文件末 TD-026 那条）：`@($null).Count` 在 PowerShell 里是 **1**，
+ * 缺 `rules` 键曾让 ⑧ 拿 `$null` 当一条规则判（`[string]$null` = 空串、空正则匹配一切）⇒
+ * 任何新增文件都被判假红「文档义务未履行 []」，而那条红字连规则 id 都印不出来。
  */
-function runGateOn(files, { docMap } = {}) {
+function runGateOn(files, { docMap, lines = PROBE_LINES } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'rb-gate-'));
   try {
     const git = (...args) =>
@@ -256,7 +258,7 @@ function runGateOn(files, { docMap } = {}) {
     git('add', '-A');
     git('commit', '-q', '-m', 'baseline');
     for (const file of files) {
-      const body = Array.from({ length: PROBE_LINES }, (_, i) => `line ${i + 1}`).join('\n');
+      const body = Array.from({ length: lines }, (_, i) => `line ${i + 1}`).join('\n');
       writeFileSync(join(dir, file), `${body}\n`);
     }
     const r = spawnSync(
@@ -361,4 +363,91 @@ test('DOC_MAP.json 的 sourceLimits 与文件自己的声明同源（母版那�
   const tpl = JSON.parse(readFileSync(join(ROOT, 'template', 'DOC_MAP.json'), 'utf8'));
   assert.ok(tpl.sourceLimits?.files, 'template/DOC_MAP.json 没有 sourceLimits 段：这套机制没下发给生成出来的项目');
   assert.deepEqual(Object.keys(tpl.sourceLimits.files), [], '模板种子里不许预置源码豁免（空表 = 照 D14 判，要放宽必须先让文件自己声明）');
+});
+
+/**
+ * ⑧ 的**规则面**（TD-026）：`DOC_MAP.json` 缺 `rules` 键 = "没有可判的规则"，不许拿 `$null` 当一条规则。
+ *
+ * 旧写法 `foreach ($rule in @($map.rules))` 的死法：`@($null).Count` 是 **1** ⇒ `$rule` = `$null` ⇒
+ * `[string]$null` = 空串（≠ `new-line`）⇒ 池子回落到「本批新增文件」，而 `$_ -match ''` **匹配一切**
+ * ⇒ 任何新增文件都被判假红「文档义务未履行 []」——方括号里连规则 id 都没有，也没提 `rules` 键。
+ * 假红是本仓判定最贵的后果（TD-021）：它会训练人绕过判据。
+ *
+ * 三档缺一档都证明不了「⑧ 还在判」：① 缺 `rules` 键 → 绿 + 黄字点名根因 ② `rules: []` → 同上
+ * ③ 有一条真规则且命中 → **红**（没有这一档，前两档的"绿"可能只是 ⑧ 整段死了）。
+ */
+test('gate.ps1 ⑧：缺 rules 键 = 没有可判规则（黄字点名根因），有规则且命中 = 照样红', () => {
+  const missing = runGateOn(['small.js'], { docMap: { schema: 'roadbook-docmap/1' }, lines: 1 });
+  assert.doesNotMatch(missing.out, /文档义务未履行/, `把 $null 当规则判了（TD-026 的假红原样还在）：\n${missing.out}`);
+  assert.equal(missing.status, 0, `缺 rules 键不是判红的理由（没有规则可判 = 黄字 + 退出 0）：\n${missing.out}`);
+  assert.match(missing.out, /rules/, `缺 rules 键要说出来 —— 旧版死在一条指不出根因的红项上：\n${missing.out}`);
+  assert.match(missing.out, /变更 1 个文件/, `探针文件没进变更清单 ⇒ 这一档是假绿：\n${missing.out}`);
+
+  const empty = runGateOn(['small.js'], { docMap: { schema: 'roadbook-docmap/1', rules: [] }, lines: 1 });
+  assert.equal(empty.status, 0, `空规则表与缺键同口径（不许一条都不判却判红）：\n${empty.out}`);
+  assert.match(empty.out, /rules/, `空规则表同样要点名：\n${empty.out}`);
+
+  const hit = runGateOn(['small.js'], { docMap: { schema: 'roadbook-docmap/1', rules: [{ id: 'probe-rule', source: 'added-file', pattern: '.+', docs: ['docs/registry/COMPONENTS.md'] }] }, lines: 1 });
+  assert.equal(hit.status, 1, `有规则且命中时必须红 —— 没有这一档，前两档的绿可能只是 ⑧ 整段没跑：\n${hit.out}`);
+  assert.match(hit.out, /文档义务未履行 \[probe-rule\]/, `红项要点名是哪条规则：\n${hit.out}`);
+});
+
+/**
+ * `orphans.ps1` ④ 规则的**误报边界**（TD-025）：明确写了未来时的路径不是幽灵，同样的路径写在现在时句子里必须报出来。
+ *
+ * 为什么这一条必须**真跑扫描器**：TD-025 的症状是"一条明确写了未来时的句子被当成幽灵"，代价不是噪音
+ * ——它反过来训练人改文案去迁就工具的词表（TD-025 当天就是这么被绕过去的：补一个「待建」了事）。
+ * 断言源码里有某个词证明不了这件事（本仓对 `gate.ps1` 的探针判据同款：字符串断言只能证明代码里有那个词）。
+ *
+ * 探针在一个**临时 git 仓**里跑真扫描器，目录里只有：`README.md`（进当前态文档面）+ 空的 `lib/`
+ * （首段目录必须在盘上，否则命中跳过规则 ⑤，就不是单变量实验了）+ `lib/keep.txt`（让仓非空）。
+ * 两档缺一档都不是判据：① 未来时句子 → 0 项，**且**汇总行打印标记词分布（跳过不静默）
+ * ② 现在时的同一条路径 → **1 项**（没有这一档，"0 项"可能只是扫描器整段死了）。
+ */
+const ORPHANS_PS1 = join(ROOT, 'orphans.ps1');
+
+/** 在临时 git 仓里真跑一次 `orphans.ps1`（它按 cwd 定 root，所以不必复制脚本本体）。 */
+function runOrphansOn(rootReadme) {
+  const dir = mkdtempSync(join(tmpdir(), 'rb-orphans-'));
+  try {
+    const git = (...args) =>
+      execFileSync('git', ['-C', dir, '-c', 'user.name=probe', '-c', 'user.email=probe@local', ...args], {
+        encoding: 'utf8',
+      });
+    git('init', '-q', '.');
+    mkdirSync(join(dir, 'lib'), { recursive: true });
+    writeFileSync(join(dir, 'lib', 'keep.txt'), 'placeholder\n');
+    writeFileSync(join(dir, 'README.md'), rootReadme);
+    git('add', '-A');
+    git('commit', '-q', '-m', 'baseline');
+    const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ORPHANS_PS1], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+    return { status: r.status, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+  } finally {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+  }
+}
+
+test('orphans.ps1 ④：未来时的路径不提成幽灵（且跳过不静默），现在时的同一条路径必须报出来', () => {
+  const future = runOrphansOn('# 探针\n\n批 2 的 `lib/session.js`（排期在下一批）还没落地。\n');
+  assert.match(
+    future.out,
+    /文档幽灵 0 项（另跳过 [1-9]\d* 处）/,
+    `未来时的句子被报成幽灵（TD-025 的误报原样还在）：\n${future.out}`,
+  );
+  assert.match(
+    future.out,
+    /历史或规划行 \d+ 处（[^）]*×\d+/,
+    `跳过了却不说被哪个标记词跳过 —— 跳过不静默才看得出词表收错：\n${future.out}`,
+  );
+  assert.equal(future.status, 0, `扫描器"只报不拦"：有跳过不是红：\n${future.out}`);
+
+  const present = runOrphansOn('# 探针\n\n本批落地 `lib/session.js`（已提交）。\n');
+  assert.match(
+    present.out,
+    /\[文档幽灵\] lib\/session\.js/,
+    `现在时的同一条路径必须报出来（否则上面那条"0 项"是假绿）：\n${present.out}`,
+  );
 });
