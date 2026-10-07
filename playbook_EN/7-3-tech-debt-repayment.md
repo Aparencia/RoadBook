@@ -16,6 +16,7 @@
 ```powershell
 Select-String -Path docs/TECH_DEBT.md -Pattern '腐化|重复|上帝类'
 ```
+- Expected: one line per hit in the form `docs/TECH_DEBT.md:<line>:<matched text>` (the two definition lines in the file header match as well); **0 hits = empty output** = no keyword of this family in the ledger's description column, not a failed command.
 5. **Repayment recommendation**: pick the 1~3 entries with the "best value for effort" from the view (large impact / small change first) and explain why.
 6. **Quote the checklist verbatim** (paste the "three repayment rules" from §② of this card word for word; for a P batch also paste the "four steps of a P batch").
 
@@ -36,6 +37,7 @@ Wait for the user to pick which entries to clear (for a P batch: wait for the us
 ```powershell
 git rev-parse HEAD   # after fixing, fill the hash into the "repayment evidence" column of the ledger
 ```
+- Expected: a 40-character commit hash (the HEAD after this batch's fix — the very string that goes into the "repayment evidence" column); exit code 0. While the worktree still holds uncommitted changes it prints a hash that does **not** include this batch — commit first, then take the hash.
 ❌ Counter-example: status changed to closed, evidence column says "fixed" (a bare claim)
 ✅ Good example: closed, evidence=`commit a1b2c3d; tests/test_export_limit.py`
 
@@ -50,6 +52,7 @@ git rev-parse HEAD   # after fixing, fill the hash into the "repayment evidence"
 $anchor = 'abc1234'        # start anchor, read from STATE.md
 git diff --numstat "$anchor..HEAD"
 ```
+- Expected: one line per changed file with three columns (added / deleted / path; both columns are `-` for binary files, and there is no output when the anchor is already the newest commit); sum the "deleted" column and compare it with the reduction target written down at start. A wrong anchor prints `fatal: ambiguous argument` (exit code 128) — that is "the range could not be drawn", not "nothing changed".
 Each line = added / deleted / file; sum the "deleted" column and compare it with the reduction target written down at start. **Hard threshold (written down at start; changing it midway is forbidden): net reduction ≥200 lines or ≥3 files**; falling short = this batch does not count as complete (it may be continued, but the target must not be changed).
 
 **P2 Safe deletion (master repo lesson: a recursive delete that pierced a junction once caused an incident)**
@@ -104,6 +107,7 @@ git add $files
 git commit -m "7-3 chore(debt): 关闭 TD-00x 并同步台账"
 powershell -NoProfile -File check.ps1
 ```
+- Expected: `git commit` echoes the commit summary (file count + insertions/deletions); `check.ps1` ends with a line shaped like 「全部通过（退出码 0）：完成声明成立。」 and exits 0.
 (`git add -A` / `git add .` are forbidden; fill the commit hash back into item 2 of §③.)
 
 Fixed closing line:

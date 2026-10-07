@@ -82,11 +82,10 @@ The review proceeds in three phases by dependency topology; each phase runs all 
 ```powershell
 $anchor = (Select-String -Path STATE.md -Pattern '起点锚点\s*[:：]\s*([0-9a-fA-F]{7,40})').Matches[0].Groups[1].Value; git rev-parse --verify "$anchor^{commit}"; if ($LASTEXITCODE -ne 0) { throw "锚点无效：停下问用户——空输出 ≠ 0 命中" }; git diff -U0 "$anchor..HEAD" | Select-String '^\+' | Select-String '_old\b|_legacy|_v2\b|Deprecated|暂时保留|废弃|TODO[:：]\s*(删|remove|delete)'   # $anchor is read from the 「起点锚点」 field of STATE.md; typing it by hand is forbidden
 ```
-(It covers every commit in the whole batch; `HEAD~1` only looking at the last commit would miss them. **Empty output is also evidence**: paste the command text together with its output into the receipt and the report, and state "the anchor assertion passed" — otherwise "0 hits" and "the command failed" cannot be told apart. Paste hit lines into the issue list one by one, each with a "declared / not declared" verdict.)
+Expected: the anchor commit's full hash is echoed first (checked by `git rev-parse --verify` against the same string, exit code 0), then the added lines of the whole batch that hit a deprecation marker, one per line; **empty output is also evidence** — paste the command text together with its output into the receipt and the report, and state "the anchor assertion passed", otherwise "0 hits" and "the command failed" cannot be told apart; paste hit lines into the issue list one by one, each with a "declared / not declared" verdict. (It covers every commit in the whole batch; `HEAD~1` only looking at the last commit would miss them.)
 
 **Severity criteria (only these four levels; when unsure use P2):**
-- P0 = crash / data loss / security vulnerability ｜ P1 = core feature unusable (including broken wiring) → both must be zeroed, merging forbidden
-- P2 = edge feature errors / poor experience ｜ P3 = spelling / style / non-critical hints → register in `docs/TECH_DEBT.md` (source = this report's number); keep the number reference in the report, and P3's ledger registration may be deferred
+- P0 = crash / data loss / security vulnerability ｜ P1 = core feature unusable (including broken wiring) → both must be zeroed, merging forbidden ｜ P2 = edge feature errors / poor experience ｜ P3 = spelling / style / non-critical hints → register in `docs/TECH_DEBT.md` (source = this report's number); keep the number reference in the report, and P3's ledger registration may be deferred
 
 **Mechanical closing-count rule (each axis numbered on its own → one set of counts; the matrix eats this set):**
 - Every item (old-report items and this axis's findings are counted **separately**; see ①.7) lands in **exactly one of three states**, and the verdict must carry its command: `fixed` (closing command text + exit code + the hit line that has changed) / `not fixed` (the `file:line` that is still there) / `false positive` (per ①.7's "refute with evidence": technical reason + code location or measured output). The verdict commands have a fixed shape, and both outputs go into the report verbatim: `git diff -U0 "$anchor..HEAD" -- <path>` (did this batch touch that spot?) + `Select-String -Path <path> -Pattern '<original criterion keyword>'` (is the old shape still there?). **An item whose command cannot be produced counts as `not fixed`**.
@@ -131,7 +130,7 @@ $color = '绿'   # suggested color: 红/黄/绿, filled in per the suggested-col
 git add $report STATE.md; git commit -m "4-2 docs(review): 建议色 $color + STATE 回写"; powershell -NoProfile -File check.ps1
 ```
 
-The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not initialized) or non-zero → stop and ask the user; declaring the review complete is forbidden.
+Expected: The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not initialized) or non-zero → stop and ask the user; declaring the review complete is forbidden.
 
 **Re-review scope (when reviewing again after going back to 4-1 to fix)**: [disambiguated] the fix diff runs all seven dimensions + the replacement and deprecation check + every old issue closed item by item (fixed / not fixed / newly introduced) + every row of the parallel-state register re-checked (has the deletion condition been honored, has the expiry batch passed) — not just the few fixed lines.
 
@@ -143,6 +142,7 @@ The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not in
 # Bar-lowering guard: scan the fix diff for the five patterns (empty output is evidence too — paste it; the second line is a heuristic, judge each hit)
 git diff -U0 "$anchor..HEAD" | Select-String '^\+' | Select-String 'skip\(|\.only\(|eslint-disable|ts-ignore|ts-expect-error|noqa|SuppressWarnings'; git diff -U0 "$anchor..HEAD" | Select-String '^\+' | Select-String '(max|limit|budget|threshold|tolerance|timeout|retries|coverage)\w*\s*[:=]\s*\d+'
 ```
+- Expected: the two commands print their own hit lines (the first = silencing traces among the added lines, the second = threshold/budget literals; the **second one is a heuristic — judge every hit individually**); **empty output = clean** — paste the empty output too, and never replace it with the words "no hits".
 
 **Six steps before acting on review comments**: ① read them through, change no code ② restate the requirement in your own words (if you cannot restate it = ask first) ③ check the facts in the code ④ judge whether it is technically correct for this project ⑤ confirm technically or rebut with reasons ⑥ fix and test item by item; **Prohibition: "you are right / good suggestion / thanks / fixing it right away" must never replace a technical response — feedback is technical input, not a social occasion**; **if a single item is unclear, stop as a whole** and clarify the unclear ones before touching anything — "fix only the items you understood" is forbidden (items may be interconnected; partial understanding = fixing it wrong).
 

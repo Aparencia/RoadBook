@@ -33,33 +33,40 @@
 ```powershell
 git for-each-ref --sort=-creatordate --format='%(creatordate:short) %(refname:short)' refs/tags
 ```
+- Expected: one line per tag in the form `2026-10-06 v0.9.1` (creation date + tag name), newest first; **no tags at all = empty output** — then deployment frequency is written as 0 releases with the note "no tags", not N/A.
 2. Lead time for changes (how many days from start of work to release) — source: the distance from STATE.md `起点锚点` to the release tag
 ```powershell
 $anchor = ((Select-String -Path STATE.md -Pattern '起点锚点').Line -replace '.*?([0-9a-f]{7,40}).*', '$1')
 if ($anchor -notmatch '^[0-9a-f]{7,40}$') { "anchor empty or not a hash: write N/A（无锚点，理由…） for this metric and skip git log" } else { git log --date=short --pretty=format:'%h %ad %s' "$anchor..HEAD" }
 ```
+- Expected: one line per commit in the form `5328309 2026-10-07 4-1 fix(process): …` (short hash + date + subject); when the anchor cannot be read it prints **only** the "anchor empty or not a hash" sentence and not a single commit line (that metric is written as `N/A（无锚点）`).
 3. Change failure rate (the share of releases that had to be rolled back or hot-fixed) — source: the number of INCIDENT.md files under docs/specs/ ÷ this period's release count
 ```powershell
 Get-ChildItem docs/specs -Recurse -Filter INCIDENT.md | Select-Object FullName, LastWriteTime
 ```
+- Expected: a two-column table (`FullName` / `LastWriteTime`), one row per incident report; **when there is no `INCIDENT.md` it prints no rows at all** — the change failure rate is then written as 「0 份 ÷ N 次发布」; never fold "no incident this period" and "the command did not run" into one sentence.
 4. Time to restore (the duration from detection to recovery) — source: the four timestamps in each INCIDENT.md
 ```powershell
 Get-ChildItem docs/specs -Recurse -Filter INCIDENT.md | Select-String -Pattern '发现|止血|恢复'
 ```
+- Expected: one line per hit in the form `docs\specs\<task dir>\INCIDENT.md:<line>:<matched text>`; no incident report = empty output → time to restore is written as `N/A（本期无事故）`.
 5. Defect escape rate (defects found only after release ÷ this period's total defects) — source: RCA.md under docs/specs/ (reported after release) and CODE_*.md under docs/reviews/ (caught before release)
 ```powershell
 Get-ChildItem docs/specs -Recurse -Filter RCA.md | Select-String -Pattern '定级'
 Get-ChildItem docs/reviews -Filter 'CODE_*.md' | Select-String -Pattern '建议色'
 ```
+- Expected: the first command prints `…\RCA.md:<line>:<matched text>` lines, the second `docs\reviews\CODE_*.md:<line>:<matched text>` lines; **both may be empty output** — empty = no sample this period (write the numerator as 0 and say so), not `N/A`.
 6. Coverage trend (this period vs the previous report) — source: if the project already has a coverage tool, take its command output; if the workspace has no coverage tool, write `N/A（无覆盖率工具，理由…）` and never estimate; the trend compares against the previous QUALITY report
 ```powershell
 Get-ChildItem docs/decisions -Filter 'QUALITY_*.md' | Sort-Object Name | Select-Object -Last 3
 ```
+- Expected: at most 3 rows (`FullName` table) — the last three quality reports by file name; **in the first period it is empty output** (there is no previous one yet), and the trend column is written as `N/A（首期，无上期值）`.
 7. Gate green rate and stop-and-ask hot spots — source: the distribution of the "建议色" column in CODE_*.md under docs/reviews/; grouping of the source column in docs/TECH_DEBT.md
 ```powershell
 Select-String -Path docs/reviews/CODE_*.md -Pattern '建议色' | Select-Object Filename, Line
 Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-' | ForEach-Object { ($_.Line -split '\|')[4].Trim() } | Group-Object | Where-Object { $_.Count -ge 2 } | Select-Object Count, Name
 ```
+- Expected: the first command prints the "建议色" line of each review report (a `Filename` / `Line` table), the second prints only the **source column** values repeated across ≥2 debt entries (a `Count` / `Name` table); **both may be empty output = no sample this period** — never read "there are no review reports yet" as "green rate 100%".
 
 **Action 2: write the report `docs/decisions/QUALITY_<date>_<topic>.md`** (the main landing point; process details may go in `docs/reviews/QUALITY_<date>.md`), with seven fixed sections:
 1. Window and definitions (start and end dates, differences from the previous period's definitions)
@@ -115,7 +122,7 @@ git add STATE.md $rep
 git commit -m "6-7 docs(quality): $fdate 度量与质量报告"
 powershell -NoProfile -File check.ps1
 ```
-The exit code must be 0; non-zero → stop and ask the user; announcing that the report is complete is forbidden.
+Expected: The exit code must be 0; non-zero → stop and ask the user; announcing that the report is complete is forbidden.
 
 **Next card**: 6-6 Process audit (when the report's proposals require a process change); with no proposal, 5-1 Archive.
 
