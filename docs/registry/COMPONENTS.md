@@ -43,6 +43,7 @@
 | `skills/roadbook/bin/route-core.mjs` | 路由**纯逻辑**：门禁判定 / 事实校验与归一 / 出链 / 账本 / 审计（锚点失配 · 双语缺份 · 幽灵引用 · 不可达） | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（纯函数）` |
 | `skills/roadbook/bin/route-format.mjs` | 路由**渲染半**：文本回执与 `--json` 回执（键序钉死，同事实两次运行逐字节相同） | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（纯函数）` |
 | `skills/roadbook/bin/route-quote.mjs` | 卡正文**逐字节切片**（`--quote`）：行号 + sha256 + 可机械剥离的前缀 —— 台账 #27 的派单内嵌件（**新功能，不是拆分件**） | 批 3（台账 #27 前置） | `N/A（纯函数）` |
+| `skills/roadbook/bin/route-dispatch.mjs` | **链状态 + 派单包**（`--chain` / `--dispatch`）：done/current/todo 标记、内嵌卡正文切片、门禁类型化 `needVerdict` + 停点行号、3 行回执模板 —— 台账 #25~#28 的 P0 机械面（**新功能，不是拆分件**） | 批 4（台账 #25~#28） | `N/A（纯函数）` |
 | `skills/roadbook/data/cards.json` | 卡图数据文件（**生成物**，`cards.mjs --write` 唯一写者；49 张卡的分类 / 序号 / 点名关系） | 批 3（台账 #33） | `N/A（数据）` |
 | `test/cards.test.mjs` | 卡图属性测试（分类成划分 / 恒真判定健全且完备 / 触发行分三格 / 随机 DAG 前沿双向不变式 / 回边必成环 / CLI 退出码） | 批 3（台账 #36 #37 #38） | `N/A（测试）` |
 | `_qc/selftest-cases.json` | 仪器自检的**用例表**（15 条：`rule` / `instrument` / `touch` / `mutate` / `expectFail` / `allowExtra` / `evidence`）——数据与引擎分家，脚本 `_qc/selftest.ps1` 不随用例变 | 批 3（成功标准 4：变异集覆盖 B 类 13 条 + A/C 各 1 条） | `N/A（数据）` |

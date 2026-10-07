@@ -24,7 +24,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { CN_DIR, EN_DIR, STEPS, UNREACHABLE_OK, audit, route, scanDir, stripLineNumbers } from '../skills/roadbook/bin/route.mjs'
+import { CN_DIR, EN_DIR, STEPS, STOP_MARK_RE, UNREACHABLE_OK, audit, route, scanDir, stripLineNumbers } from '../skills/roadbook/bin/route.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..')
@@ -479,4 +479,146 @@ test('A14d --quote 退出码纪律：卡不存在 / 越界 / 起止颠倒 = 1；
   const miss = cli(['--quote', '9-9'])
   assert.ok(!/^\s*\d+\| /m.test(miss.stdout), `卡不存在时不许输出任何正文：\n${miss.stdout}`)
   assert.match(cli(['--help']).stdout, /--quote/, '--help 必须列出 --quote（否则没人知道有这条出口）')
+})
+
+/* ── A15 链状态 + 派单包（P0 机械面：台账 #25~#28） ── */
+const FACTS_ARG = JSON.stringify(fixture.scenarios['endpoint-chart'].facts)
+
+test('A15 --chain 链状态：标出当前卡与已完结；--done 里的卡必须真在链上（不在 = 判红 1）', () => {
+  const empty = cliJson(['--chain', '--facts', FACTS_ARG, '--json'])
+  assert.equal(empty.mode, 'chain')
+  assert.equal(empty.current, empty.cards[0].card, '没给 --done 时当前卡应是链首')
+  assert.equal(empty.doneCount, 0)
+  assert.equal(empty.cards.filter((c) => c.state === 'current').length, 1, '当前卡有且只有一张')
+
+  const doneList = empty.cards.slice(0, 3).map((c) => c.card)
+  const three = cliJson(['--chain', '--facts', FACTS_ARG, '--done', doneList.join(','), '--json'])
+  assert.equal(three.doneCount, 3)
+  assert.deepEqual(three.cards.slice(0, 3).map((c) => c.state), ['done', 'done', 'done'])
+  assert.equal(three.current, empty.cards[3].card, '当前卡应是第一张未完结的')
+
+  // 反向对照：链上没有的卡写进 --done = 判红（你记的链和工具算的链不是同一条）
+  const ghost = cli(['--chain', '--facts', FACTS_ARG, '--done', '9-9'])
+  assert.equal(ghost.status, 1, `链外卡写进 --done 应判红 1，实得 ${ghost.status}\n${ghost.stdout}${ghost.stderr}`)
+  assert.match(ghost.stderr, /链状态判红/, '判红必须指名是哪一类红（否则人分不清仪器挂与判据红）')
+  // 覆盖：先把链首标成完结 → 当前卡必须往后移（不是恒等于链首）
+  const one = cliJson(['--chain', '--facts', FACTS_ARG, '--done', empty.cards[0].card, '--json'])
+  assert.equal(one.current, empty.cards[1].card)
+})
+
+test('A15b --dispatch 派单包：内嵌整张卡正文（逐字节，字节偏移独立复算）+ 类型化 needVerdict + 3 行回执', () => {
+  const j = cliJson(['--dispatch', '4-3', '--facts', FACTS_ARG, '--json'])
+  assert.equal(j.mode, 'dispatch')
+  assert.equal(j.card, '4-3')
+  assert.ok(j.inChain, '4-3 是全档必走的卡，必须在链上')
+  assert.equal(typeof j.chainIndex, 'number', '在链上就必须给得出链上序号（第一版漏了它，文本回执印出「第 undefined 张」）')
+
+  // 内嵌的卡正文 = 磁盘原文逐字节（不信派单包自己的说法，按字节偏移独立复算）
+  const dir = path.join(ROOT, j.dir)
+  const raw = readFileSync(path.join(dir, j.file), 'utf8')
+  const lines = raw.split('\n')
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
+  assert.equal(j.text, lines.join('\n'), '派单内嵌的正文 = 卡文件全文（收件方手里必须有完整的卡）')
+  assert.equal(j.slice.whole, true, '默认派整张卡')
+  assert.equal(createHash('sha256').update(j.text, 'utf8').digest('hex'), j.slice.sha256, 'sha256 必须算在内嵌的这段原文上')
+
+  // 类型化门禁：子 agent 拿不到人 ⇒ 门禁必须以数据返回，由主线程决定停不停
+  assert.equal(j.gate, 'verdict')
+  assert.equal(j.needVerdict.required, true)
+  assert.equal(j.needVerdict.gate, j.gate)
+  assert.ok(j.needVerdict.why.length > 0, 'needVerdict 必须给出理由（不是只有布尔）')
+  assert.ok(j.needVerdict.stopLines.length > 0, '卡自己写了停点就必须把行号指出来（否则子 agent 不知道在哪停）')
+  for (const line of j.needVerdict.stopLines) {
+    assert.match(j.text.split('\n')[line - 1] ?? '', STOP_MARK_RE, `停点行号 ${line} 必须真的是停点行`)
+  }
+  // 回执模板恰好三行；文本模式里那三行必须逐字出现
+  assert.equal(j.receipt.length, 3, '回执模板恰好三行（多一行不收）')
+  const text = cli(['--dispatch', '4-3', '--facts', FACTS_ARG])
+  assert.equal(text.status, 0, text.stderr)
+  for (const line of j.receipt) assert.ok(text.stdout.includes(line.trim()), `文本回执缺这一行：${line}`)
+  assert.ok(text.stdout.includes(j.slice.sha256), 'sha256 必须出现在文本回执里（收件方可复核）')
+
+  // 轻确认档的卡不许被印成「要裁决」（S 档链里 3-4 不在三张硬裁决卡里）
+  const notice = cliJson(['--dispatch', '3-4', '--facts', JSON.stringify(fixture.scenarios['local-tool'].facts), '--json'])
+  assert.equal(notice.needVerdict.gate, 'notice', '本地小工具（S 档）里 3-4 的门禁应是轻确认')
+  assert.equal(notice.needVerdict.required, false)
+})
+
+test('A15c --dispatch 链外派单：合法但要显式说出来（事件线 / 主线程点名），幽灵卡判红 1', () => {
+  const r = cli(['--dispatch', '6-2', '--facts', FACTS_ARG, '--json'])
+  assert.equal(r.status, 0, `链外派单应放行（按需触发的卡永远不在事实链里）：${r.stderr}`)
+  const j = JSON.parse(r.stdout)
+  assert.equal(j.inChain, false)
+  assert.equal(j.chainIndex, null)
+  assert.match(r.stderr, /不在本次事实算出的链里/, '链外派单必须显式提示（否则「派了一张不该现在走的卡」看不出来）')
+  assert.equal(j.needVerdict.required, true, '链外卡按最严口径处理')
+
+  const ghost = cli(['--dispatch', '9-9', '--facts', FACTS_ARG])
+  assert.equal(ghost.status, 1, `幽灵派单应判红 1，实得 ${ghost.status}`)
+  assert.ok(!/^\s*\d+\| /m.test(ghost.stdout), '幽灵派单不许输出任何正文')
+})
+
+test('A15d --dispatch / --chain 用法纪律：缺事实 2；--done 写给别的模式 2；--done 写法非法 2；区间切片生效', () => {
+  const cases = [
+    [['--dispatch', '4-3'], 2, '缺事实（链由事实算出）'],
+    [['--chain'], 2, '缺事实'],
+    [['--facts', FACTS_ARG, '--done', '4-3'], 2, '--done 只对 --chain / --dispatch 有意义'],
+    [['--chain', '--facts', FACTS_ARG, '--done', '4-3,'], 2, '--done 里的空项不是「没有」'],
+    [['--chain', '--facts', FACTS_ARG, '--done', '4-3,4-3'], 2, '--done 重复卡号'],
+    [['--dispatch', '4-1:abc', '--facts', FACTS_ARG], 2, '切片写法非法'],
+    [['--dispatch', '4-1:120-80', '--facts', FACTS_ARG], 1, '起止颠倒 = 判红（不是用法错误）'],
+  ]
+  for (const [args, code, why] of cases) {
+    const r = cli(args)
+    assert.equal(r.status, code, `${why}：route.mjs ${args.join(' ')} 应退出 ${code}，实得 ${r.status}\n${r.stdout}${r.stderr}`)
+  }
+  // 区间切片：派单可以只带一段（行号与哈希只覆盖这一段）
+  const part = cliJson(['--dispatch', '4-1:80-120', '--facts', FACTS_ARG, '--json'])
+  assert.equal(part.slice.from, 80)
+  assert.equal(part.slice.to, 120)
+  assert.equal(part.slice.whole, false)
+  assert.equal(part.text.split('\n').length, 41)
+  // 同事实两次运行逐字节相同（派单包要能进回执、能 diff）
+  assert.equal(
+    cli(['--dispatch', '4-3', '--facts', FACTS_ARG, '--json']).stdout,
+    cli(['--dispatch', '4-3', '--facts', FACTS_ARG, '--json']).stdout,
+  )
+  assert.match(cli(['--help']).stdout, /--dispatch/, '--help 必须列出 --dispatch')
+  assert.match(cli(['--help']).stdout, /--chain/, '--help 必须列出 --chain')
+})
+
+test('A15e 台账 #27 的冲突已被结构性解除：includeSubagents 默认仍是 false，而派单包自带整张卡', () => {
+  // 这条断言护的是决策的前提，不是代码风格：派单内嵌这条路成立，恰恰因为子 agent 那边没有注入
+  // （`plugin/roadbook-autoload/index.js` 的 schema `includeSubagents` 默认 false ⇒ 它不知道自己在按卡干活）。
+  // 一旦有人把这个默认改成 true 来自「修好」P0，就等于打开「子代理不受卡约束」的口子 ——
+  // 那时本仓的裁决（docs/decisions/2026-10-07_P0-子代理执行卡.md）必须重开，而不是让测试静静变绿。
+  const plugin = readFileSync(path.join(ROOT, 'plugin', 'roadbook-autoload', 'index.js'), 'utf8')
+  assert.match(plugin, /includeSubagents:\s*z\.boolean\(\)\.default\(false\)/, 'includeSubagents 默认必须是 false（P0 的裁决前提）')
+  const j = cliJson(['--dispatch', '4-3', '--facts', FACTS_ARG, '--json'])
+  assert.equal(j.text, readFileSync(path.join(ROOT, j.dir, j.file), 'utf8').replace(/\n$/, ''), '整张卡在派单包里 ⇒ 子 agent 不需要读卡文件也能按卡干活')
+})
+
+test('A15f --out 落盘：stdout 只剩一行指针（主线程不背卡正文）、文件无 BOM、字节与哈希可独立复核', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'roadbook-dispatch-'))
+  try {
+    const out = path.join(dir, 'dispatch-4-3.md')
+    const r = cli(['--dispatch', '4-3', '--facts', FACTS_ARG, '--out', out])
+    assert.equal(r.status, 0, r.stderr)
+    // 省 token 的判据就在这一条：卡正文一个字符都不许进 stdout。
+    assert.ok(!/^\s*\d+\| /m.test(r.stdout), `--out 模式下 stdout 不许出现卡正文：\n${r.stdout.slice(0, 400)}`)
+    assert.ok(r.stdout.split('\n').filter(Boolean).length <= 2, `--out 模式的回执应是 1~2 行指针：\n${r.stdout}`)
+    const text = readFileSync(out, 'utf8')
+    assert.ok(text.charCodeAt(0) !== 0xFEFF, '落盘一律 UTF-8 无 BOM（PS 5.1 的 `>` 会写 UTF-16LE，那条路走不通）')
+    const raw = readFileSync(out)
+    assert.equal(raw.length, Buffer.byteLength(text, 'utf8'))
+    const sha = createHash('sha256').update(text, 'utf8').digest('hex')
+    assert.ok(r.stdout.includes(sha), '指针里必须给 sha256（收件方可复核拿到的就是这份）')
+    assert.ok(r.stdout.includes(String(raw.length)), '指针里必须给字节数')
+    assert.ok(text.includes('（--dispatch）'), '落盘的是完整的派单包（不是摘要）')
+    // 与 stdout 模式逐字一致（同一切片、同一门禁），免得两条路悄悄漂开
+    const inline = cli(['--dispatch', '4-3', '--facts', FACTS_ARG])
+    assert.equal(text, `${inline.stdout.replace(/\r?\n$/, '')}\n`, '--out 落盘的内容 = stdout 模式逐字相同')
+    // 用法纪律：--out 写给别的模式 = 用法错误（不静默忽略）
+    assert.equal(cli(['--chain', '--facts', FACTS_ARG, '--out', out]).status, 2)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
 })

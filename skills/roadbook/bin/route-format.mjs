@@ -21,10 +21,15 @@ export function usage() {
     '  route --audit [--json]         # 镜像锚点 / 双语缺份 / 幽灵引用自检',
     '  route --quote <卡号>[:<起>-<止>] [--lang cn|en] [--json]',
     '                                 # 卡正文逐字节切片 + 行号 + 哈希（派单内嵌用）',
+    '  route --chain --facts <json>|--facts-file <path>|--scenario <name> [--done <卡号,…>] [--json]',
+    '                                 # 链状态：哪几张已完结 / 当前是哪张 / 下一张派谁',
+    '  route --dispatch <卡号>[:<起>-<止>] <同上事实参数> [--lang cn|en] [--out <path>] [--json]',
+    '                                 # 派单包：内嵌卡正文切片 + 门禁类型化结果 + 3 行回执模板',
+    '                                 # --out 落盘、stdout 只留一行指针（主线程不背卡正文）',
     '  route --help',
     '',
     `Scenarios: ${Object.keys(SCENARIOS).join(', ')}`,
-    'Exit codes: 0 ok / 1 audit red or illegal facts / 2 usage error',
+    'Exit codes: 0 ok / 1 audit red or illegal facts or red chain/slice / 2 usage error',
   ].join('\n')
 }
 

@@ -9,11 +9,27 @@ import { scanDir } from './route-cards.mjs'
 
 /* ───────────────────────────── 路由 ───────────────────────────── */
 
+/**
+ * 门禁判定 **+ 它的理由**。两者在同一个分支里产出，是刻意的：派单包要告诉子 agent
+ * 「这一张为什么是裁决档」，而若理由另写一张表，两处迟早对不上（改了一处忘了另一处）。
+ * 理由只写**指针**（判据在哪条硬规则 / 哪份文件），不复述判据正文。
+ */
+export function gateWhyOf(card, f, tier) {
+  if (HUMAN_ACTION.has(card)) {
+    return { gate: 'human-action', why: 'AGENTS.md A 类不可委托清单：这一步的机械落点是 deny，只能人做' }
+  }
+  if (HARD_VERDICT.has(card)) {
+    return { gate: 'verdict', why: `卡 ${card} 自带停下判据（等用户确认 / 等用户验收）—— 0-1 硬规则 8 的裁决档` }
+  }
+  if (tier === 'L' || f.redLine === true) {
+    return { gate: 'verdict', why: tier === 'L' ? 'L 档：门禁是裁决（0-1 硬规则 8）' : '红线域：门禁是裁决（0-1 硬规则 8）' }
+  }
+  return { gate: 'notice', why: '个人档默认轻确认：说一句就能继续（0-1 硬规则 8）' }
+}
+
+/** 只取门禁档位（`route().chain[].gate` 用它；需要理由时用 `gateWhyOf`）。 */
 export function gateOf(card, f, tier) {
-  if (HUMAN_ACTION.has(card)) return 'human-action'
-  if (HARD_VERDICT.has(card)) return 'verdict'
-  if (tier === 'L' || f.redLine === true) return 'verdict'
-  return 'notice'
+  return gateWhyOf(card, f, tier).gate
 }
 
 /** 校验并补默认值：未知键、类型不符、枚举越界都算「事实非法」（CLI 退出码 1）。 */

@@ -27,6 +27,26 @@ const ID_RE = /^(\d+-\d+)-(.+)\.md$/
 const H1_RE = /^#\s+\S/
 const TRIGGER_RE = /^>\s*(?:触发|Trigger)/
 
+/**
+ * 卡里的「停下」标记。`scanDir` 用它数 `stops`（账本的一项），派单包用它把**停点的行号**指给子 agent
+ * —— 同一份正则，两处消费：否则「账本说这张卡有 2 处停」与「派单说这张卡没有停点」会同时成立。
+ *
+ * 逐字来自 `scanDir` 原来那条内联正则（提取时**按原文复制**，不凭记忆转写）：卡里的写法实测是
+ * 「等待**你**裁决」（`playbook/*.md` 命中 49 处，「等待用户裁决」0 处）；写错一个字的后果是
+ * `stops` 计数静默变小 —— 2026-10-07 提取时就踩过一次，靠 `Select-String` 数原文抓回来。
+ */
+export const STOP_MARK_RE = /^.*(停下等|等待你裁决|等用户(说|确认|裁决|放行)|停下升级|停下，输出|等用户处理).*$/
+
+/** 取「停下」标记所在行（可给行号偏移；纯函数，不读盘）。 */
+export function stopMarksOf(text, from = 1) {
+  const out = []
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length; i += 1) {
+    if (STOP_MARK_RE.test(lines[i])) out.push({ line: from + i, text: lines[i] })
+  }
+  return out
+}
+
 /* ───────────────────────────── 读盘 ───────────────────────────── */
 
 /**
@@ -64,7 +84,7 @@ export function scanDir(dir) {
       chars: text.length,
       checkboxes: (text.match(/^\s*- \[ \]/gm) || []).length,
       psBlocks: (text.match(/^```powershell/gm) || []).length,
-      stops: (text.match(/^.*(停下等|等待你裁决|等用户(说|确认|裁决|放行)|停下升级|停下，输出|等用户处理).*$/gm) || []).length,
+      stops: stopMarksOf(text).length,
       actions: (text.match(/^\*\*动作/gm) || []).length,
     })
   }
