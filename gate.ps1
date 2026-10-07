@@ -80,18 +80,23 @@ foreach ($f in $changed) {
 }
 
 # ⑥ 行数上限（默认 500 / 测试 1000）：硬阈值，超限 = 红（旧版只给黄字 = 假绿）。
-#   -LiteralPath + try/catch：中文或含通配符的路径不会再把异常吞成"检查通过"。
+#   判据对象 = **源码**（500 出自 AGENTS.md D14「代码生成硬标准」）：旧版把它套到文档上 ⇒ 碰
+#   CHANGELOG.md / 长设计文档的批次必然假红（TD-021），假红会训练人调大 -LineLimit 或干脆不跑 ⑥。
+#   文档真判据在 ⑨（docLimits）与项目侧 check.ps1 预算表；未知扩展名仍进本段（白名单会造新盲区）。
+$notSource = @('.md','.markdown','.rst','.txt','.json','.jsonl','.ndjson','.yml','.yaml','.toml','.ini','.cfg','.csv','.tsv','.lock','.log','.html','.htm','.svg','.xml'); $skipped = @()
 foreach ($f in $changed) {
     $full = Join-Path $RepoRoot ($f -replace '/', [IO.Path]::DirectorySeparatorChar)
     $isFile = $false
     try { $isFile = Test-Path -LiteralPath $full -PathType Leaf } catch { $isFile = $false }
     if (-not $isFile) { continue }
+    if ($notSource -contains ([IO.Path]::GetExtension($f).ToLowerInvariant())) { $skipped += $f; continue }
     try { $n = [System.IO.File]::ReadAllLines($full, [Text.Encoding]::UTF8).Count }
     catch { $fail += "行数读取失败：$f（$($_.Exception.Message)）"; continue }
     $t = IsTest $f
     $lim = $LineLimit; if ($t) { $lim = $TestLineLimit }
     if ($n -gt $lim) { $fail += "行数超限：$f 共 $n 行 > 上限 $lim（测试文件=$t）——拆分文件或缩范围" }
 }
+if ($skipped.Count -gt 0) { Write-Host ("[跳过] ⑥ 非源码不判行数（D14 只管代码，文档归 ⑨）：{0} 个 —— {1}" -f $skipped.Count, ($skipped -join '、')) }
 
 # ⑦ lockfile 变更 = 未请求的依赖变更（AGENTS.md §2.3）：硬红灯，必须单独说明。
 $lk = @($changed | Where-Object { $_ -match '(?i)(lock|package-lock|yarn\.lock|poetry\.lock|uv\.lock|Cargo\.lock)' })

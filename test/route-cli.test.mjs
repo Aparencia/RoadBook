@@ -282,20 +282,30 @@ test('A9 --questions 恰好 9 条用户问题 + 3 条 agent 回填', () => {
   assert.equal((text.stdout.match(/^agent·/gm) || []).length, 3, `文本回执应有 3 条 agent 项：\n${text.stdout}`)
 })
 
-/* ── A10 端点场景账本等于冻结 fixture ── */
-test('A10 端点场景账本等于冻结 fixture', () => {
-  const expect = fixture.scenarios.endpoint.expect
-  const actual = resultOf('endpoint')
-  assert.equal(actual.tier, expect.tier)
-  assert.equal(actual.effTier, expect.effTier)
-  assert.deepEqual(actual.chain.map((s) => s.card), expect.chain, '端点场景的链成员变了')
-  assert.deepEqual(
-    actual.ledger,
-    expect.ledger,
-    '卡文本变了 → 更新 fixture 并在 _qc/baseline/ledger.json note 写一行理由'
-    + '（再生成命令：ROUTE_FIXTURE_UPDATE=1 node --test test/route-cli.test.mjs）',
-  )
-  assert.ok(actual.ledger.cards > 0 && actual.ledger.lines > 0, '冻结账本不该是空壳')
+/* ── A10 全部场景的账本等于冻结 fixture ── */
+test('A10 每个场景的账本都等于冻结 fixture（七个逐条断言，不再只咬 endpoint）', () => {
+  const names = Object.keys(fixture.scenarios)
+  // 非空断言：fixture 被改成空对象时下面的循环一次都不跑、测试恒绿 —— 那就是装饰（反向对照的一种）
+  assert.ok(names.length >= 7, `fixture 只声明了 ${names.length} 个场景，疑似解析空心`)
+  const drift = []
+  for (const name of names) {
+    const expect = fixture.scenarios[name].expect
+    const actual = resultOf(name)
+    const cards = actual.chain.map((s) => s.card)
+    if (actual.tier !== expect.tier) drift.push(`${name}：tier ${expect.tier} → ${actual.tier}`)
+    if (actual.effTier !== expect.effTier) drift.push(`${name}：effTier ${expect.effTier} → ${actual.effTier}`)
+    if (JSON.stringify(cards) !== JSON.stringify(expect.chain)) {
+      drift.push(`${name}：链成员变了\n  期望 ${expect.chain.join(' ')}\n  实得 ${cards.join(' ')}`)
+    }
+    assert.deepEqual(
+      actual.ledger,
+      expect.ledger,
+      `场景 ${name} 的冻结账本漂了 → 更新 fixture 并在 _qc/baseline/ledger.json note 写一行理由`
+      + '（再生成命令：ROUTE_FIXTURE_UPDATE=1 node --test test/route-cli.test.mjs）',
+    )
+    assert.ok(actual.ledger.cards > 0 && actual.ledger.lines > 0, `场景 ${name} 的冻结账本不该是空壳`)
+  }
+  assert.deepEqual(drift, [], `场景的档位或链成员变了（卡文本/路由表一变就在这里现形）：\n${drift.join('\n')}`)
 })
 
 /* ── 退出码纪律：0 正常 / 1 审计判红或事实非法 / 2 用法错误 ── */

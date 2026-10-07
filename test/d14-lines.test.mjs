@@ -22,8 +22,9 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -209,4 +210,71 @@ test('D14 强制拆分件登记完整性：剔除额度这件事必须可证伪�
     .filter((row) => childNames.has(row.parent))
     .map((row) => `${row.child} → ${row.parent}（父自己也是拆分件）`);
   assert.deepEqual(nested, [], `拆分件不许再当父：${nested.join('；')}`);
+});
+
+/**
+ * ⑥ 的**判据对象**（TD-021）：`gate.ps1` 的行数段只管**源码**，文档的行数交给 ⑨
+ * （`DOC_MAP.json` 的 docLimits）与项目侧 `check.ps1` 的预算表。
+ *
+ * 为什么这条必须**真跑 gate.ps1**，而不是断言模板里的字符串：TD-021 的症状是"任何碰
+ * `CHANGELOG.md` 的批次必然假红"—— 而 `CHANGELOG.md` 的真上限（700）写在 `_qc/check.ps1`
+ * 的 `$budgetRoot` 里。字符串断言只能证明"代码里有某个词"，证明不了"600 行的 .md 不再红、
+ * 600 行的 .js 照样红"。探针在临时 git 仓里跑 `template/gate.ps1`（**故意不放 DOC_MAP.json**：
+ * 它的 `new-file` 规则模式是 `.+`，任何新增文件都会额外触发 ⑧ 的文档义务，那就不是单变量实验了）。
+ *
+ * 三档缺一档等于没判：① 600 行 `.md` → 0 ② 600 行 `.js` → 1 且点名文件与阈值
+ * ③ 600 行 `.test.mjs` → 0（测试豁免线在 ⑥ 里仍然生效）。
+ * 第 ① 档还额外断言 `变更 1 个文件` 与 `[跳过]`：**没有这两条，①可能是"文件根本没进 scope"的假绿**
+ * —— 空变更清单也是 exit 0（只给黄字）。
+ */
+const GATE_PS1 = join(ROOT, 'template', 'gate.ps1');
+const PROBE_LINES = 600;
+
+/** 在临时 git 仓里真跑一次 `gate.ps1`，返回 { status, out }；仓里只有一个基线提交。 */
+function runGateOn(files) {
+  const dir = mkdtempSync(join(tmpdir(), 'rb-gate-'));
+  try {
+    const git = (...args) =>
+      execFileSync('git', ['-C', dir, '-c', 'user.name=probe', '-c', 'user.email=probe@local', ...args], {
+        encoding: 'utf8',
+      });
+    git('init', '-q', '.');
+    copyFileSync(GATE_PS1, join(dir, 'gate.ps1'));
+    writeFileSync(join(dir, 'README.md'), '# probe\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'baseline');
+    for (const file of files) {
+      const body = Array.from({ length: PROBE_LINES }, (_, i) => `line ${i + 1}`).join('\n');
+      writeFileSync(join(dir, file), `${body}\n`);
+    }
+    const r = spawnSync(
+      'powershell',
+      [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass',
+        '-File', join(dir, 'gate.ps1'),
+        '-Anchor', 'HEAD',
+        '-ScopeFiles', files.join(','),
+        '-RepoRoot', '.',
+      ],
+      { cwd: dir, encoding: 'utf8' },
+    );
+    return { status: r.status, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+  } finally {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+  }
+}
+
+test('gate.ps1 ⑥ 只管源码：600 行的 .md 判绿、600 行的 .js 判红、600 行的 .test.mjs 判绿', () => {
+  const doc = runGateOn(['big.md']);
+  assert.match(doc.out, /变更 1 个文件/, `探针文件没进变更清单 ⇒ 这一档是假绿：\n${doc.out}`);
+  assert.match(doc.out, /\[跳过\] ⑥ 非源码/, `⑥ 跳过了文档却没说 —— 豁免不许静默：\n${doc.out}`);
+  assert.doesNotMatch(doc.out, /行数超限/, `文档不该被 500 行阈值判红（真判据在 ⑨ 与项目侧预算表）：\n${doc.out}`);
+  assert.equal(doc.status, 0, `600 行的 .md 必须判绿：\n${doc.out}`);
+
+  const src = runGateOn(['big.js']);
+  assert.equal(src.status, 1, `600 行的 .js 必须判红（D14 非测试上限 ${CAP}）：\n${src.out}`);
+  assert.match(src.out, /行数超限：big\.js 共 600 行 > 上限 500/, `红项要点名文件与阈值：\n${src.out}`);
+
+  const tst = runGateOn(['big.test.mjs']);
+  assert.equal(tst.status, 0, `600 行的测试文件在豁免线（${TEST_CAP}）之下，必须判绿：\n${tst.out}`);
 });
