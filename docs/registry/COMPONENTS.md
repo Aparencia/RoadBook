@@ -30,6 +30,10 @@
 | `lib/selfcheck.js` | 「随包文件全在」自检的纯逻辑（注释剥离状态机 + 相对 import 闭包 + 缺失清单） | 批 1（2026-10-07 由 `lib/index.js` 拆出） | `N/A（纯函数）` |
 | `lib/update-watch.js` | 更新服务的**读侧**（状态读取 / 检查 / 冷却 / 升级生效对账） | 批 1（2026-10-07 由 `lib/index.js` 拆出） | `N/A（宿主半）` |
 | `lib/update-apply.js` | 更新服务的**写侧**（安装命令探测阶梯 / 锁 / 子进程与结账） | 批 1（2026-10-07 由 `lib/index.js` 拆出） | `N/A（宿主半）` |
+| `test/client-contract-shell.test.mjs` | 客户端契约·外壳面（ModuleLoader 形状 / 注册与生命周期 / 服务降级 / 双语与版本常量） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
+| `test/client-contract-gallery.test.mjs` | 客户端契约·图册面（预览与归档 URL / 目录与规格 / 空态生成 / 路径折算） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
+| `test/client-contract-panels.test.mjs` | 客户端契约·面板面（更新条 / 自进化标签页 / 插件详情页三处贡献） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
+| `test/helpers/client-contract-harness.mjs` | 上述三份共用的夹具（假 React / bundle 加载器 / 假 ctx / 元素收集；不复制三份） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
 
 <!-- 上面是母版仓自己的登记行（表头 2026-10-07 由 TD-001 定：路径/用途/归属批次/可访问性）。生成出来的项目照同一表头填自己的文件；纯逻辑/脚本/文档一律 `N/A（纯文本|脚本）`，界面元素才有可访问性验证方式 -->
 

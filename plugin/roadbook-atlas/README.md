@@ -76,7 +76,7 @@ node --test "plugin/roadbook-evolve/test/*.test.mjs"   # 自进化子插件的�
 条数以命令输出为准，**不要在文档里手抄**（此前这里写「34 项」并列了 6 个文件，早已与磁盘不符）。
 
 - `test/atlas-cli.test.mjs`：退出码纪律 + **项目根陷阱回归守卫**（本机 `%TEMP%` 里有游离 `.git`，`git rev-parse` 会把图纸写到项目外；CLI 拒绝家目录/临时目录做根，退回 cwd）。
-- `test/client-contract.test.mjs`：在 `vm` 里跑客户端 bundle，校验 ModuleLoader 形状、`ctx.effect` 注册、标签页根节点高度契约、双语；2026-10-05 起另钉预览 URL 算法（`/sidebar/html`、绝对路径、逐段编码）、语言快照字段、目录指纹、规格过期判定。
+- `test/client-contract-*.test.mjs`（2026-10-07 由单文件 `test/client-contract.test.mjs` 按被测面拆三份 + 共享夹具 `test/helpers/client-contract-harness.mjs`）：在 `vm` 里跑客户端 bundle，校验 ModuleLoader 形状、`ctx.effect` 注册、标签页根节点高度契约、双语；2026-10-05 起另钉预览 URL 算法（`/sidebar/html`、绝对路径、逐段编码）、语言快照字段、目录指纹、规格过期判定。
 - `test/render-smoke.test.mjs`：五类各渲染一次，断言 exit 0 + 回执可解析且 `ok !== false` + 产物 > 100 KB。**不**断言校验计数、也**不**做「三次运行同 SHA-256」比对（此前 README 那么写，与代码不符）。
 - `test/packaging.test.mjs`：**运行时引用的路径 ⊆ 发布白名单**（`playbook/`、`playbook_EN/`、`template/` 与 `host-fallback.js` 都漏过一次）。
 

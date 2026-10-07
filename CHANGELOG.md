@@ -1,7 +1,7 @@
 # 更新日志（roadbook 主插件）
 
 版本号只有一处事实源：根 `package.json` 的 `version`。客户端半的 `PLUGIN_VERSION`（标签页页脚显示）与
-宿主半的 `pluginVersion()`（启动日志）都必须与它一致 —— `test/client-contract.test.mjs` 会逐字核对，漏改即判红。
+宿主半的 `pluginVersion()`（启动日志）都必须与它一致 —— `test/client-contract-shell.test.mjs` 会逐字核对，漏改即判红（2026-10-07 前该断言住在单文件 `test/client-contract.test.mjs` 里，按 D14 拆三份后随「外壳面」进了 shell 那份）。
 
 **升版规则**（agent 只提议，人裁决）：
 
@@ -13,7 +13,7 @@
 
 一次升版动**七处**：根 `package.json` 的 `version`（唯一事实源）、四个子包的 `plugin/<子包>/package.json`
 （`_qc/check.ps1` 按伞包逐字核对 —— 子包都不独立发行，不跟随就是死元数据）、`lib/client.js` 顶部
-`PLUGIN_VERSION`（`test/client-contract.test.mjs` 逐字核对）、本文件顶部加一节；外加 `git tag -a vX.Y.Z`
+`PLUGIN_VERSION`（`test/client-contract-shell.test.mjs` 逐字核对）、本文件顶部加一节；外加 `git tag -a vX.Y.Z`
 （由 agent 在发布流程内打 tag，自 `2026-10-05.2` 起）。改完从仓库根跑：
 
 ```bash
