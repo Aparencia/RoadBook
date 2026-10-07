@@ -28,7 +28,7 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 ### 新增
 
 - **客户端分块机制（#55）**：`lib/client.js` 首屏不再背着整张「自进化」标签页（412 行已搬进
-  新文件 `lib/client-evolve.js`，核心 2772 → 2359 行）。分块是**普通同源脚本**，由新的宿主半
+  新文件 `lib/client-evolve.js`，核心 2772 → 2524 行）。分块是**普通同源脚本**，由新的宿主半
   `lib/chunks.js` 经 `GET /roadbook/bundle/<名>.js` 送出：名字白名单 + 固定目录（挡路径穿越）、
   与 `/roadbook/update/*` **同一条**同源守卫、`cache-control: no-cache` + 内容哈希 ETag（按 mtime/size
   记忆化，命中回 304 且不重读文件）。契约是**读**本机 `dsh-better-sidebar@0.24.1` 的
