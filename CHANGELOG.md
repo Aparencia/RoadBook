@@ -25,6 +25,12 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 **v0.10.0 升级方案（`design/vnext-2026-10-07.md`）的在办改动。版本号由批 6 的 #62 一次升到位**
 （本次不动 `package.json`，所以七处对齐与 `git tag` 都不触发）。
 
+### `docs/versions/` 归属卡定稿 + 两份历史回填（台账 #46 / TD-007 —— 批 6 收尾后补做）
+
+- **定稿 = 选项 ①（归 5-6）**：判据正文在 5-6 卡 —— 产物行两处写着 `docs/versions/vX.Y.Z.md`，「三对齐」（`:75-81`）把"本目录命中 1 个 `vX.Y.Z.md`"列为**打 tag 前的机械判据**；根 `docs/README.md` 只是**索引**，索引漏了 5-6 ⇒ 修索引（产出卡补 `5-6`、维护列补 `5-6`、更新条件写实），**不删卡里的判据**（契约 §2「不许删判据腾地方」；且方案 #62 要产出 `docs/versions/v0.10.0.md`）。删判据 = 把"第三次静默跳过"变成合法，这条被否决。
+- **回填两份**：`docs/versions/v0.8.0.md`（`git show --stat` = 8 文件 / +23−12）与 `docs/versions/v0.8.1.md`（7 文件 / +13−7）—— 只写能复核的事实（tag / 提交 / 文件面 / `CHANGELOG.md` 对应节指针），当时的门禁输出原文写 `N/A（当时未记录）`；`CHANGELOG.md` 的两个历史节**一字未动**（时点记录不改写）。
+- **台账净减**：TD-007 **结案** ⇒ `docs/TECH_DEBT.md` **closed 8 / open 8**（7/9 → 8/8）。明细：方案 §11.18。
+
 ### `feedback/` 最小回流落地 —— 证据生命周期链的最后一跳（台账 #23 末环 —— 批 6 第六刀）
 
 - **落点**：`feedback/README.md`（契约：谁写 / 谁读 / 字段 / 命名 / 状态词表 / 回流三步）+ `feedback/TEMPLATE.md`（条目模板）+ `skills/roadbook/bin/feedback.mjs`（`--check` 判字段·命名·三小节，退出码 0/1/2；`--index`/`--write` 渲染派生索引）；`template/feedback/` 两份**逐字节镜像**（反馈根因 D 的分发面：派生项目照同一份契约写条目，人复制一次进母版）。
