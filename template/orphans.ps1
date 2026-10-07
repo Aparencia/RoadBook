@@ -13,7 +13,11 @@
 #   匹配一律**大小写不敏感**（[regex] 侧用 (?i) 前缀，-inotmatch 侧本就忽略大小写），按 ASCII 词边界避免被中文粘连吞掉。
 #   排除 .git/ node_modules/ _archive/ docs/ 与五个守护脚本自身；"文件数"= 排除后纳入扫描的文件数。
 #   孤儿=源码文件没被其他任何文本文件按文件名提及；零引用导出=导出名在源码全文只出现一次（即只有定义）。
-#   文档幽灵=文档反引号路径磁盘不存在（.env/node_modules/dist/build 这类不进仓库的路径不算）。
+#   文档幽灵=文档**反引号里带目录分隔符的路径**磁盘不存在（.env/node_modules/dist/build 这类不进仓库的路径不算）。
+#     为什么要求带分隔符（2026-10-07 修 TD-002 的第一刀）：`RCA.md` / `THREAT.md` / `route.mjs` 这类**裸文件名**
+#     是"产物名/工具的泛指"，不是"这个文件此刻在哪"；把它们当引用会让每一次正常引用都变成幽灵
+#     （实测 21 项里绝大多数是这么来的），真幽灵因此被淹掉。带分隔符的才是"我指着某个具体位置"。
+#     代价（明说）：真正的"写了 docs/x.md 但文件不在"仍会被报出（本仓实测 `docs/TOOLING.md` 就是一条真的），漏报面是"裸文件名写错"。
 #   反向幽灵=源码文件没被任何文档提到；未登记=不在 docs/registry/COMPONENTS.md。
 #   **未登记文档**=docs/ 固定槽位（docs 根 + registry/ + pool/）里没进 docs/README.md 对应表的文件
 #     ——docs/ 此前是整体排除目录，原有五张清单里没有一张能发现"没人登记的文档"。
@@ -70,7 +74,7 @@ foreach ($f in @($rel | Where-Object { $txtExt -contains [IO.Path]::GetExtension
 $srcBlob = ''; foreach ($f in $src) { $srcBlob += $txt[$f] + "`n" }
 $allTxt = $blob.ToString() + "`n" + $docTxt
 $ghost = @{}
-foreach ($m in [regex]::Matches($docTxt, '[^/]`([A-Za-z0-9_\-./\\]+\.[a-z][a-z0-9]{0,7})`')) { $p = $m.Groups[1].Value.Replace('\','/') -replace '^\./',''; if ($p -notmatch '^(\.env|node_modules|dist|build|\.git)(/|$)' -and -not (Test-Path -LiteralPath (Join-Path $root ($p -replace '/', $sep)))) { $ghost[$p] = 1 } }
+foreach ($m in [regex]::Matches($docTxt, '[^/]`([A-Za-z0-9_\-./\\]*[/\\][A-Za-z0-9_\-./\\]+\.[a-z][a-z0-9]{0,7})`')) { $p = $m.Groups[1].Value.Replace('\','/') -replace '^\./',''; if ($p -notmatch '^(\.env|node_modules|dist|build|\.git)(/|$)' -and -not (Test-Path -LiteralPath (Join-Path $root ($p -replace '/', $sep)))) { $ghost[$p] = 1 } }
 $freq = @{}
 foreach ($m in [regex]::Matches($srcBlob, '[A-Za-z_$][A-Za-z0-9_$]*')) { $k = $m.Value; $freq[$k] = 1 + $freq[$k] }
 $rxExp = [regex]'(?m)^\s*(?:export\s+(?:default\s+)?(?:declare\s+)?(?:async\s+)?(?:function|class|const|let|var|interface|type|enum)|def|function|func\s+(?:\([^)]*\)\s*)?|pub\s+fn|public\s+(?:static\s+|sealed\s+|abstract\s+)*(?:class|interface|enum|void|[A-Z]\w*))\s+([A-Za-z_$][\w$-]*)'

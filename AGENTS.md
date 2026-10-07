@@ -11,6 +11,8 @@
 - 一句话：RoadBook（路书）V6「磁盘即流程」开发流程母版——流程知识全部放磁盘（`playbook/` 49 张卡 ×中英双语、`template/` 项目模板、`design/` 设计事实源），agent 按状态自取；人只做三件事：说意图、裁决门禁、行为验收。同时以 DSH 插件形态分发（1 条主行 + 5 条子行）
 - 技术栈：Node.js ESM（`type: module`，`engines: ^22.19.0 || >=24.0.0`，**零运行时依赖**）+ Windows PowerShell 5.1 守护脚本；插件宿主为 cordis（peerDependencies 全部 optional）；无数据库、无构建步骤。版本锁定见 `.tool-versions`——**开工跑 doctor.ps1 时它被逐行读取比对**（装不上或版本不符会点名）；人装依赖、排查"我这能跑他那不能跑"也以它为准；改它任何一行都算环境变更，归档回执必须说明
 - 文档地图：`docs/ARCHITECTURE.md`（系统怎么组成）｜`docs/RUNBOOK.md`（部署/回滚/备份/恢复演练）｜`docs/UI.md`（屏幕与交互）｜`docs/DESIGN_TOKENS.md`（色彩/字号/间距）｜`docs/MOTION.md`（动效时长与缓动）｜`docs/OBSERVABILITY.md`（观测与告警）｜`docs/PRIVACY.md`（数据与合规）｜`docs/I18N.md`（语言与可访问性）｜`docs/USER_GUIDE.md`（上手与交接）｜`docs/refactor/`（重构记录）——其中带「由卡触发」的几份未触发时留骨架；谁创建、谁维护、谁读见 `docs/README.md` 对应表
+- 设计事实源与在办的版本方案：`design/v6-design.md`（体系怎么长成现在这样，§17–§18 是最近的两次改造）｜`design/vnext-2026-10-07.md`（**v0.10.0 升级方案 + 63 条修复点闭集台账 + 7 批执行顺序**，2026-10-07 用户批准；实施进度看根 `STATE.md`）｜`design/plugin-skill-doc-mechanism.md` 与 `design/dsh-lockdown-plan.md`（三层机制评估与 DSH 化改造计划）｜`design/playbook-contract.md` 与 `design/glossary-en.md`（卡写作契约与英文唯一写法）。**`design/` 不在 `orphans.ps1` 的排除目录里** ⇒ 新建的 `design/*.md` 必须被本文件或 `docs/**` 按文件名提到，否则进 `[孤儿]` 清单
+- 母版自用的辅助脚本：`scripts/envcheck.ps1`（只读环境读取器：ACL 四段 / 完整性标签 / 进程对照；宿主级故障排查用，**只读不改**）
 - 开发流程：**Roadbook V6 母版**——动作照母版流程卡逐张走（卡号与顺序见根 `START-HERE.md`）；状态写在根 `STATE.md`（唯一事实源）
 - **规则版本口径**：项目根这份 AGENTS.md 是母版生成的**副本**。副本的 `规则版本：` 落后于母版、或整行缺失 = 按"缺字段"处理——视为本项目尚未接入当前规则集，先同步副本再继续；**不许拿旧副本当授权**（旧副本里没有的规则，不等于本项目豁免了它）。
 
@@ -121,7 +123,7 @@
 | 被否方案台账（用户明确拒绝过的提案） | `docs/decisions/` 台账行：日期 / 提案 / 否决理由 / 既往请求编号；重审同一提案先读台账，已实现的 wontfix 不许混入 |
 | AI 生成的审查或分析报告 | 开头一行 **AI 声明**（谁生成、依据什么、只看哪一轴）；属会话内产物的写系统临时目录，回执只给路径，不进仓库 |
 | 交接条（跨会话/换机器） | 写系统临时目录，只放指针不复述、敏感值脱敏；复述必然漂移，指针才不会 |
-| 新建文件 | `docs/registry/COMPONENTS.md`（路径+用途+归属批次；未登记 = 孤儿，5-1 卡第 ⑧ 查会报） |
+| 新建文件 | `docs/registry/COMPONENTS.md` 的「文件登记」节（路径 + 用途 + 归属批次 + 可访问性四列；未登记 = 孤儿，5-1 卡第 ⑧ 查会报） |
 | 取代旧实现 | 同批删除；删不掉就登记 `STATE.md` 并行态登记簿（旧实现/新实现/删除条件/到期），无登记的并行态在代码审查判红灯。`.bak`、`旧版/`、`副本 2` 一律违规 |
 | 版本演进 | 根 `CHANGELOG.md`"未发布"节 |
 | 非功能需求（性能/容量/可用性/安全/可维护/兼容） | `docs/specs/<日期>_<slug>/NFR.md`；受影响的模块约束同批回写 `docs/ARCHITECTURE.md` §5（2-4 卡） |
