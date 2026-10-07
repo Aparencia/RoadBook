@@ -638,16 +638,20 @@ Check ((Get-FileHash (Join-Path $root 'SKILL.md') -Algorithm SHA256).Hash -eq (G
 #   ① 判定退化成真假两值（读不到就显示「已是最新」= 假绿）；② 变更路由少了同源守卫（本机页面可触发安装命令）；
 #   ③ 模块被漏进发布白名单（装出来的副本没有 lib/update.js，整条链路在真机上不存在）。
 $umbUpd = Join-Path $root 'lib\update.js'
-Check (Test-Path $umbUpd) '更新能力模块存在：lib/update.js（纯逻辑层，主行静态 import 它）'
-if (Test-Path $umbUpd) {
-    $umbUpdTxt = [IO.File]::ReadAllText($umbUpd, [Text.Encoding]::UTF8)
+Check (Test-Path $umbUpd) '更新能力模块存在：lib/update.js（对外入口；2026-10-07 D14 拆分后它是 barrel）'
+# 2026-10-07（D14 拆分）：更新层从「一个 lib/update.js」摊成「barrel + lib/update-*.js 六块」，主行也拆出
+# update-watch / update-apply。这几条量的是**能力在不在**，不是**它写在哪个文件里** —— 所以扫描面按文件名
+# 模式取整层，不写死单文件。写死的话每拆一次就假红一次，而假红比不检查更坏（它会逼人删断言）。
+$umbUpdTxt = (@(Get-ChildItem (Join-Path $root 'lib') -File -Filter 'update*.js' | Sort-Object Name | ForEach-Object { [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::UTF8) }) -join "`n")
+Check ($umbUpdTxt.Length -gt 0) '更新层扫描面非空（扫描面为空会让下面三条断言恒真）'
+if ($umbUpdTxt.Length -gt 0) {
     Check (($umbUpdTxt -match "state:\s*'unknown'") -and ($umbUpdTxt -match "'no-upstream'") -and ($umbUpdTxt -match 'update-available')) '更新判定是三态以上（读不到 = unknown，不许退化成「已是最新」）'
     Check (($umbUpdTxt -match 'trustedLocalRequest') -and ($umbUpdTxt -match 'sec-fetch-site') -and ($umbUpdTxt -match 'loopbackAuthority')) '本机请求守卫在位（DNS rebinding：Host 必须是 loopback、跨站与不同源 Origin 一律拒）'
     # 0.7.0：升级是否真的生效 = 「重启后的运行版本 ↔ 观测文件里最后一条 apply-finish 的目标版本」对账。
     # 断言锚到**代码行**：只写 -match 'upgradeOutcome' 会被 import 行与 JSDoc 满足（恒真空断言，复核实测过）。
     Check (($umbUpdTxt -match 'export function lastApplyTarget') -and ($umbUpdTxt -match 'export function upgradeOutcome') -and ($umbUpdTxt -match "state: order > 0 \? 'newer' : 'pending'") -and ($umbUpdTxt -match 'entry\.exitCode !== 0') -and ($umbUpdTxt -match 'after === before') -and ($umbUpdTxt -match 'function readableVersion')) '升级生效对账在位（四态；只认最后一条「真换了版本的成功安装」：失败 / 空转 / 读不到都不算落地）'
 }
-$umbLineTxt = [IO.File]::ReadAllText((Join-Path $root 'lib\index.js'), [Text.Encoding]::UTF8)
+$umbLineTxt = (@(@('index.js','update-watch.js','update-apply.js') | ForEach-Object { Join-Path $root (Join-Path 'lib' $_) } | Where-Object { Test-Path $_ } | ForEach-Object { [IO.File]::ReadAllText($_, [Text.Encoding]::UTF8) }) -join "`n")
 Check (($umbLineTxt -match '/roadbook/update/status') -and ($umbLineTxt -match '/roadbook/update/apply') -and ($umbLineTxt -match 'candidateInstallers')) '主行注册两条更新路由并走命令探测（找不到可用命令就拒绝，不许随便挑一条）'
 Check (($umbLineTxt -match 'upgrade: upgradeInfo\(\)') -and ($umbLineTxt -match 'before: landed\?\.before')) '状态路由把升级对账发出去且带上 before（界面那句「已生效：v{before} → v{target}」靠它，缺了恒显示 v?）'
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match '自动更新') '根 README 写明主插件自带自动更新（可发现）'
