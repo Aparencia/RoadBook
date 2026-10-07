@@ -31,9 +31,9 @@
       "instrument": "gate",
       "touch": ["test/zz-selftest-probe.test.mjs"],
       "mutate": "Save-Lines 'test/zz-selftest-probe.test.mjs' @('import test from \"node:test\"', 'import assert from \"node:assert/strict\"', 'test(\"selftest-probe 故意失败\", () => { assert.equal(1, 2) })')",
-      "expectFail": ["node --test .* \\(exit 1\\)"],
+      "expectFail": ["node --test .* \\(exit 1\\)", "工作树不干净"],
       "evidence": "selftest-probe",
-      "note": "项目门的第 1 步必须真跑套件并如实报红。证据行 = 那条测试自己的名字出现在输出里（不是只有一行结论）。"
+      "note": "项目门的第 1 步必须真跑套件并如实报红。固有耦合：塞进去的测试文件是未提交的 ⇒ 同一次运行里「工作树不干净」也必然红（在项目门里，变异与未提交改动是同一件事的两个面）；所以目标断言必须自己红，且证据行要求那条测试的名字出现在输出里 —— 脏树那一行给不出这个名字。"
     },
     {
       "id": "B2",
