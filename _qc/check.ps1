@@ -453,7 +453,7 @@ foreach ($k in $budget.Keys) {
 # 逐条给数，凡与模板不同的必须在 $rootOverride 里写明理由 —— 没有理由的放宽 = 悄悄取消判据。
 # 键集必须覆盖模板表：少一个键，那份根文件就又变成零上限（TD-006 原地复发）。
 $budgetRoot = @{ 'README.md' = 60; 'AGENTS.md' = 240; 'STATE.md' = 50; 'CHANGELOG.md' = 700; 'RISK.md' = 200; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 155; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 125; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 45; 'docs/archive/INDEX.md' = 120; 'check.ps1' = 170; 'doctor.ps1' = 80; 'gate.ps1' = 175; 'orphans.ps1' = 140; 'security.ps1' = 130 }
-$rootOverride = @{ 'README.md' = '母版首页比模板多「母版有什么 / 装成 skill / 装成插件」三节（模板首页给新项目用，没有分发面）'; 'CHANGELOG.md' = '母版拥有全部版本历史；模板只有升版规则与骨架（5-6 卡归档时才切分旧版本节）'; 'docs/registry/COMPONENTS.md' = '母版登记 105 行自身文件（40 行逐批随手登记 + 65 行批 6 补登记，台账 #34）—— 登记页行数 = f(文件基数)，逐文件一行是 D13 义务，不是散文膨胀；模板只有表头 + 示例行（50）' }
+$rootOverride = @{ 'README.md' = '母版首页比模板多「母版有什么 / 装成 skill / 装成插件」三节（模板首页给新项目用，没有分发面）'; 'CHANGELOG.md' = '母版拥有全部版本历史；模板只有升版规则与骨架（5-6 卡归档时才切分旧版本节）'; 'docs/registry/COMPONENTS.md' = '母版登记 117 行自身文件（40 行逐批随手登记 + 65 行批 6 补登记 + 6 行批 6 第六刀的 feedback/ 一族，台账 #34 / #23）—— 登记页行数 = f(文件基数)，逐文件一行是 D13 义务，不是散文膨胀（整页 154 ≤ 155 靠同批压掉 6 行散文达成，不抬上限）；模板只有表头 + 示例行（50）' }
 $missRoot = @($budget.Keys | Where-Object { -not $budgetRoot.ContainsKey($_) })
 Check (-not $missRoot) "根副本上限表覆盖模板表全部键（缺：$($missRoot -join ', ') —— 缺键 = 这份根文件又变成零上限）"
 $noReason = @($budgetRoot.Keys | Where-Object { $budgetRoot[$_] -ne $budget[$_] -and -not $rootOverride.ContainsKey($_) })
