@@ -177,9 +177,28 @@ test('注释里的 import 例子不算依赖 —— 假红比不检查更坏', a
   assert.equal(main.stripComments("/* import b from './y.js' */\nreal()"), '\nreal()');
   // lib/index.js 自己的注释里就写着 `import x from './a.js'` 这种例子：那些例子不许进闭包。
   // 2026-10-05 起它**真的有一个**相对依赖：./update.js（自动更新的纯逻辑层）。
-  // 所以这条断言的形状从「只有自己」改成「自己 + 那一个真依赖」—— 注释里的 `./a.js` 仍然不在闭包里，
-  // 这正是它要防的假红（自检报一个并不存在的文件）。
-  assert.deepEqual(main.relativeImportClosure(ROOT, 'lib/index.js'), ['lib/index.js', 'lib/update.js']);
+  // 2026-10-07 拆分后它有了 5 条（`./update.js` 已变成 6 个 `update-*.js` 的 barrel，另有
+  // `./selfcheck.js` / `./update-watch.js` / `./update-apply.js`），闭包从 2 个变 12 个。
+  // **不再断言"恰好这几个"**：拆一次就假红一次，而本用例标题就是「假红比不检查更坏」。
+  // 改成双侧交叉核对（两个独立仪器对同一条链求值）：
+  //   ① 入口文件里每条相对 import 的落地文件都必须在闭包里 —— 漏报真依赖 = 假绿；
+  //   ② 闭包里每个路径都真实存在 —— 幽灵条目 = 假红。
+  // 「注释里的例子不进闭包」由下半段的合成用例逐条钉住（那条才是本用例的正题）。
+  const entryText = readFileSync(join(ROOT, 'lib', 'index.js'), 'utf8');
+  const declared = entryText
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(?:import|export)\b/.test(line))
+    .map((line) => /from\s+'(\.[^']+)'/.exec(line)?.[1])
+    .filter((spec) => spec !== undefined)
+    .map((spec) => `lib/${spec.slice(2)}`);
+  assert.ok(declared.length >= 4, `只从 lib/index.js 抽出 ${declared.length} 条相对 import，抽取器疑似失效`);
+  const closure = main.relativeImportClosure(ROOT, 'lib/index.js');
+  for (const relative of declared) {
+    assert.ok(closure.includes(relative), `入口的真实依赖 ${relative} 没进闭包（漏报真依赖 = 假绿）`);
+  }
+  for (const relative of closure) {
+    assert.ok(existsSync(join(ROOT, relative)), `闭包里的 ${relative} 在磁盘上不存在（幽灵条目 = 假红）`);
+  }
 });
 
 // ── 2026-10-05：stripComments 从「两条正则」换成单趟状态机 ──────────────────────

@@ -47,10 +47,7 @@ const EXCLUDED_PREFIXES = ['skills/roadbook-atlas/vendor/'];
  */
 const EXEMPT = [
   { file: 'lib/client.js', lines: 2772, cap: 500, why: '要拆成多个客户端 half，先落宿主侧的分块装载机制（批 2 A1 硬门禁未过则整体回退）', until: '批 2 收尾' },
-  { file: 'lib/index.js', lines: 1171, cap: 500, why: '接线集中在一个文件，拆分要与「入口 import 闭包」自检同批改', until: '批 2 收尾' },
-  { file: 'lib/update.js', lines: 1006, cap: 500, why: '本批试拆过一次并已撤回：拆后 test/update.test.mjs 30 例红（同一函数体在模块外正常、在模块内恒返回 null，机制未定位）——按 C1 红灯三问「仪器未定位清楚不前继续猜」撤回，原样保留', until: '批 3 收尾（先定位那个现象再拆）' },
   { file: 'plugin/roadbook-autoload/index.js', lines: 867, cap: 500, why: '宿主接线 + 观测 + 动作闸三块耦合在一个 apply() 里，需要先抽纯逻辑', until: '批 3 收尾' },
-  { file: 'test/client-contract.test.mjs', lines: 1457, cap: 1000, why: '本批试拆过一次并已撤回：按主题切四份 + 抽共享 harness 后仍有模块级失败（5 例全红，机制未定位）——按 C1「仪器未定位清楚前不继续猜」撤回；原文件一字未动', until: '批 3 收尾（先定位再拆）' },
   { file: 'skills/roadbook/bin/route.mjs', lines: 567, cap: 500, why: 'CLI 入口与 FACTS/STEPS 数据同文件，拆分要与批 3 的 --quote 改动同批做（一次改一个文件，避免两批都动它）', until: '批 3 收尾' },
 ];
 
