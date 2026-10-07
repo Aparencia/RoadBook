@@ -46,7 +46,7 @@ const EXCLUDED_PREFIXES = ['skills/roadbook-atlas/vendor/'];
  * ——加进来就等于把"判据"降级成"愿望"，而这条闸存在的全部意义就是不让它退化。
  */
 const EXEMPT = [
-  { file: 'lib/client.js', lines: 2524, cap: 500, why: '分块机制（#55）已落：自进化整段 412 行已搬进 lib/client-evolve.js、装载器自增 164 行，核心 2772→2524（净减 248，不是早先误记的 2772→2359）。余下 ≈2024 行（图册那半 + 两份文案表 + 详情页 + 更新条）等 #56 真机硬门禁过了再搬', until: '批 2 收尾' },
+  { file: 'lib/client.js', lines: 2528, cap: 500, why: '分块机制（#55）已落：自进化整段 412 行已搬进 lib/client-evolve.js、装载器自增 164 行（核心 2772→2524，净减 248，不是早先误记的 2772→2359）；再把生产装载函数 loadChunk 挂进 __internals 供契约测试驱动（+4）⇒ 2528。余下 ≈2028 行（图册那半 + 两份文案表 + 详情页 + 更新条）等 #56 真机硬门禁过了再搬', until: '批 2 收尾' },
   { file: 'plugin/roadbook-autoload/index.js', lines: 867, cap: 500, why: '宿主接线 + 观测 + 动作闸三块耦合在一个 apply() 里，需要先抽纯逻辑', until: '批 3 收尾' },
   { file: 'skills/roadbook/bin/route.mjs', lines: 567, cap: 500, why: 'CLI 入口与 FACTS/STEPS 数据同文件，拆分要与批 3 的 --quote 改动同批做（一次改一个文件，避免两批都动它）', until: '批 3 收尾' },
 ];

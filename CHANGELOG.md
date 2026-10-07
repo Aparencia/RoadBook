@@ -43,7 +43,8 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 ### 新增
 
 - **客户端分块机制（#55）**：`lib/client.js` 首屏不再背着整张「自进化」标签页（412 行已搬进
-  新文件 `lib/client-evolve.js`，核心 2772 → 2524 行）。分块是**普通同源脚本**，由新的宿主半
+  新文件 `lib/client-evolve.js`，核心 2772 → 2524 行；批 1 继续下搬，**当前行数以
+  `test/d14-lines.test.mjs` 的豁免记录为准** —— 那条记录有机器断言钉着）。分块是**普通同源脚本**，由新的宿主半
   `lib/chunks.js` 经 `GET /roadbook/bundle/<名>.js` 送出：名字白名单 + 固定目录（挡路径穿越）、
   与 `/roadbook/update/*` **同一条**同源守卫、`cache-control: no-cache` + 内容哈希 ETag（按 mtime/size
   记忆化，命中回 304 且不重读文件）。契约是**读**本机 `dsh-better-sidebar@0.24.1` 的
@@ -57,6 +58,19 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 - **`test/helpers/client-contract-harness.mjs` 的 vm 上下文改为共享**：bundle 与分块必须在**同一个**
   vm 上下文里跑（注册表与宿主件都挂在那个全局上），并新增 `loadChunk()` —— 它走核心自己的
   `takeChunk`（= 生产路径的「取工厂 → 注入宿主 → 调用」），不在测试里重写一遍被测逻辑。
+- **分块装载的「注入」那一段补上常备闸**：生产 `loadChunk` 以前取不到（`__internals` 只给到
+  `takeChunk`），于是脚本注入 / `onload` 回填 / 失败重试**只有真机能看**。现把 `loadChunk` 也挂进
+  `__internals`（`lib/client.js` +4 行），`test/client-contract-shell.test.mjs` 用假 document 钉住
+  「注入的 `src`/`async`/真的进了 head」「二次装载不重复注入」「失败之后能重试」；**两条用例各证伪过一次**
+  （去掉失败清理 ⇒ 重试红；`async` 写错 ⇒ 形状红），用例 16 → 18。
+
+### 测试与验收
+
+- 分块装载路径的端到端取证（离线可证部分，方法见方案 §11.5）：对**运行中**的 DSH 实例只读直打
+  `/sidebar/bundle/editor.js` → **200**（同一句 `register({kind:'prefix'})` 注册）⇒ 前缀路由确实服务
+  子路径；**真浏览器 + 真 `createChunkHandler` + 真 `client.js`** 跑通生产注入链（注册表 `["evolve"]`、
+  13 个宿主键全在、10 个导出、二次装载 0 注入、两帧渲染）；真 handler 的 200/304/HEAD/405/404/穿越/403 逐面实测。
+  **#56 仍需人在场**的唯一部分是「装的那份换成新代码后插件能起来」。
 
 ## [0.9.1] - 2026-10-06
 

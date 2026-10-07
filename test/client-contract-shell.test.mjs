@@ -17,11 +17,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import {
     EVOLVE_TAB_ID,
     PACKAGE_NAME,
     SOURCE,
     TAB_ID,
+    chunkPathOf,
     collectLabels,
     descriptorOf,
     loadBundle,
@@ -388,4 +390,92 @@ test('中英两份文案逐键对齐（不只是长度相同），自进化三�
     assert.notEqual(dictionaries.zh['evolve.tally.unknown'], dictionaries.zh['evolve.tally.ok']);
     assert.notEqual(dictionaries.en['evolve.tally.unknown'], dictionaries.en['evolve.tally.ok']);
     assert.equal(dictionaries.zh['evolve.tally.unknown'], '判不了');
+});
+
+// ── 分块装载的**生产路径**（注入 <script> 那一条）──────────────────────────────
+/**
+ * 假 document：只实现分块装载器碰得到的三个成员（createElement / head.appendChild / 两个回调）。
+ *
+ * `appendChild` 里把分块脚本在**同一个 vm 上下文**里跑一遍再回调 `onload` —— 真浏览器里是
+ * 「取回 → 执行 → onload」，时序形状相同，所以我们测的是核心自己的 `loadChunk`，
+ * 而不是测试重写的那一遍「取工厂 → 调用它」。
+ *
+ * 为什么必须补这一层：离线夹具的 `loadChunk()` 是**直接调 `takeChunk`** 的，脚本注入、
+ * `onload` 回填、失败重试这三段从来没有被任何用例走过 —— 而真机硬门禁盯的正是这一段。
+ * 分块坏了只有真机能看见，所以先在这里把能钉的钉住。
+ *
+ * `context` 由用例在 `loadBundle` 之后回填（`appendChild` 那一刻才需要它）；
+ * `failures` 是「前 N 次 appendChild 回调 onerror」—— 用同一个 document 验重试路径。
+ */
+function injectionDocument(options = {}) {
+    const document = {
+        context: null,
+        failures: options.failures ?? 0,
+        created: [],
+        appended: [],
+        createElement(tag) {
+            const element = { tag, src: '', async: false, onload: null, onerror: null };
+            document.created.push(element);
+            return element;
+        },
+        head: {
+            appendChild(element) {
+                document.appended.push(element);
+                if (options.hang === true) return; // 永不回调：用来验「装载中」那一态
+                queueMicrotask(() => {
+                    if (document.failures > 0) {
+                        document.failures -= 1;
+                        element.onerror();
+                        return;
+                    }
+                    const name = /\/bundle\/([a-z0-9-]+)\.js$/.exec(element.src)[1];
+                    vm.runInContext(readFileSync(chunkPathOf(name), 'utf8'), document.context, {
+                        filename: `lib/client-${name}.js`,
+                    });
+                    element.onload();
+                });
+            },
+        },
+    };
+    return document;
+}
+
+/** 装一个假 document 的 bundle + 已经回填 context 的 document。 */
+function bundleWithDocument(options = {}) {
+    const document = injectionDocument(options);
+    const bundle = loadBundle({ document });
+    document.context = bundle.context;
+    return { document, bundle, load: bundle.exports.__internals.loadChunk };
+}
+
+test('分块装载：注入的脚本形状正确、走 takeChunk 解析出导出表、重复调用不注入第二次', async () => {
+    const { document, bundle, load } = bundleWithDocument();
+    assert.equal(typeof load, 'function', '生产装载函数必须能从 __internals 取到 —— 否则这一层只剩肉眼');
+
+    // 装载前注册表是空的：takeChunk 必须**响亮抛错**，不是静默给 undefined
+    assert.throws(() => bundle.exports.__internals.takeChunk('evolve'), /没有登记工厂/);
+
+    const module = await load('evolve');
+    assert.equal(document.created.length, 1, '第一次装载只注入一个 <script>');
+    const script = document.created[0];
+    assert.equal(script.tag, 'script');
+    assert.equal(script.src, '/roadbook/bundle/evolve.js', 'src 必须是同源相对路径 + 宿主半白名单里的分块名');
+    assert.equal(script.async, true);
+    assert.deepEqual(document.appended, [script], '脚本必须真的挂进 head（只建不挂 = 永远不执行）');
+    assert.equal(typeof module.EvolvePanel, 'function');
+    assert.equal(typeof module.evolveFrame, 'function');
+
+    const again = await load('evolve');
+    assert.equal(again, module, '同一分块二次装载必须拿到同一个导出表');
+    assert.equal(document.created.length, 1, '二次装载不许再注入 <script>');
+});
+
+test('分块装载失败：响亮报错，且失败之后能重试（不永久空白）', async () => {
+    const { document, load } = bundleWithDocument({ failures: 1 });
+    await assert.rejects(() => load('evolve'), /evolve 加载失败/, 'onerror 必须变成带分块名的拒绝');
+    assert.equal(document.created.length, 1);
+
+    const module = await load('evolve');
+    assert.equal(typeof module.EvolvePanel, 'function', '一次失败之后必须还能装载成功');
+    assert.equal(document.created.length, 2, '重试要重新注入 <script>（失败的 promise 不许留在表里）');
 });
