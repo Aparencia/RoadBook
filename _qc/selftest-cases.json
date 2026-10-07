@@ -1,6 +1,6 @@
 {
   "schema": "roadbook-selftest-cases/1",
-  "note": "仪器自检的用例表：数据与引擎分家（加用例只改本文件，_qc/selftest.ps1 不随用例变）。每条用例 = 一次变异 + 期望红的断言集合 + 证据行。判据 = 相对基线的『新增红』：expectFail 必红；新增的其它红必须在 allowExtra 里预先声明理由（未声明的红 = 用例没打中判据，判 FAIL）。变异脚本在仓库根跑，可用 $repo / $utf8NoBom 与 Read-Lines / Save-Lines / Read-Text / Save-Text 四个助手；touch 里的路径按 sha256 逐字节复原。",
+  "note": "仪器自检的用例表：数据与引擎分家（加用例只改本文件，_qc/selftest.ps1 不随用例变）。每条用例 = 一次变异 + 期望红的断言集合 + 证据行。判据 = 相对基线的『新增红』：expectFail 必红；新增的其它红必须在 allowExtra 里预先声明理由（未声明的红 = 用例没打中判据，判 FAIL）。expectFailDynamic = 期望红里**断言名由模板串拼出**的那些（逐条写 why）：与 expectFail 同为『必红』，只是静态哨兵判不了 —— 哨兵 = `_qc/selftest.ps1 -Preflight`（每次体检由 _qc/check.ps1 调用），它要求每条 expectFail 的字面量仍能在仪器源码里找到，而声明为动态的必须真的判不了、且豁免不过期（TD-027）。变异脚本在仓库根跑，可用 $repo / $utf8NoBom 与 Read-Lines / Save-Lines / Read-Text / Save-Text 四个助手；touch 里的路径按 sha256 逐字节复原。",
   "instruments": {
     "qc": {
       "kind": "ps1",
@@ -153,9 +153,9 @@
       "instrument": "routeCli",
       "touch": ["skills/roadbook/bin/route-data.mjs"],
       "mutate": "$ls = Read-Lines 'skills/roadbook/bin/route-data.mjs'; for ($i = 0; $i -lt $ls.Count; $i++) { if ($ls[$i] -match \"card: '5-4'\") { $ls[$i] = $ls[$i].Replace('f.goLive === true', 'f.goLive === false') } }; Save-Lines 'skills/roadbook/bin/route-data.mjs' $ls",
-      "expectFail": ["A5 上线闭包", "A10 端点场景账本等于冻结 fixture"],
+      "expectFail": ["A5 上线闭包", "A10 每个场景的账本"],
       "evidence": "5-4",
-      "note": "上线闭包（goLive=true 链必含 4-5 / 5-2 / 5-4）真正的把守者是 test/route-cli.test.mjs 的 A5；AGENTS.md 与 rules.json 写的落点 route --audit 目前只查镜像锚点/双语/幽灵引用，**不含闭包**（rules.json 里那条 status=planned / phase=6，属已声明的待落项，不是漂移）。A10 同红 = 端点成本账本冻结了每条链的卡集合与每张卡的行数/字数 ⇒ 改链或改卡都会动它（同一条链的两个观察面）。"
+      "note": "上线闭包（goLive=true 链必含 4-5 / 5-2 / 5-4）真正的把守者是 test/route-cli.test.mjs 的 A5；AGENTS.md 与 rules.json 写的落点 route --audit 目前只查镜像锚点/双语/幽灵引用，**不含闭包**（rules.json 里那条 status=planned / phase=6，属已声明的待落项，不是漂移）。A10 同红 = 端点成本账本冻结了每条链的卡集合与每张卡的行数/字数 ⇒ 改链或改卡都会动它（同一条链的两个观察面）。**2026-10-07（TD-027）**：A10 的断言名在 TD-022 扩面时改成「每个场景的账本都等于冻结 fixture（七个逐条断言…）」，旧写法「端点场景账本等于冻结 fixture」永远匹配不上 ⇒ 这里取**稳定词干** `A10 每个场景的账本`（表达『账本那条判据』而不是标题逐字——整名每改一次措辞就要同步一次用例表）。静态哨兵：`_qc/selftest.ps1 -Preflight`。"
     },
     {
       "id": "B13",
@@ -164,9 +164,12 @@
       "instrument": "annot",
       "touch": ["playbook/4-1-分批编码.md"],
       "mutate": "$ls = Read-Lines 'playbook/4-1-分批编码.md'; Save-Lines 'playbook/4-1-分批编码.md' @($ls | Where-Object { $_ -notmatch 'Expected：' })",
-      "expectFail": ["4-1：每个 powershell 围栏", "四张卡的 Expected 行数中英相等"],
+      "expectFail": ["四张卡的 Expected 行数中英相等"],
+      "expectFailDynamic": [
+        { "re": "4-1：每个 powershell 围栏", "why": "标题由模板串拼出（`${card.no}：每个 powershell 围栏收口后 ${WINDOW} 行内有 Expected 行（中英同批）`，见 test/expected-annotation.test.mjs 的 for 循环）⇒ 卡号不是源码字面量，静态哨兵对它必然误报；运行期的名字仍逐字含这个模式" }
+      ],
       "evidence": "4-1",
-      "note": "有命令没期望值 = 命令跑完也没人知道对不对。两条红各管一个方向：逐张卡（每个围栏收口后 5 行内要有 Expected 行）+ 跨语言（中英围栏数与 Expected 行数必须相等）——抽掉中文 4-1 的期望值，两条都该红。只咬 S 链四卡（2-2 / 4-1 / 4-3 / 5-1），全库一次性全红会把门禁变成噪音。"
+      "note": "有命令没期望值 = 命令跑完也没人知道对不对。两条红各管一个方向：逐张卡（每个围栏收口后 5 行内要有 Expected 行）+ 跨语言（中英围栏数与 Expected 行数必须相等）——抽掉中文 4-1 的期望值，两条都该红。只咬 S 链四卡（2-2 / 4-1 / 4-3 / 5-1），全库一次性全红会把门禁变成噪音。**2026-10-07（TD-027）**：第一条红的名字由模板串拼出、静态判不了 ⇒ 进 `expectFailDynamic`（带 why）；第二条是字面量、留在 `expectFail`。两条在运行期同为『必红』（引擎把两者并成一个集合）。"
     },
     {
       "id": "A2",
@@ -186,9 +189,9 @@
       "instrument": "routeCli",
       "touch": ["skills/roadbook/bin/route-data.mjs"],
       "mutate": "$ls = Read-Lines 'skills/roadbook/bin/route-data.mjs'; Save-Lines 'skills/roadbook/bin/route-data.mjs' @($ls | Where-Object { $_ -notmatch \"^\\s*\\['redLine',\" })",
-      "expectFail": ["A7 redLine:true"],
+      "expectFail": ["A7 redLine:true", "A10 每个场景的账本"],
       "evidence": "3-2",
-      "note": "红线域五类触碰必须升 L 档并做威胁建模（3-2）、门禁是裁决而不是轻确认——判据被摘 ⇒ 单测红。证据行 = 威胁建模卡号 3-2。"
+      "note": "红线域五类触碰必须升 L 档并做威胁建模（3-2）、门禁是裁决而不是轻确认——判据被摘 ⇒ 单测红。证据行 = 威胁建模卡号 3-2。**2026-10-07（TD-027）**：摘掉 `['redLine',` 行同时改掉红线段的事实 ⇒ A10 的冻结账本连带红（同一次变异的第二个观察面）。放进 `expectFail` 而不是 `allowExtra`：这条连带是**确定性**的，而 `allowExtra` 只声明『允许出现』、不要求出现 ⇒ 放进去等于让这个观察面可以无声消失。"
     }
   ]
 }

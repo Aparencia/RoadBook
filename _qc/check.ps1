@@ -786,6 +786,10 @@ if ((Test-Path $selfTest) -and (Test-Path $selfCases)) {
     # 「红的断言恰好是这一条」（基线差分 + 期望红集合 + 证据行 + 逐字节复原）；用例数据外置到 JSON。
     Check ($stLines.Count -le 200) "行数 $($stLines.Count) <= 200 ：_qc/selftest.ps1（2026-10-07 由 110 上调：判据变强，见下面四条覆盖面断言）"
     Check (($stTxt -match 'finally') -and ($stTxt -match 'Compare-Object') -and ($stTxt -match 'selftest-cases\.json')) 'selftest.ps1 含 finally 复原 + porcelain 前后比对 + 外置用例表'
+    # 用例表 ↔ 仪器断言名的静态哨兵（TD-027）：断言改名后用例会静默失效，而整跑自检是分钟级 ⇒ 这一半进每次体检。
+    $pfTxt = (& powershell -NoProfile -ExecutionPolicy Bypass -File $selfTest -Preflight 2>&1 | Out-String)
+    $pfMsg = @($pfTxt -split '\r?\n' | Where-Object { $_.Trim() })[-1]
+    Check (($LASTEXITCODE -eq 0) -and ($pfTxt -match '静态预检通过')) "用例表静态预检（selftest -Preflight）：expectFail 仍是仪器源码里的真实断言名 → $pfMsg"
     $stCases = @((([IO.File]::ReadAllText($selfCases, [Text.Encoding]::UTF8)) | ConvertFrom-Json).cases)
     $stRules = @($stCases | ForEach-Object { $_.rule } | Select-Object -Unique)
     $stMissRule = @(1..13 | ForEach-Object { "B$_" } | Where-Object { $stRules -notcontains $_ })

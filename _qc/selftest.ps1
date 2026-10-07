@@ -9,11 +9,12 @@
       4) 每条用例带证据行（evidence）：输出里能看见**是哪一处**在红，而不是只有一行结论；
       5) 变异前后的文件按 sha256 逐字节复原（不是"看起来复原了"）。
     用例表在 _qc/selftest-cases.json（数据与引擎分家：加用例只改 JSON，不改本脚本）。
-    用法：powershell -NoProfile -ExecutionPolicy Bypass -File _qc/selftest.ps1 [-Only B6]
-    退出码：0 = 全部符合预期；1 = 有仪器缺陷 / 未声明的红 / 复原失败；2 = 未接线（缺 check.ps1 或非 git 工作树）；3 = 有跳过（用例要求干净树，收工提交后必须复跑一次拿全绿）。
+    用法：powershell -NoProfile -ExecutionPolicy Bypass -File _qc/selftest.ps1 [-Only B6] [-Preflight]
+           -Preflight = 只跑静态预检（不跑仪器，秒级）：用例表的 expectFail 必须仍是仪器源码里的真实断言名。
+    退出码：0 = 全部符合预期；1 = 有仪器缺陷 / 未声明的红 / 复原失败 / 静态预检发现漂移；2 = 未接线（缺 check.ps1 或非 git 工作树）；3 = 有跳过（用例要求干净树，收工提交后必须复跑一次拿全绿）。
 #>
 [CmdletBinding()]
-param([string]$Only = '')
+param([string]$Only = '', [switch]$Preflight)
 $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false) } catch { }
 $repo = Split-Path -Parent $PSScriptRoot
@@ -42,6 +43,34 @@ function Path-Hash($p) {
 }
 
 $spec = Read-Text '_qc/selftest-cases.json' | ConvertFrom-Json
+# 静态预检（-Preflight；_qc/check.ps1 每次体检调用，秒级）：用例表引用的断言名必须仍是仪器里的真实字面量。
+# 为什么（TD-027）：断言名改过一次、用例表还留着旧名 ⇒ 期望红永远匹配不上、用例静默失效；整跑是分钟级 ⇒
+# 这一半必须便宜到能进每次体检。三条判据：① 每条 expectFail 在仪器源码里找得到（或在 expectFailDynamic 里
+# 声明过）② 动态声明必须写 why ③ 动态声明必须真的静态判不了（源码里有该字面量 = 豁免已过期）。豁免不静默：
+# 动态声明逐条打印。边界：只咬 node 仪器 —— ps1 仪器的 [FAIL] 文本多由变量插值拼出，那一半只能整跑（TD-028）。
+if ($Preflight) {
+    $drift = @(); $dyn = @(); $n = 0
+    foreach ($c in @($spec.cases)) {
+        $i = $spec.instruments.($c.instrument)
+        if ($null -eq $i) { $drift += "$($c.id)：引用了未定义的仪器 $($c.instrument)"; continue }
+        $src = ''; if ($i.kind -eq 'node') { $src = Read-Text $i.script }
+        # 字段缺席时 $c.expectFailDynamic 是 $null，而 @($null).Count = 1、$null | ForEach-Object 也会走一次（实测）
+        # ⇒ 先过滤，否则塞进一个匹配一切的空模式（`-match $null` 是空正则）⇒ 每条用例的期望红判据被悄悄掏空。
+        $decl = @($c.expectFailDynamic | Where-Object { $_ })
+        foreach ($d in $decl) {
+            if (-not $d.why) { $drift += "$($c.id)：$($d.re) 声明为动态却没写 why" }
+            elseif ($src -match $d.re) { $drift += "$($c.id)：$($d.re) 声明为动态，但仪器源码里有这个字面量（豁免已过期）" }
+            else { $dyn += "$($c.id)：$($d.re)" }
+        }
+        if ($i.kind -ne 'node') { continue }
+        foreach ($re in @($c.expectFail)) { $n++; if (($decl.re -notcontains $re) -and ($src -notmatch $re)) { $drift += "$($c.id)：$re" } }
+    }
+    Write-Host ("静态预检：受检 expectFail {0} 条（node 仪器）｜动态声明 {1} 条" -f $n, $dyn.Count)
+    if ($dyn.Count -gt 0) { Write-Host ("  [动态] 断言名由模板串拼出、静态判不了（已写 why）：{0}" -f ($dyn -join ' ｜ ')) }
+    if ($drift.Count -gt 0) { Write-Host ("[红灯] 用例表与仪器断言名漂移 {0} 条（改断言名 ⇒ 同批改用例表；模板串拼出的进 expectFailDynamic 并写 why）：{1}" -f $drift.Count, ($drift -join ' ｜ ')); exit 1 }
+    Write-Host '静态预检通过：用例表引用的断言名都还在仪器源码里，动态声明都有理由且仍需要。'
+    exit 0
+}
 # 上次跑崩留下的临时目录先清掉（快照是会话内产物，随时可删）
 Get-ChildItem ([IO.Path]::GetTempPath()) -Directory -Filter 'rb-selftest-*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('rb-selftest-' + [Guid]::NewGuid().ToString('n'))
@@ -134,8 +163,11 @@ foreach ($c in $cases) {
     }
     if ($badRestore.Count -gt 0) { Write-Host ("  [FAIL] {0} 复原不是逐字节一致：{1}" -f $c.id, ($badRestore -join ', ')); $failCount++; continue }
     $new = @($res.Fail | Where-Object { $base[$inst] -notcontains $_ })
-    $declared = @($c.expectFail) + @($c.allowExtra | ForEach-Object { $_.re })
-    $miss = @($c.expectFail | Where-Object { $re = $_; -not ($new | Where-Object { $_ -match $re }) })
+    # 期望红 = expectFail + expectFailDynamic（前者静态哨兵能查，后者由模板串拼出、只能运行期核）——判据只写这一处。
+    # $null 先过滤掉：$null | ForEach-Object 会走一次（实测）⇒ 会给每条用例塞一个匹配一切的空模式。
+    $wantFail = @($c.expectFail) + @($c.expectFailDynamic | Where-Object { $_ } | ForEach-Object { $_.re })
+    $declared = $wantFail + @($c.allowExtra | ForEach-Object { $_.re })
+    $miss = @($wantFail | Where-Object { $re = $_; -not ($new | Where-Object { $_ -match $re }) })
     $extra = @($new | Where-Object { $m = $_; -not ($declared | Where-Object { $m -match $_ }) })
     $evOk = $true
     if ($c.evidence) { $evOk = [regex]::IsMatch($res.Text, $c.evidence, 'Multiline') }

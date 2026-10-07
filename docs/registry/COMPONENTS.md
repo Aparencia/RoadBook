@@ -46,7 +46,7 @@
 | `skills/roadbook/bin/route-dispatch.mjs` | **链状态 + 派单包**（`--chain` / `--dispatch`）：done/current/todo 标记、内嵌卡正文切片、门禁类型化 `needVerdict` + 停点行号、3 行回执模板（**每行 ≤160 字符**，实测两臂 249/664 —— TD-011）—— 台账 #25~#28 的 P0 机械面（**新功能，不是拆分件**） | 批 4（台账 #25~#28） | `N/A（纯函数）` |
 | `skills/roadbook/data/cards.json` | 卡图数据文件（**生成物**，`cards.mjs --write` 唯一写者；49 张卡的分类 / 序号 / 点名关系） | 批 3（台账 #33） | `N/A（数据）` |
 | `test/cards.test.mjs` | 卡图属性测试（分类成划分 / 恒真判定健全且完备 / 触发行分三格 / 随机 DAG 前沿双向不变式 / 回边必成环 / CLI 退出码） | 批 3（台账 #36 #37 #38） | `N/A（测试）` |
-| `_qc/selftest-cases.json` | 仪器自检的**用例表**（15 条：`rule` / `instrument` / `touch` / `mutate` / `expectFail` / `allowExtra` / `evidence`）——数据与引擎分家，脚本 `_qc/selftest.ps1` 不随用例变 | 批 3（成功标准 4：变异集覆盖 B 类 13 条 + A/C 各 1 条） | `N/A（数据）` |
+| `_qc/selftest-cases.json` | 仪器自检的**用例表**（15 条：`rule` / `instrument` / `touch` / `mutate` / `expectFail` / `expectFailDynamic` / `allowExtra` / `evidence`）——数据与引擎分家，脚本 `_qc/selftest.ps1` 不随用例变；静态哨兵 `-Preflight`（TD-027）核对它的 `expectFail` 是否仍指向仪器里的真断言名 | 批 3（成功标准 4：变异集覆盖 B 类 13 条 + A/C 各 1 条；2026-10-07 补 `expectFailDynamic` 字段） | `N/A（数据）` |
 | `feedback/README.md` | 反馈回流收件箱的**契约页**（字段 / 命名 / 状态词表 / 回流三步；与 `template/feedback/README.md` 逐字节相同） | 批 6 第六刀（台账 #23 末环——证据生命周期链的最后一跳） | `N/A（纯文本）` |
 | `feedback/TEMPLATE.md` | 反馈**条目模板**（复制改名再填；与 `template/feedback/TEMPLATE.md` 逐字节相同） | 批 6 第六刀（台账 #23 末环） | `N/A（纯文本）` |
 | `template/feedback/README.md` | 派生项目侧的同一份契约页（**逐字节镜像根 `feedback/README.md`**；单侧改 = 契约出现第二处真相） | 批 6 第六刀（反馈根因 D 的分发面） | `N/A（纯文本）` |
