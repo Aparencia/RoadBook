@@ -24,6 +24,7 @@
 $target = 'GET /api/export'      # API path / component name / table name; try them one by one
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $target | Select-Object Path, LineNumber, Line
 ```
+Expected: on a hit it prints a `Path / LineNumber / Line` table (`Path` is the **absolute** path; measured in a sandbox on this machine as `…/src/api/export.ts  2  return 'GET /api/export'`). On **zero hits it prints nothing at all**, and it prints just as little when the `src` directory does not exist (`-Recurse -File` does not even report 「找不到路径…」; `$Error.Count` measured 0 — drop `-Recurse` and it does report it), while `$?` still says `True` and `$LASTEXITCODE` keeps whatever stale value it had (measured: seed it with 77 and 77 survives). So **empty output does not mean clean**: write the criterion as "`Test-Path src` is true, then `@(…).Count` = 0" and keep the output of both steps.
 List: which frontends call the API / which pages reference the component / which code reads and writes the table. Any omission = it blows up somewhere else after deletion.
 ❌ Counter-example: `grep -rn "<接口路径/组件名/表名>" src` (a bash-only command + placeholders; it will not run on Windows, and a missed check means deleting for nothing)
 ✅ Good example: the `Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $target` above (runs on PowerShell 5.1, outputs Path/LineNumber/Line)
@@ -75,6 +76,7 @@ git add STATE.md CHANGELOG.md docs/versions/$ver.md docs/registry/APIS.md docs/r
 git commit -m "7-4 feat($slug): remove $feature"
 powershell -NoProfile -File check.ps1
 ```
+Expected: every path in this `git add` list must really exist (`docs/versions/$ver.md` comes from steps 2/3 of this card; a deleted implementation file must still be passed to `git add` to be recorded in this commit). If any path is missing → `fatal: pathspec '…' did not match any files` with **exit code 128** and `git commit` never runs (so the registry and CHANGELOG rows miss this commit = phantom lines). A successful `git commit` prints `[main <short-hash>] 7-4 feat(export-v1): remove 导出 v1 接口` plus ` N files changed, M deletions(-)` and exits 0; `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。`
 (`git add -A` / `git add .` are forbidden; the code deletions, the registry rows, the CHANGELOG deprecation line, the versions decommission line and STATE.md must be in the same commit.)
 ❌ Counter-example: committing only the code deletion and leaving the registry and CHANGELOG for "the next archive" (documentation pointing at a deleted API = a phantom line)
 ✅ Good example: the deletions, the three registry rows, the CHANGELOG deprecation line, the versions decommission line and STATE.md in one commit, with the commit hash pasted into the receipt

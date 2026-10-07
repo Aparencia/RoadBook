@@ -110,6 +110,7 @@ git add docs/OBSERVABILITY.md docs/RUNBOOK.md STATE.md
 git commit -m "5-4 docs(ops): 观测三件套与观测窗收尾"
 powershell -NoProfile -File check.ps1
 ```
+Expected: all three lines are judged by exit codes — the three files (`docs/OBSERVABILITY.md` / `docs/RUNBOOK.md` / `STATE.md`) must already exist (this card itself produces the first two): if any is missing, `git add` reports `fatal: pathspec '…' did not match any files` with **exit code 128** and no commit happens. A successful `git commit` prints `[main <short-hash>] 5-4 docs(ops): 观测三件套与观测窗收尾` plus ` N files changed, M insertions(+)` and exits 0 (an empty list gives `nothing to commit, working tree clean` + exit code 1). `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。` — if it prints `[FAIL] 未配置 STEPS：…` (exit code 2), that is an uninitialized environment, not a failed observation window.
 
 ---
 

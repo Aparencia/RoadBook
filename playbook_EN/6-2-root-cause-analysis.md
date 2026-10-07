@@ -110,6 +110,7 @@ git add $rca STATE.md
 git commit -m "6-2 docs(rca): 根因定位 + STATE 回写 (BUG-001)"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `$rca` must be an RCA path that really exists (the ③ output of this card): with a wrong path, `git add` reports `fatal: pathspec '<path>' did not match any files` with **exit code 128** and `git commit` never runs — that is what stops "the RCA is not written yet" before it reaches history. A successful `git commit` prints `[main <short-hash>] 6-2 docs(rca): 根因定位 + STATE 回写 (BUG-001)` plus ` N files changed, M insertions(+)` and exits 0; `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。` (exit code 2 = `$STEPS` not configured, i.e. an uninitialized environment — see the last line of this card).
 
 The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not initialized) or non-zero → stop and ask the user; announcing that the root cause analysis is complete is forbidden.
 

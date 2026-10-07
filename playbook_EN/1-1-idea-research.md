@@ -30,6 +30,7 @@ Set-Location $proj
 New-Item -ItemType Directory -Force docs/decisions, docs/pool | Out-Null
 if (-not (Test-Path docs/pool/IDEAS.md)) { Set-Content docs/pool/IDEAS.md @('# IDEAS · 需求池', '', '| 日期 | 想法 | 状态 | 复活条件 / 结论 |', '|---|---|---|---|') }
 ```
+Expected: after the first run `docs/decisions` and `docs/pool` exist and `docs/pool/IDEAS.md` has exactly 4 lines (2 header rows + 2 table rows, measured in a sandbox on this machine), and the `if (-not (Test-Path …))` guard keeps a re-run from **overwriting** an existing pool (measured: adding one line to the pool and re-running left 5 lines intact). If `$proj` is wrong, `Set-Location` raises only a non-terminating error `Cannot find path '…' because it does not exist.` (the wording follows the host language: a Chinese host prints 「找不到路径…」) and **the next three commands still run** — measured, they then create `docs/decisions, docs/pool` in the **current directory** (so one slip inside the master repo equals creating docs/ where it is forbidden). Run `Test-Path $proj` first to prove the project directory exists.
 
 **Action 0.5: probe branch (taken when the user only asks "can this be done / is it feasible"; also when they never asked to launch anything)**
 The user never said they want to launch it, they only ask about feasibility → take this branch; do not run Actions 1–5 and do not read the six Kill criteria questions:

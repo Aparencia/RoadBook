@@ -56,6 +56,7 @@ $ver = 'v0.3.0'                          # this release's version number; all th
 git tag -a $ver -m "release $ver"        # annotated tag; lightweight tags and git tag -f are forbidden
 git push origin $ver                     # when a remote exists
 ```
+Expected: a successful `git tag -a` prints **nothing at all** (measured in a sandbox on this machine: 0 stdout lines, exit code 0), so empty output does not mean the tag was not created — verify with `git tag -l $ver` (prints `v0.3.0`) or `git for-each-ref --format='%(refname:short) %(objecttype)' refs/tags`, where an annotated tag shows `v0.3.0 tag` and a lightweight one shows `light commit` (this turns "lightweight tags are forbidden" into a checkable reading). The first `git push origin $ver` prints `To <remote>` + ` * [new tag]         v0.3.0 -> v0.3.0` and exits 0; re-pushing an **unmoved** tag prints `Everything up-to-date` and exits 0; re-pushing a **moved** tag prints ` ! [rejected]        v0.3.0 -> v0.3.0 (already exists)` + `error: failed to push some refs to '…'` + `hint: Updates were rejected because the tag already exists in the remote.` with **exit code 1** — that is the mechanical proof behind "a published tag must never be moved", while `git tag -a -f` prints `Updated tag 'v0.3.0' (was <old-short-hash>)`, which is the line that tells you a tag was moved.
 ❌ Counter-example: the CHANGELOG says v0.3.0, the detail file is called v0.3.1.md, and the tag is v0.30 (the three places disagree, so no matching version can be found when rolling back)
 ❌ Counter-example: noticing the tag points at the wrong place and overwriting it with `git tag -f` (**a published tag must never be moved or deleted** — it is the only anchor others have when checking a version)
 ✅ Good example: all three are v0.3.0 — the CHANGELOG section title / `docs/versions/v0.3.0.md` / `git tag v0.3.0`
@@ -91,6 +92,7 @@ git add STATE.md CHANGELOG.md docs/versions/v0.3.0.md docs/RUNBOOK.md
 git commit -m "5-2 chore(release): 发布 $ver"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `docs/versions/v0.3.0.md` must exist (produced by ③) before it goes into this list: if any file is missing, `git add` reports `fatal: pathspec '…' did not match any files` with **exit code 128** and no commit happens. A successful `git commit` prints `[main <short-hash>] 5-2 chore(release): 发布 v0.3.0` (`$ver` reuses the assignment from §②⑥, which is exactly `v0.3.0` here, and the detail file name matches it) plus ` N files changed, M insertions(+)` and exits 0; `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。` Only after it is green does the agent create the tag (the reverse order points the tag at an unverified commit).
 (`$ver` reuses the assignment from §②⑥, and the detail file name matches it; after committing and going green, the agent performs the tagging and push from §②⑥.)
 
 Fixed closing line:

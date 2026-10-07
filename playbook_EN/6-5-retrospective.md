@@ -70,6 +70,7 @@ git add STATE.md $doc docs/TECH_DEBT.md
 git commit -m "6-5 docs(postmortem): $worst 复盘与预防措施"
 powershell -NoProfile -File check.ps1
 ```
+Expected: the trio is judged by exit codes, not by echo — `$doc` expands to the local date (measured on this machine: `docs/lessons/2026-10-07_export-limit-overwrite.md`, since `Get-Date -Format 'yyyy-MM-dd'` uses local time). If any path in the `git add` list does not exist, git prints `fatal: pathspec '<path>' did not match any files` with **exit code 128**, the trio stops right there and `git commit` never runs (calling the postmortem done while its output file was never written is a false green). A successful `git commit` prints `[main <short-hash>] 6-5 docs(postmortem): <slug> 复盘与预防措施` plus ` N files changed, M insertions(+)` and exits 0; an empty list prints `On branch main` / `nothing to commit, working tree clean` with exit code 1. `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。`
 
 Fixed closing line:
 `Awaiting your verdict. Reply "continue" to run the next card, or give a new instruction.`
