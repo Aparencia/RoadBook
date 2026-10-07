@@ -1,6 +1,6 @@
 {
   "name": "roadbook-evolve",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "private": true,
   "description": "RoadBook 主插件 roadbook 的自进化子插件（宿主半）：把自进化的证据算成一张信号表（S1 观测臂污染 / S2 注入活性 / S3 banner 可用率 / S4 工作树 / S5 规则索引 / S6 路由完整性），经两条只读本机路由交给侧栏「自进化」标签页。判据不在这里复刻——S5/S6 只记既有 CLI 的退出码。",
   "license": "MIT",

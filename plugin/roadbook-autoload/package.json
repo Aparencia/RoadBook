@@ -1,6 +1,6 @@
 {
   "name": "roadbook-autoload",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "private": true,
   "description": "Roadbook V6 开发流程母版的自动加载插件：开发意图命中时把 roadbook 技能注入当前回合。",
   "type": "module",
