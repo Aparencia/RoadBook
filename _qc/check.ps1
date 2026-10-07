@@ -572,6 +572,9 @@ $mapTxt = if (Test-Path (Join-Path $tpl 'DOC_MAP.json')) { [IO.File]::ReadAllTex
 Check ($mapTxt -match 'docLimits') 'template/DOC_MAP.json 有 docLimits 段（文档行数上限的机器判据数据；缺它 gate ⑨ 与同源断言都会空转）'
 $orpTxt = if (Test-Path (Join-Path $tpl 'orphans.ps1')) { [IO.File]::ReadAllText((Join-Path $tpl 'orphans.ps1'), [Text.Encoding]::UTF8) } else { '' }
 Check ($orpTxt -match '\$untracked\.Count -gt 0') 'template/orphans.ps1 未跟踪文件计入退出码（清单不完整 = 红）'
+$orpR = if (Test-Path (Join-Path $root 'orphans.ps1')) { [IO.File]::ReadAllBytes((Join-Path $root 'orphans.ps1')) } else { @() }
+$orpT = if (Test-Path (Join-Path $tpl 'orphans.ps1')) { [IO.File]::ReadAllBytes((Join-Path $tpl 'orphans.ps1')) } else { @() }
+Check (($orpR.Length -gt 0) -and ($orpR.Length -eq $orpT.Length) -and ([Convert]::ToBase64String($orpR) -eq [Convert]::ToBase64String($orpT))) '根 orphans.ps1 与 template/orphans.ps1 逐字节相同（TD-002 口径第二刀两份同批改；单侧改 = 两份扫描器口径漂移，等于无登记的并行态）'
 $secTxt = if (Test-Path (Join-Path $tpl 'security.ps1')) { [IO.File]::ReadAllText((Join-Path $tpl 'security.ps1'), [Text.Encoding]::UTF8) } else { '' }
 Check ($secTxt -match 'ReportOnly') 'template/security.ps1 有 -ReportOnly 只报不拦开关（人是裁决者，机器只报）'
 Check ($secTxt -match 'SkillDir') 'template/security.ps1 支持 -SkillDir 扫第三方技能目录（7-9 卡的机检入口）'

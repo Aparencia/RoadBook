@@ -61,7 +61,7 @@
 | :-- | :-- | :-- | :-- |
 | `_qc/check-docs.ps1` | 文档域断言（固定槽位 ↔ `docs/README.md` 对应表双向核对 / A1d 上限同源；可由 `_qc/check.ps1` 调用，也可单跑） | 母版（2026-10-06 文档双向断言批） | `N/A（脚本）` |
 | `_qc/baseline/run.ps1` | 卡行为 baseline 脚手架（跑压力提示词组 / 原样落盘证据 + 机械指纹 / RED 追加台账；不改卡、不出结论） | 母版（2026-10-03 卡行为自测批） | `N/A（脚本）` |
-| `_qc/loader-accept.mjs` | 真 Loader 验收（拿 DSH 安装里那份真 cordis 当接收点，判 `lib/client.js` 的导出能否收成 ACTIVE fiber） | 母版（2026-10-05 真机根因批） | `N/A（脚本）` |
+| `_qc/loader-accept.mjs` | **一次性**真 Loader 验收（拿 DSH 安装里那份真 cordis 当接收点，判 `lib/client.js` 的导出能否收成 ACTIVE fiber；跑完那批即用完，不是常规入口） | 母版（2026-10-05 真机根因批） | `N/A（一次性脚本）` |
 | `_qc/migrations/fix-card-headers-2026-10-03.mjs` | 一次性迁移补漏（卡片 H1 里的旧两位数卡号）—— 用完即弃 | 母版（2026-10-03 卡号重编批） | `N/A（一次性脚本）` |
 | `_qc/migrations/fix-stale-card-numbers-2026-10-03.mjs` | 一次性修补（漏网的裸两位旧卡号 + 与 §4 链不一致的「下一张」头部行）—— 用完即弃 | 母版（2026-10-03 卡号重编批） | `N/A（一次性脚本）` |
 | `_qc/migrations/renumber-2026-10-03.mjs` | 一次性迁移留痕（卡号两位序号 → 阶段-行为序号；第一步）—— 用完即弃 | 母版（2026-10-03 卡号重编批） | `N/A（一次性脚本）` |
