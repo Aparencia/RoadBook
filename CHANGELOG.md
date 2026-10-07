@@ -25,6 +25,13 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 **v0.10.0 升级方案（`design/vnext-2026-10-07.md`）的在办改动。版本号由批 6 的 #62 一次升到位**
 （本次不动 `package.json`，所以七处对齐与 `git tag` 都不触发）。
 
+### #56 门禁措辞订正：三张 → 两张（+ U5 新意向记录，批 6 收尾后补做）
+
+- **订正的是什么**：方案 §11.5（`:374` / `:376`）、`STATE.md` U1、`RISK.md` R2 把 #56 的目视判据写成「三张标签页」；而第三张「会话」是**批 2 的产物**，批 2 因等 #56 尚未开工 ⇒ 现在把装的那份刷到 HEAD 只会有**两张**。照原文案跑会在"张数对不上"处卡住（A 组回退的真实判据是「自进化」停在「正在加载…」或 `paths` 仍是两条，**不是**张数）。
+- **改后的判据**：**两张**标签页（图册 / 自进化）正常渲染 + `GET /roadbook/bundle/app.js` 与 `GET /roadbook/bundle/evolve.js` 均 **200** + `%TEMP%\roadbook-update.jsonl` 的 `paths` 变三条；「三张」留给 §5 成功标准第 6 条（版本级，批 2 落地后才成立）。三处逐字对齐（2026-10-07 用户在本会话裁决 —— A6 / C3：`STATE.md` 裁决字段改动需人在场）。
+- **怎么核的**：`lib/client.js:1806-1822` 只有两次 `registerTab`（`roadbook:gallery` order 45 / `roadbook:evolve` order 46）；`lib/` 15 个文件里没有 `client-session.js`；全仓 `roadbook:session` 只在设计文档出现 1 次（台账 #57）。
+- **另记一条新意向**：用户本轮提出「想要可视化 UI 编辑能力」⇒ 落 `STATE.md` U5 + `RISK.md` §2 末条（四种解读待选一 + 一条硬约束：浏览半是只读面，凡"编辑"都要新增写回接口 = 红线域）；**不并进 v0.10.0 的 63 条闭集**。
+
 ### TD-014 结案 · 宿主令牌改用真名 + 探针元素订正（批 6 收尾后补做）
 
 - **改的是什么**：`lib/client.js:1142-1147` 的 6 条令牌里 5 条的名字宿主**从来没有定义过**（`--dsw-alias-text-1` / `text-2` / `border-1` / `text-accent` / `text-warning`，在宿主 120 个别名里声明形态与引用形态**都是 0**）⇒ 插件一直渲染 fallback 常量、且不跟宿主明暗主题。改成宿主真名：`label-primary`（385）/ `label-secondary`（281）/ `border-l1`（62）/ `bg-layer-2`（33，唯一蒙对的）/ `link`（20）/ `state-warn-label`（25）。**fallback 一字未动** ⇒ 最坏情况与改前逐字节等价。
