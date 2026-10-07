@@ -46,7 +46,7 @@ const EXCLUDED_PREFIXES = ['skills/roadbook-atlas/vendor/'];
  * ——加进来就等于把"判据"降级成"愿望"，而这条闸存在的全部意义就是不让它退化。
  */
 const EXEMPT = [
-  { file: 'lib/client.js', lines: 2772, cap: 500, why: '要拆成多个客户端 half，先落宿主侧的分块装载机制（批 2 A1 硬门禁未过则整体回退）', until: '批 2 收尾' },
+  { file: 'lib/client.js', lines: 2359, cap: 500, why: '分块机制（#55）已落：自进化整段 412 行已搬进 lib/client-evolve.js，核心 2772→2359。余下是图册那半与两份文案表，要等 #56 真机硬门禁过了再继续搬（不过则 A 组整体回退）', until: '批 2 收尾' },
   { file: 'plugin/roadbook-autoload/index.js', lines: 867, cap: 500, why: '宿主接线 + 观测 + 动作闸三块耦合在一个 apply() 里，需要先抽纯逻辑', until: '批 3 收尾' },
   { file: 'skills/roadbook/bin/route.mjs', lines: 567, cap: 500, why: 'CLI 入口与 FACTS/STEPS 数据同文件，拆分要与批 3 的 --quote 改动同批做（一次改一个文件，避免两批都动它）', until: '批 3 收尾' },
 ];

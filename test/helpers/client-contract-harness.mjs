@@ -68,11 +68,15 @@ export function fakeReact() {
     };
 }
 
-/** 按 DSH 的 ModuleLoader 契约加载 bundle，返回 { config, exports, requested }。
+/** 按 DSH 的 ModuleLoader 契约加载 bundle，返回 { config, exports, requested, context }。
  *
  * options.fetch —— 给沙箱装一个假的 /sidebar API 端点（默认**不装**：任何意外的网络调用
  *   都会因 ReferenceError 立刻暴露，而不是悄悄成功）。
  * options.crypto: false —— 不装 WebCrypto，用来复现「非安全上下文」（非 localhost 的 http 打开界面）。
+ * options.document —— 装一个假 document（只有分块装载器会碰它；默认不装，碰了就响）。
+ *
+ * 返回的 `context` 必须留着：分块要在**同一个** vm 上下文里跑（注册表 `__roadbookChunks__`
+ * 与宿主件 `__roadbookChunkHost__` 都挂在那个全局上，换一个上下文就什么都取不到）。
  */
 export function loadBundle(options = {}) {
     const captured = [];
@@ -89,7 +93,9 @@ export function loadBundle(options = {}) {
     // 预览与「规格是否过期」都要用真 crypto：默认给沙箱补上，否则只有 fallback 分支被测到
     if (options.crypto !== false) sandbox.crypto = globalThis.crypto;
     if (typeof options.fetch === 'function') sandbox.fetch = options.fetch;
-    vm.runInNewContext(SOURCE, sandbox, { filename: 'lib/client.js' });
+    if (options.document !== undefined) sandbox.document = options.document;
+    const context = vm.createContext(sandbox);
+    vm.runInContext(SOURCE, context, { filename: 'lib/client.js' });
     assert.equal(captured.length, 1, 'client.js 必须且只能调用一次 window.__ModuleLoader__.load');
     const config = captured[0];
     const requested = [];
@@ -98,7 +104,26 @@ export function loadBundle(options = {}) {
         if (id === 'react') return options.react ?? fakeReact();
         throw new Error(`客户端半 require 了非基线模块：${id}`);
     });
-    return { config, exports, requested };
+    return { config, exports, requested, context };
+}
+
+/** 分块文件的路径（与宿主半 `lib/chunks.js` 的 `client-<名>.js` 同一口径）。 */
+export function chunkPathOf(name) {
+    return new URL(`../../lib/client-${name}.js`, import.meta.url);
+}
+
+/**
+ * 按**生产路径**装载一个分块：分块脚本在核心那个 vm 上下文里跑一遍（它自己登记工厂），
+ * 再由核心的 `takeChunk` 取导出表 —— 也就是 `resolveChunk` + `roadbook/host` 注入那一段真代码。
+ *
+ * 为什么不在这里重写一遍「取工厂 → 调用它」：那等于把被测的那一层换成测试自己写的实现。
+ * 本仓吃过这个亏 —— 假 /sidebar API 从不执行 better-sidebar 的 `requireAbsolute()` 校验，
+ * 于是整条链路可以全绿而真机全坏。分块契约同理，必须走核心自己那条路。
+ */
+export function loadChunk(bundle, name) {
+    const source = readFileSync(chunkPathOf(name), 'utf8');
+    vm.runInContext(source, bundle.context, { filename: `lib/client-${name}.js` });
+    return bundle.exports.__internals.takeChunk(name);
 }
 
 /**

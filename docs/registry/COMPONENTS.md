@@ -34,6 +34,9 @@
 | `test/client-contract-gallery.test.mjs` | 客户端契约·图册面（预览与归档 URL / 目录与规格 / 空态生成 / 路径折算） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
 | `test/client-contract-panels.test.mjs` | 客户端契约·面板面（更新条 / 自进化标签页 / 插件详情页三处贡献） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
 | `test/helpers/client-contract-harness.mjs` | 上述三份共用的夹具（假 React / bundle 加载器 / 假 ctx / 元素收集；不复制三份） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
+| `lib/chunks.js` | 客户端分块的**宿主半**：`GET /roadbook/bundle/<名>.js` 路由（名字白名单 / 固定目录 / 同源守卫 / ETag 记忆化 + 304） | 批 1（#55 分块机制） | `N/A（宿主半）` |
+| `lib/client-evolve.js` | 客户端分块「自进化」：标签页界面与三态判定（核心 bundle 按需注入 `<script>` 装载） | 批 1（#55；412 行由 `lib/client.js` 原样搬来） | `N/A（客户端分块；无独立可达性面，随标签页验）` |
+| `test/chunks.test.mjs` | 分块契约（白名单与穿越四种写法 / 路由四态与缓存三件套 / 两半常量一致 / 分块文件 ⊆ 白名单 / 宿主件无缺项 / 边界组件） | 批 1（#55 分块机制） | `N/A（测试）` |
 
 <!-- 上面是母版仓自己的登记行（表头 2026-10-07 由 TD-001 定：路径/用途/归属批次/可访问性）。生成出来的项目照同一表头填自己的文件；纯逻辑/脚本/文档一律 `N/A（纯文本|脚本）`，界面元素才有可访问性验证方式 -->
 

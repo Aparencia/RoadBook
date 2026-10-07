@@ -20,6 +20,29 @@
 node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.test.mjs" && node --test "plugin/roadbook-evolve/test/*.test.mjs"
 ```
 
+## [未发布]
+
+**v0.10.0 升级方案（`design/vnext-2026-10-07.md`）的在办改动。版本号由批 6 的 #62 一次升到位**
+（本次不动 `package.json`，所以七处对齐与 `git tag` 都不触发）。
+
+### 新增
+
+- **客户端分块机制（#55）**：`lib/client.js` 首屏不再背着整张「自进化」标签页（412 行已搬进
+  新文件 `lib/client-evolve.js`，核心 2772 → 2359 行）。分块是**普通同源脚本**，由新的宿主半
+  `lib/chunks.js` 经 `GET /roadbook/bundle/<名>.js` 送出：名字白名单 + 固定目录（挡路径穿越）、
+  与 `/roadbook/update/*` **同一条**同源守卫、`cache-control: no-cache` + 内容哈希 ETag（按 mtime/size
+  记忆化，命中回 304 且不重读文件）。契约是**读**本机 `dsh-better-sidebar@0.24.1` 的
+  `src/bundle-route.ts` + `src/client/chunk-loader.ts` 得来的，不是猜的；与它的差异点（用
+  `require("roadbook/host")` 一个虚拟 id 取代自有全局传外部件）与理由记在方案 §11.2。
+- **分块边界组件**：分块没到位时标签页显示「正在加载…」，装载失败显示原因与重试路径 ——
+  而不是「等分块到了再注册标签页」（那样 `webServer` 缺席会让整张标签页消失，丢掉现有的降级面）。
+
+### 修复
+
+- **`test/helpers/client-contract-harness.mjs` 的 vm 上下文改为共享**：bundle 与分块必须在**同一个**
+  vm 上下文里跑（注册表与宿主件都挂在那个全局上），并新增 `loadChunk()` —— 它走核心自己的
+  `takeChunk`（= 生产路径的「取工厂 → 注入宿主 → 调用」），不在测试里重写一遍被测逻辑。
+
 ## [0.9.1] - 2026-10-06
 
 **母版仓自身接入本流程（dogfooding），外加接入时带出的两处守护脚本缺陷。** 按升版判定表「修 bug / 改文档 → 修订号」走 `0.9.0 → 0.9.1`：随包内容里**只有 `template/security.ps1` 一处行为面变化，且是放宽**（少报，不会把原本绿的判红）；其余改动全落在母版仓自身的流程文件上（根 `AGENTS.md` / 根 `STATE.md` / `docs/` / 根 `check.ps1` / 根 `security.ps1`），这些路径**不在 `package.json` 的 `files` 白名单里** —— 装走的用户拿到的包，除版本号外与 `0.9.0` 无差别。**升级注意：不适用**（无破坏性变更：命令参数、回执 schema、目录约定、Loader 行 id 全未动，重启 DSH 即生效）。

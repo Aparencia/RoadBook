@@ -25,6 +25,7 @@ import {
     collectLabels,
     descriptorOf,
     loadBundle,
+    loadChunk,
     renderTab,
     sidebarCtx,
     strictCordisCtx,
@@ -100,7 +101,8 @@ test('apply 通过 ctx.effect 注册两个 single tab（图册 45 / 自进化 46
 
 test('版本号三处一致，且页脚真的显示它', async () => {
     const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-    const { exports } = loadBundle();
+    const bundle = loadBundle();
+    const { exports } = bundle;
     // 客户端 bundle 读不到 package.json（ModuleLoader 的 require 只有白名单），所以常量是手写的 ——
     // 这条断言就是防它悄悄漂移：升版本时漏改 client.js 会在这里红。
     assert.equal(exports.PLUGIN_VERSION, manifest.version, '客户端常量必须等于 package.json 的 version');
@@ -137,8 +139,10 @@ test('版本号三处一致，且页脚真的显示它', async () => {
     );
 
     // 第二个标签页的页脚同样必须显示当前版本（两处手写常量，升版本时都会漂）
-    const evolveFrame = exports.__internals.evolveFrame({ t: (key) => key, view: null, error: '', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
-    const evolveLabels = collectLabels(evolveFrame);
+    // 自进化的界面在分块里：先按生产路径把它装进来，再驱动它的一帧。
+    const { evolveFrame } = loadChunk(bundle, 'evolve');
+    const evolveTree = evolveFrame({ t: (key) => key, view: null, error: '', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
+    const evolveLabels = collectLabels(evolveTree);
     assert.ok(
         evolveLabels.some((label) => label.endsWith(`v${manifest.version}`)),
         `自进化页脚也应显示 v${manifest.version}，实际：${evolveLabels.slice(-3).join(' | ')}`,

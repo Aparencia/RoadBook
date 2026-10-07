@@ -23,8 +23,19 @@ import {
     descriptorOf,
     fakeReact,
     loadBundle,
+    loadChunk,
     renderTab,
 } from './helpers/client-contract-harness.mjs';
+
+/**
+ * 一次取齐两半：自进化的**界面与判定**在分块里（`lib/client-evolve.js`），
+ * **路由词与文案表**仍在核心里 —— 分块就是靠 `require("roadbook/host")` 拿后者的。
+ * 走 `loadChunk` 而不是自己取工厂调用：那一段（注入宿主 → 调工厂 → 落槽）正是被测的真代码。
+ */
+function evolveBundle(options) {
+    const bundle = loadBundle(options);
+    return { exports: bundle.exports, evolve: loadChunk(bundle, 'evolve') };
+}
 
 // ── 2026-10-05：更新条（宿主半判定 → 这一半只显示与发指令） ─────────────────────
 // 这些口径同样只能靠真机肉眼验，所以在 Node 里先钉死：三态文案、宿主路由不在时整条不渲染、
@@ -225,7 +236,7 @@ function evolvePayload() {
 }
 
 test('自进化三态：只有字面量 ok/hit 被承认，其余（含缺失与大小写不同）一律判不了', () => {
-    const { evolveVerdictOf, evolveVerdictKey } = loadBundle().exports.__internals;
+    const { evolveVerdictOf, evolveVerdictKey } = evolveBundle().evolve;
     assert.equal(evolveVerdictOf('ok'), 'ok');
     assert.equal(evolveVerdictOf('hit'), 'hit');
     assert.equal(evolveVerdictOf('unknown'), 'unknown');
@@ -239,7 +250,7 @@ test('自进化三态：只有字面量 ok/hit 被承认，其余（含缺失与
 });
 
 test('evolveView：没读数的信号不许显示成正常；tally 由行自己数，不采信宿主那一份', () => {
-    const { evolveView } = loadBundle().exports.__internals;
+    const { evolveView } = evolveBundle().evolve;
     assert.equal(evolveView(null), null);
     assert.equal(evolveView({ ok: false, error: 'handler' }), null, 'ok !== true = 整块不渲染');
     assert.equal(evolveView({ ok: true }), null, 'signals 不是数组 = 整块不渲染');
@@ -270,7 +281,9 @@ test('evolveView：没读数的信号不许显示成正常；tally 由行自己�
 });
 
 test('自进化一帧：unknown 渲染成「判不了」+ 中性虚线；有读数才配「正常」', () => {
-    const { evolveView, evolveFrame, dictionaries } = loadBundle().exports.__internals;
+    const { exports, evolve } = evolveBundle();
+    const { dictionaries } = exports.__internals;
+    const { evolveView, evolveFrame } = evolve;
     const t = evolveT(dictionaries);
     const view = evolveView(evolvePayload());
     const tree = evolveFrame({ t, view, error: '', unavailable: false, busy: false, onRefresh() {}, onTick() {} });
@@ -306,7 +319,9 @@ test('自进化一帧：unknown 渲染成「判不了」+ 中性虚线；有读�
 });
 
 test('自进化一帧：宿主路由不在 = 整块降级、一个按钮都不留；刷新失败 = 旧读数顶警告', () => {
-    const { evolveView, evolveFrame, dictionaries } = loadBundle().exports.__internals;
+    const { exports, evolve } = evolveBundle();
+    const { dictionaries } = exports.__internals;
+    const { evolveView, evolveFrame } = evolve;
     const t = evolveT(dictionaries);
 
     // ① 路由不在：只有说明，没有按钮（点 404 的死按钮不许出现）
@@ -340,13 +355,16 @@ test('自进化一帧：宿主路由不在 = 整块降级、一个按钮都不�
 
 test('自进化请求：状态走 GET /roadbook/evolve/status，重算走 POST /roadbook/evolve/tick', async () => {
     const requests = [];
-    const { exports } = loadBundle({
+    const { exports, evolve } = evolveBundle({
         fetch: async (url, init) => {
             requests.push({ url, method: init && init.method, body: init && init.body });
             return { ok: true, status: 200, json: async () => ({ ok: true, signals: [] }) };
         },
     });
-    const { fetchEvolveStatus, fetchEvolveTick, EVOLVE_STATUS_PATH, EVOLVE_TICK_PATH } = exports.__internals;
+    // 请求函数搬进了分块，路由词仍留在核心 —— 分块也是从 host 里读这两个词的，
+    // 所以这一条同时钉住了「分块与核心指同一条路由」。
+    const { fetchEvolveStatus, fetchEvolveTick } = evolve;
+    const { EVOLVE_STATUS_PATH, EVOLVE_TICK_PATH } = exports.__internals;
     assert.equal(EVOLVE_STATUS_PATH, '/roadbook/evolve/status');
     assert.equal(EVOLVE_TICK_PATH, '/roadbook/evolve/tick');
     const status = await fetchEvolveStatus();
@@ -360,53 +378,65 @@ test('自进化请求：状态走 GET /roadbook/evolve/status，重算走 POST /
 });
 
 test('自进化路由不在（404）/ 宿主连不上：如实报「不可用」，不是「全是正常」', async () => {
-    const missing = loadBundle({ fetch: async () => ({ ok: false, status: 404, json: async () => ({ error: 'not found' }) }) });
-    const gone = await missing.exports.__internals.fetchEvolveStatus();
+    const missing = evolveBundle({ fetch: async () => ({ ok: false, status: 404, json: async () => ({ error: 'not found' }) }) });
+    const gone = await missing.evolve.fetchEvolveStatus();
     assert.equal(gone.ok, false);
     assert.equal(gone.unavailable, true);
-    assert.equal(missing.exports.__internals.evolveView(gone), null, '读不到 = 整块不渲染（不是空表，更不是全绿）');
+    assert.equal(missing.evolve.evolveView(gone), null, '读不到 = 整块不渲染（不是空表，更不是全绿）');
 
-    const offline = loadBundle({
+    const offline = evolveBundle({
         fetch: async () => {
             throw new Error('Failed to fetch');
         },
     });
-    assert.equal((await offline.exports.__internals.fetchEvolveStatus()).unavailable, true);
+    assert.equal((await offline.evolve.fetchEvolveStatus()).unavailable, true);
 
-    const refused = loadBundle({
+    const refused = evolveBundle({
         fetch: async () => ({ ok: false, status: 403, json: async () => ({ ok: false, error: 'untrusted-origin' }) }),
     });
-    const denied = await refused.exports.__internals.fetchEvolveStatus();
+    const denied = await refused.evolve.fetchEvolveStatus();
     assert.equal(denied.unavailable, false, '403 是「路由在但拒绝了」：要显示原因，不能静默');
     assert.equal(denied.reason, 'untrusted-origin');
 
     // 200 但 ok !== true（宿主自己的兜底形状）也不许被当成一份读数
-    const odd = loadBundle({ fetch: async () => ({ ok: true, status: 200, json: async () => ({ ok: false, error: 'handler', message: 'boom' }) }) });
-    const bad = await odd.exports.__internals.fetchEvolveStatus();
+    const odd = evolveBundle({ fetch: async () => ({ ok: true, status: 200, json: async () => ({ ok: false, error: 'handler', message: 'boom' }) }) });
+    const bad = await odd.evolve.fetchEvolveStatus();
     assert.equal(bad.ok, false);
     assert.equal(bad.unavailable, false);
     assert.equal(bad.reason, 'handler');
 });
 
-test('自进化标签页：首帧渲染「正在读取信号…」，根节点满足原生 tab 高度契约，标题双语', () => {
-    const { exports } = loadBundle();
+test('自进化标签页：分块就位后首帧渲染「正在读取信号…」，根节点满足原生 tab 高度契约，标题双语', () => {
+    const { exports, evolve } = evolveBundle();
     const descriptor = descriptorOf(exports, { locale: 'zh-CN' }, EVOLVE_TAB_ID);
     assert.equal(descriptor.id, EVOLVE_TAB_ID);
     assert.equal(exports.EVOLVE_TAB_ID, EVOLVE_TAB_ID);
     assert.equal(descriptor.title(), '自进化');
     // 英文标题要另起一个 bundle：同一个 bundle 的模块级幂等标记不会让第二次注册生效
-    const en = descriptorOf(loadBundle().exports, { locale: 'en-US' }, EVOLVE_TAB_ID);
+    const enBundle = evolveBundle();
+    const en = descriptorOf(enBundle.exports, { locale: 'en-US' }, EVOLVE_TAB_ID);
     assert.equal(en.title(), 'Evolution');
     assert.equal(en.description(), 'Self-evolution signals: breach / OK / undecided, reported as three separate states');
+    // 分块必须真的交出界面：否则边界组件会永远停在「加载中」，而上面这些标题照样是对的
+    // （那正是「注册对了但界面打不开」的假绿）。
+    assert.equal(typeof evolve.EvolvePanel, 'function', '分块必须导出 EvolvePanel');
+    assert.equal(typeof evolve.evolveIcon, 'function', '分块必须导出 evolveIcon（描述符的图标读它）');
 
-    const tree = descriptor.component({
+    const tabProps = {
         ctx: { locale: 'zh-CN', betterSidebar: { features: [] } },
         store: { getPrefs: () => ({ pluginSettings: {} }) },
         scope: { sessionId: 'session-1', cwd: '/repo' },
         tab: { type: EVOLVE_TAB_ID },
         visible: true,
         onReferenceFile() {},
-    });
+    };
+    // 描述符的 component 是分块边界：先把 props 交给真组件这条接线本身也要钉住 ——
+    // 否则「标签页在、内容永远停在加载中」会是一种全绿的坏法。
+    const boundary = descriptor.component(tabProps);
+    assert.equal(boundary.type, evolve.EvolvePanel, '分块就位后边界必须渲染真组件');
+    assert.equal(boundary.props, tabProps, 'props 必须原样透传');
+
+    const tree = evolve.EvolvePanel(tabProps);
     assert.ok(tree && tree.props, '组件必须返回元素');
     assert.equal(tree.props.style.flex, '1 1 auto');
     assert.equal(tree.props.style.height, '100%');
