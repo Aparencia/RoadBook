@@ -9,7 +9,29 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+/**
+ * 从入口出发的**静态相对 import 闭包**（只看 `from './x.js'` 与副作用 `import './x.js'`）。
+ * 动态 `import(变量)` 不算 —— 宿主包走的正是动态解析，那才是本文件要护的形状。
+ */
+function staticClosure(entry) {
+  const found = []
+  const queue = [entry]
+  while (queue.length > 0) {
+    const current = queue.shift()
+    const path = fileURLToPath(current)
+    if (found.includes(path)) continue
+    found.push(path)
+    const source = readFileSync(path, 'utf8')
+    for (const match of source.matchAll(/\bfrom\s+['"](\.[^'"]+)['"]|(?:^|[\r\n;])\s*import\s+['"](\.[^'"]+)['"]/g)) {
+      const target = new URL(match[1] ?? match[2], current)
+      if (existsSync(fileURLToPath(target))) queue.push(target)
+    }
+  }
+  return found
+}
 
 test('入口模块在缺宿主包时仍可加载：导出面齐全，且逐个记录兜底原因', async () => {
   const plugin = await import('../index.js')
@@ -33,11 +55,16 @@ test('入口模块在缺宿主包时仍可加载：导出面齐全，且逐个�
 })
 
 test('入口模块不许再静态 import 宿主包（那正是「未运行」的成因）', () => {
-  const source = readFileSync(new URL('../index.js', import.meta.url), 'utf8')
-  assert.doesNotMatch(source, /^import[^\n]*from '@deepseek-ai\//m, '宿主包必须走守卫式解析')
-  assert.match(source, /loadHostPackage/, '守卫式解析函数必须在位')
-  assert.match(source, /host-fallback\.js/, '兜底实现必须被引用')
-  assert.match(source, /hostFallbacks/, '兜底原因必须对外可见（apply() 写日志与观测文件）')
+  // 判据跟着**静态 import 闭包**走，不钉死单个文件：2026-10-07 批 6 按 D14 把入口拆成
+  // 入口 + 六个分层文件，宿主包解析搬进了 autoload-host.js —— 这条守卫要问的是「整行插件里
+  // 有没有静态 import 宿主包」，钉死 index.js 的话，搬家之后它就变成一句空话（实际也真红了）。
+  const joined = staticClosure(new URL('../index.js', import.meta.url))
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n')
+  assert.doesNotMatch(joined, /^import[^\n]*from '@deepseek-ai\//m, '宿主包必须走守卫式解析')
+  assert.match(joined, /loadHostPackage/, '守卫式解析函数必须在位')
+  assert.match(joined, /host-fallback\.js/, '兜底实现必须被引用')
+  assert.match(joined, /hostFallbacks/, '兜底原因必须对外可见（apply() 写日志与观测文件）')
 })
 
 test('兜底实现与宿主同形状：技能正文标记 / 可调用判据 / 消息 id 与冻结', async () => {

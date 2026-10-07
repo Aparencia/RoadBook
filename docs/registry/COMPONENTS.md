@@ -69,6 +69,12 @@
 | `plugin/roadbook-autoload/trigger.js` | 门控三层纯逻辑（不 import dsh 包，普通 node 可单测） | 母版（2026-10-03 插件首版） | `N/A（纯逻辑）` |
 | `plugin/roadbook-autoload/team.js` | Team 消费层纯逻辑（三层分工开关；不 import dsh 包） | 母版 0.5.0（2026-10-05 硬规则唯一化） | `N/A（纯逻辑）` |
 | `plugin/roadbook-autoload/host-fallback.js` | 宿主包的本地等价实现（只在 `@deepseek-ai/*` 真解析不到时启用） | 母版（2026-10-04 子行平铺批） | `N/A（宿主兜底）` |
+| `plugin/roadbook-autoload/autoload-host.js` | 宿主包**守卫式**解析 + 行配置 schema（缺 `@deepseek-ai/*` 时退回 `host-fallback.js`，绝不静默变「未运行」） | 批 6（2026-10-07 D14 拆分自 plugin/roadbook-autoload/index.js） | `N/A（宿主接线）` |
+| `plugin/roadbook-autoload/autoload-runtime.js` | 插件运行时底座：有界 FIFO 记忆 / 观测落盘与轮转 / 会话侧探针（项目根·STATE·指纹·空转观测） | 批 6（2026-10-07 D14 拆分自 plugin/roadbook-autoload/index.js） | `N/A（宿主接线）` |
+| `plugin/roadbook-autoload/autoload-inject.js` | 注入主路径 `agent/pre-step`（含压缩后重注入判据与全部 skip/error 分支） | 批 6（2026-10-07 D14 拆分自 plugin/roadbook-autoload/index.js） | `N/A（宿主接线）` |
+| `plugin/roadbook-autoload/autoload-banner.js` | 常驻微提示注册（system prompt section；作用域注入与一次性 `ctx.get` 两条路径 + 四态回执） | 批 6（2026-10-07 D14 拆分自 plugin/roadbook-autoload/index.js） | `N/A（宿主接线）` |
+| `plugin/roadbook-autoload/autoload-gate.js` | 动作闸接线（`tools/pre-execute` 瀑布式；判据本身在 `gate.js`） | 批 6（2026-10-07 D14 拆分自 plugin/roadbook-autoload/index.js） | `N/A（宿主接线）` |
+| `plugin/roadbook-autoload/autoload-team.js` | Team 探针（消费可选服务 `roadbookTeam`，只解释不判断；结论供 `gate.js` 的 team-off 分支） | 批 6（2026-10-07 D14 拆分自 plugin/roadbook-autoload/index.js） | `N/A（宿主接线）` |
 | `plugin/roadbook-autoload/test/trigger.test.mjs` | 门控三层行为测试 | 母版（2026-10-03 插件首版） | `N/A（测试）` |
 | `plugin/roadbook-autoload/test/index.test.mjs` | 子行入口装配测试（含宿主 peer 缺失时的降级） | 母版（2026-10-03 审计修复批） | `N/A（测试）` |
 | `plugin/roadbook-autoload/test/host-fallback.test.mjs` | 宿主兜底实现测试 | 母版（2026-10-04 子行平铺批） | `N/A（测试）` |

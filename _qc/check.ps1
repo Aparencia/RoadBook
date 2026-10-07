@@ -625,7 +625,7 @@ Check (-not $noNum) "提交信息统一带卡号（缺：$($noNum -join ', ')）
 
 Write-Host "== 6. 自动加载插件 plugin/roadbook-autoload =="
 $plg = Join-Path $root 'plugin\roadbook-autoload'
-foreach ($k in @('package.json','cordis.patch.yml','index.js','trigger.js','host-fallback.js','icon.svg','README.md','locale\zh.json','locale\en.json','test\trigger.test.mjs','test\index.test.mjs','test\banner.test.mjs','test\host-fallback.test.mjs')) {
+foreach ($k in @('package.json','cordis.patch.yml','index.js','autoload-host.js','autoload-runtime.js','autoload-inject.js','autoload-banner.js','autoload-gate.js','autoload-team.js','trigger.js','host-fallback.js','icon.svg','README.md','locale\zh.json','locale\en.json','test\trigger.test.mjs','test\index.test.mjs','test\banner.test.mjs','test\host-fallback.test.mjs')) {
     Check (Test-Path (Join-Path $plg $k)) "插件文件存在：plugin/roadbook-autoload/$k"
 }
 $plgPkg = $null
@@ -645,15 +645,20 @@ if ($null -ne $plgPkg) {
     Check (($plgYml -match '(?m)^- insert:') -and ($plgYml -match ("(?m)^\s*-\s*id:\s*" + [regex]::Escape($plgPkg.name) + '\s*$')) -and ($plgYml -match ("(?m)^\s+name:\s*'?" + [regex]::Escape($plgPkg.name) + "'?\s*$"))) '插件 patch 形如 - insert: 且 id/name 与包名一致'
 }
 $plgIdx = [IO.File]::ReadAllText((Join-Path $plg 'index.js'), [Text.Encoding]::UTF8)
-Check (($plgIdx -match 'agent/pre-step') -and ($plgIdx -match 'export const inject') -and ($plgIdx -match 'skill-invocation')) '插件挂 agent/pre-step、声明 inject、注入形状同内置（skill-invocation）'
-Check (($plgIdx -match 'renderSkillContent') -and ($plgIdx -match 'dsh-skill')) '插件复用官方 renderSkillContent（不自造正文格式）'
-Check (($plgIdx -match 'loadHostPackage') -and ($plgIdx -notmatch "(?m)^import[^\n]*from '@deepseek-ai/") -and ($plgIdx -match 'hostFallbacks')) '插件的宿主包走守卫式解析（静态 import 宿主包 = 解析不到时整行静默变「未运行」，禁止回退）'
-Check (($plgIdx -match "event: 'loaded'") -and ($plgIdx -match 'host-fallback\.js')) '插件 apply() 写就绪回执 loaded（面板外的「本行跑起来了」自证）且带本地兜底实现'
+# 2026-10-07 批 6 按 D14 把入口拆成七份（867 → 67 行 + 六个 autoload-*.js）：插件的"整体形状"断言
+# 一律看**目录下的全部 .js**，不再钉死 index.js —— 钉死单文件时，搬家会被读成"判据失效"，
+# 而这几条要问的本来就是"整行插件里有没有这件事"。
+$plgAll = (@(Get-ChildItem -Path $plg -Filter '*.js' -File | Sort-Object Name | ForEach-Object { [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::UTF8) }) -join "`n")
+Check ($plgIdx -match "export \{ Config, hostFallbacks \} from './autoload-host\.js'") 'D14 拆分后入口仍是唯一对外形状（Config / hostFallbacks 从 index.js 再导出——宿主与两个测试都只认入口，搬走即判红）'
+Check (($plgAll -match 'agent/pre-step') -and ($plgAll -match 'export const inject') -and ($plgAll -match 'skill-invocation')) '插件挂 agent/pre-step、声明 inject、注入形状同内置（skill-invocation）'
+Check (($plgAll -match 'renderSkillContent') -and ($plgAll -match 'dsh-skill')) '插件复用官方 renderSkillContent（不自造正文格式）'
+Check (($plgAll -match 'loadHostPackage') -and ($plgAll -notmatch "(?m)^import[^\n]*from '@deepseek-ai/") -and ($plgAll -match 'hostFallbacks')) '插件的宿主包走守卫式解析（静态 import 宿主包 = 解析不到时整行静默变「未运行」，禁止回退）'
+Check (($plgAll -match "event: 'loaded'") -and ($plgAll -match 'host-fallback\.js')) '插件 apply() 写就绪回执 loaded（面板外的「本行跑起来了」自证）且带本地兜底实现'
 $plgBad = @('locale\zh.json','locale\en.json') | Where-Object { $t = [IO.File]::ReadAllText((Join-Path $plg $_), [Text.Encoding]::UTF8); ($t -notmatch '"title"\s*:') -or ($t -notmatch '"description"\s*:') }
 Check (-not $plgBad) "插件中英文展示元信息齐（缺：$($plgBad -join ', ')）"
 $plgRdm = [IO.File]::ReadAllText((Join-Path $plg 'README.md'), [Text.Encoding]::UTF8)
 Check ($plgRdm -match 'trigger\.test\.mjs') '插件 README 写了离线单测命令'
-Check ($plgIdx -match 'surfaceInjectionState') '插件：压缩后重注入的可见面判据在位（禁止静默退回「只认日志去重」）'
+Check ($plgAll -match 'surfaceInjectionState') '插件：压缩后重注入的可见面判据在位（禁止静默退回「只认日志去重」）'
 Check (([IO.File]::ReadAllText((Join-Path $root 'README.md'), [Text.Encoding]::UTF8)) -match 'plugin/roadbook-autoload') '根 README 指向自动加载插件（可发现）'
 Write-Host "== 6b. 主插件伞包（仓库根 = roadbook）=="
 $umbPkgPath = Join-Path $root 'package.json'

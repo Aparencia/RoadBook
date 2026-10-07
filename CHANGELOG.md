@@ -25,6 +25,16 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 **v0.10.0 升级方案（`design/vnext-2026-10-07.md`）的在办改动。版本号由批 6 的 #62 一次升到位**
 （本次不动 `package.json`，所以七处对齐与 `git tag` 都不触发）。
 
+### TD-008 到期项偿清：`plugin/roadbook-autoload/index.js` 867 → 67 行（批 6 第四次 D14 拆分 —— 2026-10-07 批 6 第四刀）
+
+- **症状（到期未处理 = 该闸判红）**：`test/d14-lines.test.mjs` 的豁免清单里，这条的到期条件写的就是「批 6 收尾」（2026-10-07 从「批 3 收尾」订正过来 —— 批 3 的写作用域根本不含 `plugin/`）。867 行 > D14 上限 500，而它同时是**唯一没有机械落点看得见的那类债**：豁免清单不许烂成永久例外，所以要么拆、要么在批 6 收尾时让闸变红。
+- **修法（按「闭包是否一起搬」切，不按行数硬切）**：入口只留装配，逻辑分成六个 `autoload-*.js`，每个都是一块**能单独读、单独说的设施**，`apply()` 里原本隐式的十余个常驻集合与观测函数**整体搬进工厂函数**（`createRuntime` / `createReporter` / `createProbes`）再显式传下去 —— 这正是本仓两次撤回拆分时踩的那条线（「搬了声明、没搬闭包」，见 `docs/lessons/` 的测量载体脱钩族）：`autoload-host.js` 宿主包守卫式解析 + 行配置 schema / `autoload-runtime.js` 有界记忆 · 观测落盘轮转 · 会话侧探针 / `autoload-inject.js` 注入主路径 / `autoload-banner.js` 常驻提示 / `autoload-gate.js` 动作闸接线 / `autoload-team.js` Team 探针。**入口 867 → 67 行**，六片 58–356 行，全部达标。
+- **对外形状零改动（拆分唯一不能破的东西）**：具名导出仍是 `Config` / `apply` / `hostFallbacks` / `inject` / `name` **五名逐名一致**（`Config` 与 `hostFallbacks` 从入口再导出）；插件套件 **94/94**、根套件 **235/235** 全绿，**测试文件一行断言逻辑都没为拆分让路**。
+- **判据跟着搬家走（三条钉死单文件的断言改成"看整行插件"）**：`_qc/check.ps1` §6 的四条形状断言与 `plugin/roadbook-autoload/test/host-fallback.test.mjs` 的「不许静态 import 宿主包」改成扫**目录下全部 `.js`** / **静态 import 闭包**（钉死 `index.js` 时它们会在搬家后变成一句空话 —— 实测第一条真红了）；`test/route-cli.test.mjs` 的 `includeSubagents` 默认值断言同改。**新增一条不许再搬走的断言**：`export { Config, hostFallbacks } from './autoload-host.js'` 必须在入口里（宿主与两个测试都只认入口）。
+- **证伪一次（两处新判据同时见红、无连带）**：会话内探针制造两处突变 —— ① 入口再导出一分为二 ② 目录里多一个静态 `import ... from '@deepseek-ai/dsh-llm'` 的文件 ⇒ `_qc/check.ps1` **403 通过 / 2 失败**、退出码 1，红的恰好是 `D14 拆分后入口仍是唯一对外形状` 与 `插件的宿主包走守卫式解析`；还原后 **405 / 0**、退出码 0。探针跑完即清（`git status --porcelain` 只剩本批 14 个路径）。
+- **随包白名单同批补（0.2.1 那个「面板显示未运行」的同族风险）**：`plugin/roadbook-autoload/package.json` 的 `files` 补进六个新模块 —— `test/packaging.test.mjs` 的「静态 import 闭包 ⊆ files」断言实测通过；登记页新增六行 `D14 拆分自 plugin/roadbook-autoload/index.js`（`test/d14-lines.test.mjs` 的拆分证明义务：六片 + 入口 = 998 行 > 500 ⇒ 确实是被上限逼的），豁免清单里那条**删除**（留着会被「已达标条目」断言判红）。
+- **一次真实的仪器事故（按 C1 红灯三问处置，未改任何被测物）**：`edit` 工具改写 `_qc/check.ps1` 时**把 UTF-8 BOM 吃掉了**（`HEAD` 首三字节 `EF BB BF` → 工作区 `23 32 5F`）—— 正是本仓 `docs/lessons/2026-10-06_编辑工具丢BOM.md` 那条；按字节比对定位后**只补回 BOM**（内容一字未动），`_qc/check.ps1` 自身行数 974 ≤ `$selfCap` 985。
+
 ### 三条测试类债结案：幽灵口径第二刀 / 引用面加入数据文件 / 一次性脚本补标注（TD-002 / TD-003 / TD-004 —— 2026-10-07 批 6 后半第三刀）
 
 - **症状**：`orphans.ps1` 实测 `[文档幽灵] 6 项`、`[零引用导出] 4 项`、`[反向幽灵] 0 项` —— 三条债的清偿条件都写着"批 6 / 6-6 逐项定性"，而定性一直没做，读数只能被当噪声（台账里记的 13 / 21 / 48 全是漂过的旧值）。

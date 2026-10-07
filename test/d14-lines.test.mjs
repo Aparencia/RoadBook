@@ -47,7 +47,9 @@ const EXCLUDED_PREFIXES = ['skills/roadbook-atlas/vendor/'];
  */
 const EXEMPT = [
   { file: 'lib/client.js', lines: 2528, cap: 500, why: '分块机制（#55）已落：自进化整段 412 行已搬进 lib/client-evolve.js、装载器自增 164 行（核心 2772→2524，净减 248，不是早先误记的 2772→2359）；再把生产装载函数 loadChunk 挂进 __internals 供契约测试驱动（+4）⇒ 2528。余下 ≈2028 行（图册那半 + 两份文案表 + 详情页 + 更新条）等 #56 真机硬门禁过了再搬', until: '批 2 收尾' },
-  { file: 'plugin/roadbook-autoload/index.js', lines: 867, cap: 500, why: '宿主接线 + 观测 + 动作闸三块耦合在一个 apply() 里，需要先抽纯逻辑。**到期批次 2026-10-07 订正**：原记「批 3 收尾」是笔误 —— 批 3 的写作用域是 `skills/roadbook/bin/` 与 `_qc/`，根本不含 `plugin/roadbook-autoload/`（方案 §6）；改判到写作用域含该目录、且承担清偿与归档的收口批', until: '批 6 收尾' },
+  // 2026-10-07 批 6 收尾删除一条：`plugin/roadbook-autoload/index.js` 867 → 67 行（拆成入口 + 六个
+  // `autoload-*.js` 分层件，导出面 5 名逐名一致、插件套件 94/94），到期项已偿清 —— 清单里留着它
+  // 就是"已达标条目"，会被下面第三条断言判红。
 ];
 
 /** node 口径行数（与 `wc -l` 语义一致：末尾换行不算一行）。 */

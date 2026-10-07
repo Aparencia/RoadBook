@@ -12,6 +12,12 @@
   },
   "files": [
     "index.js",
+    "autoload-host.js",
+    "autoload-runtime.js",
+    "autoload-inject.js",
+    "autoload-banner.js",
+    "autoload-gate.js",
+    "autoload-team.js",
     "trigger.js",
     "gate.js",
     "state.js",

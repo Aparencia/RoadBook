@@ -589,10 +589,16 @@ test('A15d --dispatch / --chain 用法纪律：缺事实 2；--done 写给别的
 
 test('A15e 台账 #27 的冲突已被结构性解除：includeSubagents 默认仍是 false，而派单包自带整张卡', () => {
   // 这条断言护的是决策的前提，不是代码风格：派单内嵌这条路成立，恰恰因为子 agent 那边没有注入
-  // （`plugin/roadbook-autoload/index.js` 的 schema `includeSubagents` 默认 false ⇒ 它不知道自己在按卡干活）。
+  // （`plugin/roadbook-autoload/` 的 schema `includeSubagents` 默认 false ⇒ 它不知道自己在按卡干活）。
   // 一旦有人把这个默认改成 true 来自「修好」P0，就等于打开「子代理不受卡约束」的口子 ——
   // 那时本仓的裁决（docs/decisions/2026-10-07_P0-子代理执行卡.md）必须重开，而不是让测试静静变绿。
-  const plugin = readFileSync(path.join(ROOT, 'plugin', 'roadbook-autoload', 'index.js'), 'utf8')
+  // 扫描面 = 插件目录下的全部 .js（2026-10-07 批 6 按 D14 把入口拆成七份，schema 搬进了
+  // autoload-host.js —— 钉死单文件的写法会把「搬了家」误判成「默认值被改了」）。
+  const dir = path.join(ROOT, 'plugin', 'roadbook-autoload')
+  const plugin = readdirSync(dir)
+    .filter((name) => name.endsWith('.js'))
+    .map((name) => readFileSync(path.join(dir, name), 'utf8'))
+    .join('\n')
   assert.match(plugin, /includeSubagents:\s*z\.boolean\(\)\.default\(false\)/, 'includeSubagents 默认必须是 false（P0 的裁决前提）')
   const j = cliJson(['--dispatch', '4-3', '--facts', FACTS_ARG, '--json'])
   assert.equal(j.text, readFileSync(path.join(ROOT, j.dir, j.file), 'utf8').replace(/\n$/, ''), '整张卡在派单包里 ⇒ 子 agent 不需要读卡文件也能按卡干活')
