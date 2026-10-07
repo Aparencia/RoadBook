@@ -628,3 +628,26 @@ test('A15f --out 落盘：stdout 只剩一行指针（主线程不背卡正文�
     assert.equal(cli(['--chain', '--facts', FACTS_ARG, '--out', out]).status, 2)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+test('A15g 事实文件带 UTF-8 BOM 也读得进（PS 5.1 的 Set-Content -Encoding UTF8 必然写 BOM）', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'roadbook-facts-'))
+  try {
+    const facts = JSON.stringify(fixture.scenarios[Object.keys(fixture.scenarios)[0]].facts)
+    const plain = path.join(dir, 'facts-plain.json')
+    const bom = path.join(dir, 'facts-bom.json')
+    writeFileSync(plain, facts)
+    writeFileSync(bom, `\uFEFF${facts}`)
+    assert.deepEqual([...readFileSync(bom).subarray(0, 3)], [0xef, 0xbb, 0xbf], '夹具自带前置 BOM（否则这条测试是空转）')
+    const a = cli(['--json', '--facts-file', plain])
+    const b = cli(['--json', '--facts-file', bom])
+    assert.equal(a.status, 0, a.stderr)
+    assert.equal(b.status, 0, `带 BOM 的事实文件应判绿（0-1 卡的链序复算命令就是这么被写出来的）\n${b.stdout}\n${b.stderr}`)
+    assert.equal(b.stdout, a.stdout, 'BOM 只该被剥掉，判定结果一个字节都不许变')
+    // 反向对照：剥 BOM ≠ 放宽——解析不出的内容照样判红 1，且报的是解析失败而不是别的原因
+    const bad = path.join(dir, 'facts-bad.json')
+    writeFileSync(bad, '\uFEFF{ not json }')
+    const c = cli(['--json', '--facts-file', bad])
+    assert.equal(c.status, 1, '坏 JSON 必须判红 1')
+    assert.match(c.stderr, /JSON 解析失败/, '报错要指向根因（解析失败），不许被 BOM 处理吞掉')
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})

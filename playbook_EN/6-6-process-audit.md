@@ -8,7 +8,7 @@
 
 After receiving the start instruction, first send back a receipt:
 
-1. **Trigger confirmation**: read STATE.md `体检计数` (continue only if ≥15; if the number does not match, check with the user first).
+1. **Trigger confirmation**: **either** entry being satisfied is enough to start — ① **periodic entry**: read STATE.md `体检计数` (continue only if ≥15; if the number does not match, check with the user first); ② **event-driven entry** (**not subject to the ≥15 limit**): the human names this audit, a major incident happens (production P0 / a red-line domain is touched), or the project moves to another machine. When going through the event-driven entry, the first line of the receipt must state **which entry it was + the trigger's verbatim words** (the human's own sentence / the incident number or report path / the evidence of the machine change), so that "the counter is not at 15 yet" does not look like starting in violation.
 2. **Assumptions list**: the 3~5 default assumptions you made on the user's behalf (e.g. "all proposals from the previous round have landed or been rejected", "the summary lines of the most recent 2 archives are readable"), each noting how it will be verified.
 3. **Clarifying questions (≤5, save any that can be saved)**: the default three questions — should the constitution be touched this round? What to do with the previous round's undecided proposals? Who decides on landing the proposals? Anything findable in STATE.md and the reports must not be asked of the human.
 4. **Scan scope declaration**: sixteen classes of signals will be scanned (gate green rate / stop-and-ask hot spots / lesson recurrence / silent constitutional items / doc orphan line rate / expired parallel state / orphan list convergence / file count inflation / commit cadence / remote and push lag / expired drill record / card-behavior baseline artifacts unconsumed / route drift / no-op rule / evidence-arm contamination / review actionable-finding rate), data sources = docs/reviews/, docs/TECH_DEBT.md, docs/lessons/, docs/archive/, docs/registry/ + STATE.md (parallel-state register / file-count baseline / recent archives / start anchor) + the summary line of `orphans.ps1` + `git log --oneline`, `git status -sb`, `git remote -v`.
@@ -135,7 +135,8 @@ Give, item by item:
 **Iron order: write back state first → then commit → then re-run check.ps1 and get 0.**
 
 Update STATE.md:
-- `体检计数` reset to zero (accumulate from 0 again); `最近完成` insert one entry: process audit complete + number of proposals adopted
+- `体检计数`: **the periodic entry (≥15) resets it to zero** (accumulate from 0 again); **the event-driven entry does not reset it** — the counter is the clock of "how many archives have passed since the last periodic audit", and having an event-driven audit zero it silently erases a periodic audit that has not come due yet (the counter moves in exactly two places: "periodic audit resets it" and "5-1 Archive adds 1" — nothing else may touch it). In the same batch, state in `最近完成` which entry this round used (periodic / event).
+- `最近完成` insert one entry: process audit complete + number of proposals adopted
 - `工作树状态` = clean (the audit itself must also land one commit, see below); `下一步` = 5-1 Archive (an audit always produces the PROCESS report and this commit, so "no file was changed this round" cannot happen)
 
 Then commit and re-run:

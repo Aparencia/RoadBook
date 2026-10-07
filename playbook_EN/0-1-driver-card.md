@@ -26,6 +26,7 @@ Execute in order; if any item is missing, stop immediately and ask the user — 
    - current stage / current task / tier
    - where you left off (verbatim text of the "Next" field in STATE.md)
    - the card to execute this time: <card number-name> (read from STATE.md "Next"; if absent, ask the user for their intent)
+   - chain-next = <card number-name> (**recomputed**, never copied from "Next"): `node skills/roadbook/bin/route.mjs --chain --facts-file <this project's facts file>` — the facts are the nine keys in STATE.md's 裁剪记录 plus the three agent backfills (`scale` / `hasCI` / `structChange`), and the file is written as UTF-8 (a leading BOM is tolerated); if no facts file exists yet, use `--scenario <the closest of the four tiers>`. **If it disagrees with "the card to execute this time" → write out both verbatim and say where they differ** (the tool computes the card chain, STATE.md records the human's verdict) — silently following either one is forbidden.
    - git status: verbatim `git status --short` output + `git log --oneline -3`; working tree dirty → report "N uncommitted files" [disambiguated] and let the user pick one of three (commit now / log to docs/TECH_DEBT.md and shelve / discard the changes)
    - rule version: the verbatim `规则版本：` line at the top of AGENTS.md; if it lags the master or the whole line is missing → say plainly "the rule copy is not in sync" and treat it as a missing field
 4. Wait for the user to say "继续" ("continue") or give a new intent.
@@ -45,7 +46,7 @@ Execute in order; if any item is missing, stop immediately and ask the user — 
 ⑦ Upgrading dependencies → 7-2; clearing tech debt → 7-3; release → 5-2; retiring a feature → 7-4.
 ⑧ Designing UI or interaction (this project has a UI) → walk 3-4→3-5→3-6 from 3-4 onward (UI and interaction / colour and style / motion and micro-interaction).
 ⑨ Structural rot, or a big move of folders and modules → execute the 7-8 project refactor card.
-⑩ STATE.md health-check count ≥15 → execute the 6-6 flow health-check card (run a system self-check every 15 archives).
+⑩ STATE.md health-check count ≥15 **or an event-driven entry hit** (the human names an audit / a major incident / the project moves to another machine — **not subject to the ≥15 limit**) → execute the 6-6 flow health-check card (run a system self-check every 15 archives; the two entries' receipt wording and whether the counter resets are in that card's ①.1 and ④).
 ⑪ Vague intent ("把它弄好" ("just make it work"), "优化一下" ("optimize it a bit")) → guessing is forbidden. Clarify with three questions:
    What is the expected behavior? What is the actual behavior now? What was the last change (or ask the user for an approximate time)?
    (For clarifying questions that carry a recommended answer, and assumptions that carry a confidence number, see AGENTS.md D1.)

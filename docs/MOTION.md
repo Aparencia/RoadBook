@@ -1,80 +1,60 @@
 # MOTION · 动效与微交互（Motion and Micro-interactions；3-6 卡产物；≤100 行）
-> 最近核对 —（骨架未核对；核对后填 <日期> @ <提交哈希>）
+> 最近核对 2026-10-07 @ 95068bc
 > 谁写：3-6 动效与微交互 ｜ 谁读：3-4 界面设计、4-1 每批编码、4-2 审查、7-1 UI 改动 ｜ 何时更新：加或改动效、改时长/缓动、加微交互、改降级策略时
 > 不适用时怎么写：界面不需要动效 → 各节写一行 `N/A（理由）`，**不许整份不建**；理由要能判定，例：`N/A（纯命令行工具，无界面动效）`。
 
-## 1. 时长表（ms；一次交互只用一个档，别叠加）
+## 1. 主结论：本项目界面零动效（含证据）
 
-| 场景 | 时长 | 缓动 | 说明 |
-| :-- | :-- | :-- | :-- |
-| hover（悬停反馈） | 100ms | 标准 | 只用于无位移的即时反馈（颜色、描边、阴影）；带位移或抬升用 150–200ms |
-| press（按下） | 50–120ms | 标准 | 纯颜色加深 50–100ms；带位移或缩放 80–120ms；必须比 hover 跟手 |
-| 进入（元素出现） | 200–300ms | 减速 | 产品 UI 用本档；模态与抽屉 300–420ms；短于 150ms 看不出来 |
-| 退出（元素消失） | 进场的 60–75% | 加速 | 退出比进入快（300ms 进 → 180–225ms 出），绝不反过来 |
-| 页面/视图转场 | 200–300ms | 标准 | 超过 300ms 就是卡顿感 |
-| 骨架屏循环 | 1200ms | 线性 | 循环动画要慢且匀速，不抢注意力 |
+- 界面 = DSH better-sidebar 侧边栏的两张标签页「图册」「自进化」（`lib/client.js` 2528 行 + `lib/client-evolve.js` 469 行，全部用内联 `style` 对象建 DOM；全仓无 `.css` 文件）。
+- 证据（2026-10-07 @ 95068bc，项目根执行）：
 
-## 2. 缓动四条（只用这四条，自造曲线 = 风格分裂）
+```powershell
+Select-String -Path lib\client.js,lib\client-evolve.js -Pattern 'transition|animation|prefers-reduced'
+Get-ChildItem -Path lib -Recurse -File -Filter *.js | Select-String -Pattern 'hover|:active|:focus|boxShadow|transform|opacity'
+```
 
-| 名称 | cubic-bezier | 用在哪 |
+- 两条输出都是空（零匹配行）：本项目不只是没有过渡与动画，连 hover/active 的视觉态也没有。
+- 为什么定成零动效：面板是密集信息面（一屏要列完目录下全部图纸与全部信号行），动效只增加等待；标签页切换由宿主 better-sidebar 绘制（`lib/client.js:1805` 只调 `registerTab`，`lib/client.js:1833` 注释「better-sidebar 拿它画标签栏」），那层动效属宿主，不记在本项目账上。
+- 所以本文件的有效内容只有两条：§3 现有反馈形态不许被"顺手加动效"改掉；§5 新增第一条动效时必须同批做什么。
+
+## 2. 时长与缓动
+
+- `N/A（当前零动效：全仓无 transition/animation 声明，没有时长与缓动可填）`。
+- 将来新增时的唯一取值出处 = `playbook/3-6-动效与微交互.md`（动作 4 给时长与缓动、动作 5 给降级）；**本文件不复制那套数值**（一处事实源），3-6 卡取值后再写回本节。
+- 没有现成的宿主档可沿用：本项目样式只读宿主 alias 令牌（`lib/client.js:1141-1148`），而宿主 alias 族里查不到动效档——把 DSH 本体 `resources/app.asar` 整份读入后对 `dsw-alias-[a-z0-9-]+` 去重计数：3053 处、120 个不同名，无一含 duration/motion/ease/transition/timing/anim。
+- 未核对项：better-sidebar 插件本机未安装，它是否自带动效档未查（真要用宿主档，先补这一次核对再落值）。
+- 曲线不新造：用 3-6 卡给的那一套 `cubic-bezier`；时长令牌 `--duration-n` 归本文件（约定的出处 = `template/docs/DESIGN_TOKENS.md:88`，那一条是模板侧的命名规则）——新增令牌先在本节写定值。本项目的令牌事实（色彩/字号/间距/圆角）在 `docs/DESIGN_TOKENS.md`，那一节没有时长档，别去那儿找。
+
+## 3. 微交互：反馈靠文字与描边，不靠动效
+
+| 交互 | 现有反馈 | 出处 |
 | :-- | :-- | :-- |
-| 标准 | cubic-bezier(0.2, 0, 0, 1) | hover、转场、通用默认 |
-| 减速 | cubic-bezier(0, 0, 0.2, 1) | 进入、展开、Toast 出现 |
-| 加速 | cubic-bezier(0.4, 0, 1, 1) | 退出、收起、Toast 消失 |
-| 强调 | cubic-bezier(0.34, 1.56, 0.64, 1) | 成功勾选、关键数字变化（有回弹，别用在位移 >8px 处；禁止用于 hover/active 这类状态切换） |
+| 按钮可点 | 主按钮 accent 描边 + accent 文字；次按钮 border 描边 + 常规文字；`cursor: pointer` | `lib/client.js:1149-1165` |
+| 复制 | 按钮文字在「复制 / 已复制」间原地切换（无 Toast、无动画） | `lib/client.js:1239` |
+| 图纸过期 / 判不了 / 元数据错 | 一行 11px 文字（warn 或 muted 色） | `lib/client.js:1229-1231` |
+| 状态徽章 | 文字 + 描边底色；`unknown` 用虚线框与「正常」的实线框区分 | `lib/client.js:1166-1179`、`1206-1225` |
+| 键盘焦点 | 真 `<button type="button">` / `<a>`，未覆盖 `outline`，用浏览器默认焦点环 | `lib/client.js:1235-1239` |
 
-## 3. 按钮动效选项表（每屏只选一种；混用两种 = 点击手感不一致）
+- 上表第一行是**静止态差异**，不是悬停/按下态：本项目没有 hover/active 反馈（见 §1 第二条证据）。
+- 其余微交互 `N/A（触发它们的控件或状态在本项目不存在）`：loading、骨架屏、Toast 进出、列表增删、折叠展开、数字变化、提示气泡。
 
-| 选项 | 适用场景 | 时长 | 缓动 | 一行 CSS | 禁忌 |
-| :-- | :-- | :-- | :-- | :-- | :-- |
-| 按下缩放 0.97 | 默认（表单、工具栏） | 80–120ms | 标准 | `:active { transform: scale(0.97); }` | 缩到 0.9 以下、缩放带位移 |
-| 上浮 -1px + 阴影加深 | 卡片式主按钮、营销页 | 100ms | 减速 | `:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }` | 表格行内按钮（会带动行高） |
-| 颜色阶跃 | 表格、密集列表（省性能） | 100ms | 标准 | `:hover { background: var(--color-brand-700); }` | 只换色不换对比度（文字看不清） |
-| 涟漪 | 移动端主操作 | 300ms | 减速 | 用组件库 Ripple，`transform: scale()` 扩散 | 桌面密集列表（噪声大） |
-| 图标位移 2px | 带箭头的「下一步」「查看」 | 100ms | 减速 | `.btn:hover .icon { transform: translateX(2px); }` | 位移 >8px、图标与文字错位 |
-| 无动效 | 行内文字按钮、危险操作确认 | 0ms | — | 不加 transition | 拿"无动效"当偷懒借口：hover 换色仍要有 |
+## 4. 动效选项与会话内开关
 
-## 4. 微交互清单（逐项写清"触发 → 表现 → 时长"，缺项写 `N/A（理由）`）
+- `N/A（无动效可关：代码里没有 prefers-reduced-motion 分支，也没有动效相关设置项）`。
+- 本项目唯一的设置项是「图纸目录」（`lib/client.js:2254-2266` 的 `settingsDeclaration`，只有一个 `type: "text"` 的 `dir`），与动效无关。
 
-| 微交互 | 触发 | 表现 | 时长 |
-| :-- | :-- | :-- | :-- |
-| hover | 鼠标移入可点元素 | 底色/阴影变化，指针变手型 | 100ms |
-| press | 按下 | 见 §3 选定的那一种 | 50–120ms（带位移或缩放 80–120ms） |
-| focus 环 | 键盘 Tab 到控件 | `outline: 2px solid var(--color-focus)` + `outline-offset: 2px`，与背景对比度 ≥3:1；不许 `outline: none`，也不许用 `box-shadow` 冒充 | 立即（0ms，无过渡） |
-| 按钮内 loading | 点击后请求中 | 图标换转圈，按钮宽度不变，禁止重复点击 | 循环 1200ms |
-| 骨架屏 | 首次加载 | 灰块脉冲，形状与真实内容一致（优于整屏转圈） | 循环 1200ms |
-| Toast 进出 | 操作成功/失败 | 进入减速、退出加速，停留 3–5s，容器带 `aria-live="polite"` | 进入 200ms / 退出 150ms |
-| 列表增删 | 新增或删除一行 | 新增淡入上移 4px；删除淡出左移，随后布局收拢 | 200–300ms |
-| 折叠展开 | 点开分区 | `grid-template-rows: 0fr → 1fr` 过渡，内容淡入（过渡期间不禁用点击） | 200–300ms |
-| 数字变化 | 统计数字更新 | 数字滚动或淡入替换，不做长时间跳动；等宽数字用 `tabular-nums` | 200ms |
-| 成功勾选 | 提交成功 | 勾选路径描边 + 轻微强调回弹 | 200ms（强调曲线） |
-| 提示气泡 | hover / focus 触发 | hover 延迟 800–1000ms 才出（避免扫过就弹），focus 立即出 | 进入 150ms / 退出 100ms |
+## 5. 降级策略：零动效天然满足；新增第一条动效时必须同批做四件事
 
-## 5. 降级：`prefers-reduced-motion`（两条都要写，缺一条 = 没做降级）
+- 现状：`prefers-reduced-motion` 在代码里零命中，没有动画就没有可降级的对象；这不是"漏做降级"。
+- 谁批准：动效属 UI 改动，按 `playbook/7-1-UI改动.md:54` 停手回 3-6 立项，3-6 的门禁裁决由人做。
+- 同批四件事（缺一条 = 本文件作废）：
+  1. 把时长、缓动与选定的按钮动效写进本文件 §2/§3（从 3-6 卡取值，不许在代码里随手定）。
+  2. 同批实现降级：`@media (prefers-reduced-motion: no-preference)` 正向前置 + `reduce` 分支，两条都要（3-6 卡动作 5：缺一条 = 本卡未完成）。
+  3. 同批回写 `docs/UI.md` 的交互描述与 `docs/registry/COMPONENTS.md` 对应行（D13 回写义务）。
+  4. 跑 3-6 卡动作 9 的自查并让它 exit 0：它要求本文件里按钮选项 ≥6 行、时长 ≥6 行、`cubic-bezier` ≥4 行、`no-preference` ≥1 行、`reduce` ≥1 行，且总行数 ≤100。零动效项目跑那条自查必然 exit 1（没有可数的行），新增第一条动效后它必须转绿。
+- 判定线：代码里出现 `transition`/`animation` 而本文件仍写"零动效" = 本文件已失效；`prefers-reduced-motion` 仍零命中 = 降级未做，判不合格。
 
-- 正向前置：默认状态写 `@media (prefers-reduced-motion: no-preference) { … }`，动效只在这个分支里定义；reduce 分支是"什么都不加"，而不是逐条覆盖。
-- 减弱分支：命中 `reduce` 时——时长压到 ≤150ms（`transition-duration: .15s !important; animation-duration: .15s !important`）、循环动画 `animation-iteration-count: 1`、位移与缩放塌缩为纯 `opacity` 变化、装饰性动画 `display: none`、动画结束必须落到终态（不许停在中间帧）。
-- 功能性动画（骨架屏、按钮内 loading、进度条）继续跑：它们传达"正在处理"，停掉会让人以为卡死。
-- 系统开了"减少动态效果"却仍看到位移/缩放/循环 = 判不合格，登记 `docs/TECH_DEBT.md`。
+## 6. 验收方式与更新义务
 
-## 6. 性能与实现禁令（违反任一条 = 返工）
-
-- 只动 `transform` 与 `opacity`；禁动 `width/height/top/left/margin`（触发布局重排）；禁 `transition: all`（会连布局属性一起过渡）。
-- 单次位移 ≤8px、单段时长 ≤300ms、目标 60fps（DevTools Performance 无长任务、无掉帧）；长列表只对可见区域做，循环动画不叠加。
-- 每页最多 3 个动画原语（同一套位移/淡入/缩放算一个原语）；列表错峰间隔 ≤500ms，超出就是排队等待。
-- 滚动相关的出现动画用 `IntersectionObserver` + 一次性 reveal，禁监听 `scroll` 事件；动画必须可中断（用户在下一次交互时立即接管），不许把后续逻辑挂在 `animationend`/`transitionend` 上。
-- 禁预防性 `will-change`（只在动画进行时加、结束就摘）；轮播/自动播放必须提供暂停方式（`prefers-reduced-motion` 下默认不自动播放）。
-
-## 7. 验收方式（3-6 卡收尾 + 7-1 改 UI 时各跑一次）
-
-- 录屏核心路径走一遍，肉眼确认无跳变、无闪烁；或 DevTools Performance 录制，看帧率与长任务。
-- 静态优先：先截图对比同一屏在动画前后的一致性（截图必须可复现，禁依赖随机/时间的结果）；动态效果只在有明确目的时保留。
-
-## 8. 演示与投屏最小档（营销页、演示、大屏时用；其余场景不用）
-
-- 入场 400–600ms、单页动画总时长 ≤8s；字号按投屏取正文 ≥18px、说明 ≥16px、标注 ≥14px。
-- 仍受 §6 约束：只动 `transform`/`opacity`，可中断，`prefers-reduced-motion` 下同样降级。
-
-## 更新义务
-
-- 动效任一改动：同批回写 `docs/UI.md` 交互描述与 `docs/registry/COMPONENTS.md` 相关行；降级策略改动要在 4-2 审查抽查；提交前跑 `powershell -NoProfile -File check.ps1` 取退出码 0。
+- 当前验收（零动效）：§1 的两条命令零命中 + 本文件 ≤100 行 = 文档与代码一致，不需要录屏或 DevTools 帧率证据。
+- 本文件任一改动：同批回写 `docs/UI.md` 的交互描述与 `docs/registry/COMPONENTS.md` 对应行；提交前跑 `powershell -NoProfile -File check.ps1` 取退出码 0。

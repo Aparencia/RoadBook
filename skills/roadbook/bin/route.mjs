@@ -157,7 +157,10 @@ function loadFacts(opts) {
     try { text = readFileSync(src.value, 'utf8') } catch (err) { throw new Error(`事实非法：事实文件读不出 ${src.value}（${err.message}）`) }
   }
   let parsed
-  try { parsed = JSON.parse(text) } catch (err) { throw new Error(`事实非法：JSON 解析失败（${err.message}）\n原文：${text.slice(0, 200)}`) }
+  // PS 5.1 的 `Set-Content -Encoding UTF8` / `Out-File -Encoding utf8` 会写 BOM，而 `JSON.parse` 直接拒绝它
+  // （实测：`Unexpected token '﻿'`）。事实文件是 0-1 卡复算链序的入口（`route --chain --facts-file …`），
+  // 最常用的 Windows 写法必须走得通。剥 BOM 是**输入卫生**，不是放宽判据——内容仍要真解析成 JSON 才算数。
+  try { parsed = JSON.parse(text.replace(/^\uFEFF/, '')) } catch (err) { throw new Error(`事实非法：JSON 解析失败（${err.message}）\n原文：${text.slice(0, 200)}`) }
   return parsed
 }
 
