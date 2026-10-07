@@ -22,9 +22,11 @@ After receiving the start instruction, first return the following five items bef
 
 **Action 1: Copy out the local mirror (the comparison baseline; do this step before anything else)**
 ```powershell
-$steps = [regex]::Match((Get-Content check.ps1 -Raw), '(?m)^\s*\$STEPS\s*=\s*@\(([^)]*)\)').Groups[1].Value
-$steps -split ',' | ForEach-Object { $_.Trim().Trim("'") } | Where-Object { $_ }
+$txt = Get-Content check.ps1 -Raw -Encoding UTF8
+$steps = [regex]::Match($txt, '(?ms)^\s*\$STEPS\s*=\s*@\((.*?)\)\s*$').Groups[1].Value
+$steps -split ',|\r?\n' | ForEach-Object { $_.Trim().Trim("'") } | Where-Object { $_ }
 ```
+Expected: one line per command in the `$STEPS` list of `check.ps1` (3 lines measured in this repo — copy them verbatim into the receipt and the CI `run:` lines).
 An empty `$steps` = check.ps1 has not yet been wired to this project's commands per card 1-2 (do not guess the mirror; go back to 1-2); when it is non-empty, copy every line verbatim into the receipt to form the "local mirror list".
 - ❌ Counter-example (measured on this machine): the line-start command grab `Select-String -Pattern '^\s*(npm|pnpm|yarn|...)'` → prints **0 lines** — in a real check.ps1 the commands live inside `$STEPS = @('…')`, so the line starts with `$STEPS`; those 0 lines get read as "this project has no local mirror" → the whole mirror comparison idles and drift goes unnoticed
 - ✅ Good example (measured on this machine): for a check.ps1 with `$STEPS = @('pnpm typecheck', 'pnpm lint', 'pnpm test')` the two lines above print exactly three lines — `pnpm typecheck` / `pnpm lint` / `pnpm test`; copied into the receipt one by one, the CI `run:` lines are exactly those three
@@ -33,7 +35,7 @@ An empty `$steps` = check.ps1 has not yet been wired to this project's commands 
 ```powershell
 powershell -NoProfile -File check.ps1
 ```
-The exit code must be 0. **Going to CI while local does not pass = going to CI to watch red, burning time for nothing**; if the exit code is not 0, fix local first.
+Expected: The exit code must be 0. **Going to CI while local does not pass = going to CI to watch red, burning time for nothing**; if the exit code is not 0, fix local first.
 
 **Action 3: Minimal pipeline (only these four steps; every extra step needs a written reason)**
 
@@ -73,6 +75,7 @@ jobs:
 ```powershell
 if (Test-Path '.github/workflows/ci.yml') { Select-String -Path .github/workflows/ci.yml -Pattern 'run:' | ForEach-Object { $_.Line.Trim() } } else { Write-Host '本地-only：无 CI 文件，口径对照 N/A（理由已按动作 6 写进 RUNBOOK）' }
 ```
+Expected: CI file present → one line per `run:` line (2 lines measured in this repo, matching the list copied out above line by line); absent → exactly one line `本地-only：无 CI 文件，口径对照 N/A`, neither an error nor empty output.
 Align the "local mirror list" you copied out against this output **line by line**: one line more / one line fewer / a different parameter → fix it on the spot until they agree. Paste the comparison result into the §③ receipt; on the local-only branch → write `N/A（本地-only）` in all three columns of the comparison table + attach the verbatim RUNBOOK line from Action 6.
 
 **Action 6: RUNBOOK registration (write it for both outcomes; silence is not allowed)**
@@ -92,6 +95,7 @@ Select-String -Path .github/workflows/*.yml -Pattern 'pull_request_target|head\.
 $anchor = (Select-String -Path STATE.md -Pattern '起点锚点\s*[:：]\s*([0-9a-fA-F]{7,40})').Matches[0].Groups[1].Value; git diff "$anchor..HEAD" | Select-String -Pattern 'AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|BEGIN [A-Z ]*PRIVATE KEY'   # (4) scans only what was added; 0 hits required
 npm pack --dry-run 2>&1 | Select-String -Pattern '\.env|\.pem|\.key|\.p12|credentials|fixtures|__tests__'  # (5) a hit = the published package smuggles files, red
 ```
+Expected: (1) no output (an action not pinned to a 40-char SHA = red) | (2) at least one line (measured: `ci.yml:16:permissions:`; none = red) | (3) the three strings never co-occur in one file | (4) 0 hits (only the newly added diff) | (5) 0 hits — **measured here it is not 0** (2 lines: a test fixture and the shipped `.env.example`), so register it in the ledger (`docs/TECH_DEBT.md`) before committing.
 
 **Prohibitions (violating any one = this round's output is void):**
 - `continue-on-error: true` is prohibited, `|| true` is prohibited, and marking any check step as "allowed to fail" is prohibited (= red does not block, which equals not running at all)
@@ -129,6 +133,7 @@ if (Test-Path '.github/workflows/ci.yml') { git add '.github/workflows/ci.yml' }
 git commit -m "4-4 ci(build): CI 口径与 check.ps1 对齐"
 powershell -NoProfile -File check.ps1
 ```
+Expected: local-only branch → `Test-Path` is false, that `git add` is skipped and the whole block exits 0; with a CI file all three files are committed. The message is exactly `4-4 ci(build): CI 口径与 check.ps1 对齐`; `check.ps1` exits 0 — non-zero = stop, do not declare it done.
 
 - ❌ Counter-example (measured on this machine): in a local-only repository, a bare `git add .github/workflows/ci.yml docs.md` → stderr `fatal: pathspec '.github/workflows/ci.yml' did not match any files`, **exit code 128**, and not one file in that batch gets staged
 - ✅ Good example (measured on this machine): the `if (Test-Path …) { git add … }` guard above → the entry is skipped when the file is absent, **exit code 0**, and `docs/RUNBOOK.md` / `STATE.md` are committed as usual; on a hosted branch the CI file goes in with them

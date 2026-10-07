@@ -52,6 +52,7 @@ Any config key added this time → add it to `.env.example` **in the same batch*
 ```powershell
 Select-String -Path .env.example -Pattern '^[A-Z]' | ForEach-Object { $_.Line.Split('=')[0] }   # 现有键名清单 (existing key-name list)
 ```
+Expected: one line per key name (the part before `=`, with the path and line number `Select-String` adds already dropped by `.Line`); measured 0 lines in this repo — the keys all sit in comment lines (`# DATABASE_URL=`) ⇒ 0 lines does not mean there is no list: look at the file itself, or widen `-Pattern` to `^\s*#?\s*[A-Z]`; what this card wants is a key-name list that reads at a glance.
 - ❌ Counter-example: the code uses `process.env.NEW_KEY` but `.env.example` was not updated → the next person to clone it is guaranteed to fail to run it
 - ✅ Positive example: in the same batch of commits that adds the key, `.env.example` has that line and the key-meaning table in `docs/RUNBOOK.md` explains it
 
@@ -67,6 +68,7 @@ Select-String -Path .env.example -Pattern '^[A-Z]' | ForEach-Object { $_.Line.Sp
 Copy-Item .env.staging .env -Force
 powershell -NoProfile -File doctor.ps1
 ```
+Expected: the switch holds when the contents of `.env` equal the bytes of `.env.staging` (not "no error was printed"); `Copy-Item` is a cmdlet, so `$LASTEXITCODE` is left over from the previous native command and is not the criterion (measured on this machine: a missing `.env.staging` only prints «找不到路径…该路径不存在。» and `.env` is not created); `doctor.ps1` exits 0 and names every version/tool/key mismatch line by line.
 Run `doctor.ps1` on every switch (it names any version/tool/key-name mismatch); after switching, write "current environment" into `未决问题` in `STATE.md` or into the receipt — do not leave it in your head.
 
 **Action 7: Which config entries a rollback needs (list them up front so they can be changed when it matters)**
@@ -75,6 +77,7 @@ Write out the list of config keys that "must be restored together during a rollb
 Copy-Item .env.rollback .env -Force
 powershell -NoProfile -File doctor.ps1
 ```
+Expected: the same for a rollback — the contents of `.env` equal the bytes of `.env.rollback` + `doctor.ps1` exits 0; every key in the rollback list above must have a corresponding line in `.env.rollback` (one key missing = the rollback is only half done).
 
 **Action 8: RUNBOOK write-back**
 Add/update the "环境与配置" (environments and config) section of `docs/RUNBOOK.md`: the environment tier table, the staging difference table, the key-meaning table (three columns: key / meaning / example value, including every key added this time), the switch steps, and the rollback config list.
@@ -94,6 +97,7 @@ The script is **single-use** by default (use it once and discard it: it does not
 git check-ignore -v .mcp.json .claude .codex                                          # (2) must produce output; none = not ignored, red
 Select-String -Path docs/lessons/*.md -Pattern '(sk|ghp|xox[baprs])-[A-Za-z0-9]{8,}'   # (4) a hit = not masked; mask it to the first 4 + last 4 on the spot
 ```
+Expected: (2) one line per path (shape `<source>:<line>:<pattern>\t<path>`; measured here three lines `.gitignore:30:.mcp.json` / `:31:.claude` / `:32:.codex`); no output for one of them = not ignored (red) | (4) 0 hits — a hit means an unmasked secret, mask it to the first 4 + last 4 on the spot.
 
 **Prohibitions (violating any one = this round's output is void):**
 - Writing real secrets / real connection strings into any file that goes into the repo is prohibited (including comments, examples, and logs)
@@ -129,6 +133,7 @@ git add docs/RUNBOOK.md .env.example STATE.md
 git commit -m "4-5 chore(env): 环境分层与配置矩阵落档"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git commit` exits 0 with the message exactly `4-5 chore(env): 环境分层与配置矩阵落档`; `check.ps1` exits 0 (non-zero = stop, do not declare it done).
 
 ---
 

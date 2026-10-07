@@ -36,6 +36,7 @@ $kw = 'email'        # change the keyword field by field: email / phone / addres
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $kw | Select-Object Path, LineNumber
 Select-String -Path docs/registry/DATA_DICT.md -Pattern $kw | Select-Object LineNumber, Line
 ```
+Expected: both commands print their hits per field (headers `Path` / `LineNumber`, and `LineNumber` / `Line` for the `DATA_DICT.md` one); 0 hits = the field is neither in the code nor in the data dictionary (either it is genuinely not collected, or the map is missing a spot). This repo has no `src/` ⇒ the first command reports a missing path and prints nothing, which is expected — point it at the project's real source directory.
 (Note: on PowerShell 5.1 `-Recurse` is not a valid parameter of `Select-String`; only the pipeline form above runs)
 - ❌ Counter-example: "收集邮箱用于通知" ("collect email for notifications") — it does not say where it is stored, how long it is kept, or who can see it
 - ✅ Good example: "邮箱｜注册与订单通知｜users 表 email 列｜账号注销后 30 天｜仅后端服务与邮件服务商 X" ("email | sign-up and order notifications | users table, email column | 30 days after account closure | backend service and email provider X only")
@@ -50,6 +51,7 @@ Select-String -Path docs/registry/DATA_DICT.md -Pattern $kw | Select-Object Line
 Select-String -Path docs/registry/DATA_DICT.md -Pattern 'D3|D4' | Select-Object LineNumber, Line
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'phone|id_card|latitude|password' | Select-Object Path, LineNumber
 ```
+Expected: each D3/D4 field has a set of hits in `DATA_DICT.md` and in the source; `password` / `id_card` / `latitude` with 0 code hits while the field is claimed to be in use = the tier table is missing an entry (fill in `DATA_DICT.md` before going further).
 - ❌ Counter-example: "手机号算普通信息，不用管" ("a phone number counts as ordinary information, no need to bother")
 - ✅ Good example: "手机号 = D3：入库前加密，界面只显示 138****1234，日志禁止打印原值" ("phone number = D3: encrypted before it is stored, the UI shows only 138****1234, printing the raw value in logs is forbidden")
 - A D4 field that is not encrypted = red light: stop and ask the user; publishing publicly is forbidden.
@@ -70,6 +72,7 @@ Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'phone|id_card|l
 ```powershell
 npm ls --depth=0            # Node projects; for Python projects use pip list instead
 ```
+Expected: one line per `name@version` (first line measured here: `roadbook@0.9.1`); when dependencies are not all installed there are `UNMET DEPENDENCY` / `UNMET OPTIONAL DEPENDENCY` lines and **exit code 1** (measured here: five dependencies are provided by the DSH host and are not installed locally) — exit code 1 is not a command failure in this case, and the license list still comes from the printed `name@version` lines; `npm ls` prints no license field itself, so licenses are looked up separately.
 - Copy every `name@version` → license into the "dependency license list" of `docs/PRIVACY.md`; then compare each against the root `LICENSE` for compatibility.
 - Compatible: MIT / Apache-2.0 / BSD / ISC can coexist with MIT-style licenses; GPL / AGPL / SSPL are viral or carry usage restrictions → stop and ask the user, and register a replacement candidate in docs/TECH_DEBT.md.
 - ❌ Counter-example: "依赖挺多的，应该都是 MIT" ("there are quite a few dependencies, they should all be MIT")
@@ -91,6 +94,7 @@ Write it into the "one page for users" section of `docs/PRIVACY.md`, six sentenc
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'api[_-]?key|secret|password\s*='
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern 'console\.log|logger|print' | Select-String -Pattern 'email|phone|token|password'
 ```
+Expected: both must have 0 hits — a real secret hit by the first = red line (stop, revoke and rotate, re-run to zero); a D3/D4 field hit by the second = fix the logging (mask or drop it) and re-run to zero hits. This repo has no `src/`, so point them at the project's real source directory first.
 - A real secret hit by the first command = red line: stop, have a human revoke and rotate that secret (git history is readable forever), and re-run after the fix to get zero hits.
 - A D3/D4 field hit by the second command = fix the logging (print a masked value or drop it), then re-run to get zero hits.
 
@@ -132,6 +136,7 @@ git add STATE.md docs/PRIVACY.md LICENSE
 git commit -m "7-5 docs(compliance): 数据地图与许可核对"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git commit` exits 0 with the message exactly `7-5 docs(compliance): 数据地图与许可核对`; `check.ps1` exits 0; when the root `LICENSE` already exists and its type has not changed it may stay out of the `git add` list (measured here: `LICENSE` is present).
 (When the root `LICENSE` already exists and its type has not changed, it needs no edit — add it to `git add` only when it must be updated.)
 
 **Next card**: 4-1 Batch coding (when the data map or the scan results bring code changes); pure documentation governance → 5-1 Archive. Touching authentication / payment / data deletion goes through 3-2 Threat modeling first.

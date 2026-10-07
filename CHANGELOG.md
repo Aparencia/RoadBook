@@ -25,6 +25,15 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 **v0.10.0 升级方案（`design/vnext-2026-10-07.md`）的在办改动。版本号由批 6 的 #62 一次升到位**
 （本次不动 `package.json`，所以七处对齐与 `git tag` 都不触发）。
 
+### 判据标注批 · TD-019 第三批：四张卡 40 个围栏补 `Expected：`（覆盖率 24% → 36%）
+
+- **做了什么**：`playbook/` 与 `playbook_EN/` 的 **4-4 持续集成 / 4-5 环境与配置 / 7-2 依赖升级 / 7-5 合规与隐私** 八份卡，每个 `powershell` 围栏收口后补一行 `Expected：`（英文卡 `Expected:`）—— 合计 **40 处**；全库覆盖率 **76/318 = 24% → 116/318 = 36%**（`node --test test/expected-annotation.test.mjs` = 6 pass / 0 fail，诊断行原文「全库 powershell 围栏 318 个，其中收口后 5 行内有 Expected 的 116 个（36%）」）。四张卡中英逐卡对齐 **5/5**，八份卡行数 143 / 139–140 / 104 / 145，均 ≤150（`design/playbook-contract.md` §2）。
+- **期望值不是编的**：八份卡的可跑命令逐条在本机真跑取样，据此**订正 4-4 动作 1 的 `$STEPS` 取法**（原取法在本仓只输出 **1 个元素**，因为 `check.ps1` 的 `$STEPS` 是**多行、元素之间无逗号**的数组；订正后按逗号与换行两种分隔符切分，本仓 3 行、合成单行逗号样例同样 3 行），并把另外四处真实读数写进卡面：4-5 的键名清单命令在本仓 **0 行**（键名全在注释行里，0 行 ≠ 没有清单）｜4-5 的 `Copy-Item` 是 cmdlet，`$LASTEXITCODE` 是**上一条原生命令的残留**（换环境的判据只能是 `.env` 与 `.env.staging` 逐字节相同）｜7-5 的 `npm ls --depth=0` 在本仓**退出码 1**（五个依赖由 DSH 宿主提供 ⇒ `UNMET OPTIONAL DEPENDENCY` + `npm error code ELSPROBLEMS`），且它**不打印 license**｜4-4 动作 7 ⑤ 的零命中判据在本仓**命中 2 行**（一份测试夹具 + 随包的 `.env.example`）。
+- **同批登记 TD-029**（要人裁决）：上面第 ⑤ 条说明「发布清单零命中」这条判据在母版自身上**永远是红的** —— 收成真凭据模式，还是改 `package.json` 的 `files` 清单，属判据/发布面的取舍，本轮只登记不顺手改（D6）。
+- **同批登记 TD-030**（收尾跑 `security.ps1` 时发现）：它的 `CI uses 未 pin SHA` 规则把负向断言套在 `uses:` 之后的**整串**上（而不是 `@` 后面的 ref），于是**对任何 `uses:` 都命中** —— 本仓 `.github/workflows/ci.yml:25/27` 那两条**已经 pin 到 40 位 SHA** 的 action 一样被报「未 pin」（黄字原文里就是它自己打出来的 40 位哈希），与真未 pin 的输出逐字相同 ⇒ 这条判据没有分辨力。红 0 / 黄 25、退出码 0（黄不拦红，所以它能一直响下去）；修法 = 先切出 ref 再判 40 位十六进制，根与 `template/` 逐字节同改。
+- **A10 冻结账本按设计再生成**：`endpoint` / `endpoint-chart` / `goLiveOn` 三条链含 4-4 与 4-5 ⇒ 各 +10 行 / +1433 字符；`public-saas` 另含 7-5 ⇒ +15 行 / +2240 字符；`local-tool` / `goLiveOff` / `redline` 不含这四张卡、读数不变（7-2 不在任何场景链上）。再生成理由逐字写进 `_qc/baseline/ledger.json` 的 `note`；`ROUTE_FIXTURE_UPDATE=1 node --test test/route-cli.test.mjs` = 30 pass / 0 fail，不带该变量复跑 = 29 pass / 0 fail。
+- **红在前**：改前同一支扫描器读数 —— 四张卡各 **0/5**、全库 **76/318 = 24%**；A10 在改卡后先红（`场景 endpoint 的冻结账本漂了`：1876 → 1886 行、93515 → 94948 字符）再按流程再生成。**新文件 0 个**（标注器 `%TEMP%/rb-td019-apply.mjs` 是会话内产物：按围栏序插入 + 五条守卫 + 插完自检，不进仓库）。
+
 ### 仪器自检用例表同步批：断言改名不再让用例静默失效（TD-027 结案 + 静态哨兵 + TD-028 登记）
 
 - **两条 FAIL 的根因是「判据搬家后没同步消费者」**（TD-027）：`test/route-cli.test.mjs` 的 A10 断言在 TD-022 那批从「只咬 endpoint」扩成「七个场景逐条」并改了名，而 `_qc/selftest-cases.json` 的 `expectFail` 还留着旧名 `A10 端点场景账本等于冻结 fixture` ⇒ 运行期 `-match` 永远匹配不上（报 `期望红的断言没红`），同时**新名那条红又没被声明**（报 `未声明的红`）。C3 的另一半是「变异的副作用长大了」：摘掉 `['redLine',` 行会连带改掉红线段的事实 ⇒ A10 的冻结账本同红，而用例表没声明它。
