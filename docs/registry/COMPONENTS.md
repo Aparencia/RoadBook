@@ -1,5 +1,5 @@
 # COMPONENTS · 组件注册表（界面 ↔ 代码 的地图）
-> 最近核对 2026-10-07 @ 4384acc（批 6 第六刀：登记行 +6，同批压掉六行散文、整页仍 ≤155）
+> 最近核对 2026-10-07 @ 7d62a90（缺口清偿批 II：三行按 TD-024 / TD-011 改写，页数不变 155 ≤ 155）
 > 用法：agent 改 UI 前先查这张表定位；改完同批回写（5-1 归档卡会查）。**新建文件不登记 = 孤儿（5-1 卡第 ⑧ 查会报）**。**两节分工（2026-10-07 定，解 TD-001）**：①「**文件登记**」管 D13 的登记义务——每新增一个文件加一行（四列：路径 / 用途 / 归属批次 / 可访问性；口径 = 纯逻辑·脚本·文档写 `N/A（纯文本|脚本）`，界面元素才填可访问性验证方式，生成出来的项目照同一表头填自己的文件）；②「**界面组件**」管给人定位 UI（"人话标识"在那一节，页面分节）。同一份文件只进它该进的那一节。
 > 分节规则（界面组件节）：每个页面一节，标题写「页面名 路由」（如 `## 统计页 /stats`）；单节 ≤30 行，超了说明该拆组件了。
 
@@ -12,7 +12,7 @@
 | `RISK.md`（根） | 风险与未决问题的**明细外置层**（证据生命周期链：摘要 → 本文件 → 入库 → `feedback/`；台账 #3 / #23） | 批 6（台账 #3 / #23） | `N/A（纯文本）` |
 | `check.ps1` | 项目自检门禁（"完成"的唯一定义） | 1-2 / 1-3 生成 | `N/A（脚本）` |
 | `doctor.ps1` | 环境自检（`.tool-versions` 逐行比对 + DSH 在位） | 1-2 / 1-3 生成 | `N/A（脚本）` |
-| `gate.ps1` | 提交前拦截（`-Anchor` 必填；文档义务按 `DOC_MAP.json` 判） | 1-2 / 1-3 生成 | `N/A（脚本）` |
+| `gate.ps1` | 提交前拦截（`-Anchor` 必填；文档义务按 `DOC_MAP.json` 判；⑥ 的源码行数上限认项目自己的 `sourceLimits` 声明，缺省仍 D14 的 500/1000 —— TD-024） | 1-2 / 1-3 生成 | `N/A（脚本）` |
 | `orphans.ps1` | 孤儿/幽灵/文档七查（只报不拦） | 1-2 / 1-3 生成 | `N/A（脚本）` |
 | `security.ps1` | 安全终检（红 0 / 黄 N；退出码 0 = 无红项） | 1-2 / 1-3 生成 | `N/A（脚本）` |
 | `scripts/envcheck.ps1` | 只读环境读取器（ACL / 完整性标签 / 进程对照；只读不改） | 批 0（2026-10-07） | `N/A（脚本）` |
@@ -43,7 +43,7 @@
 | `skills/roadbook/bin/route-core.mjs` | 路由**纯逻辑**：门禁判定 / 事实校验与归一 / 出链 / 账本 / 审计（锚点失配 · 双语缺份 · 幽灵引用 · 不可达） | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（纯函数）` |
 | `skills/roadbook/bin/route-format.mjs` | 路由**渲染半**：文本回执与 `--json` 回执（键序钉死，同事实两次运行逐字节相同） | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（纯函数）` |
 | `skills/roadbook/bin/route-quote.mjs` | 卡正文**逐字节切片**（`--quote`）：行号 + sha256 + 可机械剥离的前缀 —— 台账 #27 的派单内嵌件（**新功能，不是拆分件**） | 批 3（台账 #27 前置） | `N/A（纯函数）` |
-| `skills/roadbook/bin/route-dispatch.mjs` | **链状态 + 派单包**（`--chain` / `--dispatch`）：done/current/todo 标记、内嵌卡正文切片、门禁类型化 `needVerdict` + 停点行号、3 行回执模板 —— 台账 #25~#28 的 P0 机械面（**新功能，不是拆分件**） | 批 4（台账 #25~#28） | `N/A（纯函数）` |
+| `skills/roadbook/bin/route-dispatch.mjs` | **链状态 + 派单包**（`--chain` / `--dispatch`）：done/current/todo 标记、内嵌卡正文切片、门禁类型化 `needVerdict` + 停点行号、3 行回执模板（**每行 ≤160 字符**，实测两臂 249/664 —— TD-011）—— 台账 #25~#28 的 P0 机械面（**新功能，不是拆分件**） | 批 4（台账 #25~#28） | `N/A（纯函数）` |
 | `skills/roadbook/data/cards.json` | 卡图数据文件（**生成物**，`cards.mjs --write` 唯一写者；49 张卡的分类 / 序号 / 点名关系） | 批 3（台账 #33） | `N/A（数据）` |
 | `test/cards.test.mjs` | 卡图属性测试（分类成划分 / 恒真判定健全且完备 / 触发行分三格 / 随机 DAG 前沿双向不变式 / 回边必成环 / CLI 退出码） | 批 3（台账 #36 #37 #38） | `N/A（测试）` |
 | `_qc/selftest-cases.json` | 仪器自检的**用例表**（15 条：`rule` / `instrument` / `touch` / `mutate` / `expectFail` / `allowExtra` / `evidence`）——数据与引擎分家，脚本 `_qc/selftest.ps1` 不随用例变 | 批 3（成功标准 4：变异集覆盖 B 类 13 条 + A/C 各 1 条） | `N/A（数据）` |
@@ -105,7 +105,7 @@
 | `test/atlas-cli.test.mjs` | atlas CLI 端到端行为测试（真跑渲染） | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
 | `test/render-smoke.test.mjs` | archify vendor 冒烟测试（vendored 渲染器可跑） | 母版（2026-10-04 主插件化批） | `N/A（测试）` |
 | `test/vendor-provenance.test.mjs` | 供应商记录可核对性测试（清单 ↔ 逐文件哈希） | 母版（2026-10-06 atlas 修复批） | `N/A（测试）` |
-| `test/d14-lines.test.mjs` | D14 行数闸（非测试 ≤500 / 测试 ≤1000）+ 豁免清单完整性（台账 #59）+ **`gate.ps1` ⑥ 的判据对象**（临时 git 仓里真跑 gate：600 行 `.md` 绿 / `.js` 红且点名 / `.test.mjs` 绿；TD-021） | 批 1（2026-10-07 D14 闸） | `N/A（测试）` |
+| `test/d14-lines.test.mjs` | D14 行数闸（非测试 ≤500 / 测试 ≤1000）+ 豁免清单完整性（台账 #59）+ **`gate.ps1` ⑥ 的判据对象**（临时 git 仓里真跑 gate：600 行 `.md` 绿 / `.js` 红且点名 / `.test.mjs` 绿；TD-021）+ **⑥ 认项目自己的声明**（四档：声明 900 → 绿且打 `[声明]` / 声明 550 → 红在 550 / 空表 → 红在 500 / 收紧 400 → 红在 400）+ `sourceLimits` ↔ 文件自己的 `$selfCap` 同源（TD-024） | 批 1（2026-10-07 D14 闸）· 缺口清偿批 II 扩展 | `N/A（测试）` |
 | `test/tech-debt.test.mjs` | 债务台账结构闸：一张连续的表（无空行切断 / 无两竖线粘连）/ 编号连续无重复 / 8 列（转义感知）/ 状态在状态机内 / `closed` 必附偿还证据 + **四个合成负控**（TD-023） | 缺口清偿批（2026-10-07） | `N/A（测试）` |
 | `skills/roadbook-atlas/vendor/archify/bin/archify.mjs` | archify 主 CLI：把 typed JSON 规格渲染成自包含 HTML | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |
 | `skills/roadbook-atlas/vendor/archify/bin/open-artifact.mjs` | 把渲染产物交给宿主打开 | 母版（2026-10-04 主插件化批随包；vendored 逐字节） | `N/A（第三方 vendored；MIT）` |

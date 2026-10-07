@@ -60,7 +60,7 @@ export { CN_DIR, EN_DIR, FACTS, SCENARIOS, SCHEMA, STEPS, UNREACHABLE_OK, tierOf
 export { anchorAreaOf, readCardText, scanDir, STOP_MARK_RE, stopMarksOf } from './route-cards.mjs'
 export { audit, gateOf, gateWhyOf, ledger, normalizeFacts, orderedFacts, route } from './route-core.mjs'
 export { fmtQuote, fmtQuoteJson, parseQuoteSpec, quoteSlice, stripLineNumbers } from './route-quote.mjs'
-export { chainStateOf, dispatchOf, fmtChain, fmtDispatch, parseDoneSpec, RECEIPT_LINES } from './route-dispatch.mjs'
+export { chainStateOf, dispatchOf, fmtChain, fmtDispatch, parseDoneSpec, RECEIPT_CHARS, RECEIPT_LINES } from './route-dispatch.mjs'
 
 /** 退出码：0 正常 / 1 审计判红或事实非法 / 2 用法错误。 */
 const EXIT = { ok: 0, red: 1, usage: 2 }

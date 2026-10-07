@@ -83,7 +83,17 @@ foreach ($f in $changed) {
 #   判据对象 = **源码**（500 出自 AGENTS.md D14「代码生成硬标准」）：旧版把它套到文档上 ⇒ 碰
 #   CHANGELOG.md / 长设计文档的批次必然假红（TD-021），假红会训练人调大 -LineLimit 或干脆不跑 ⑥。
 #   文档真判据在 ⑨（docLimits）与项目侧 check.ps1 预算表；未知扩展名仍进本段（白名单会造新盲区）。
-$notSource = @('.md','.markdown','.rst','.txt','.json','.jsonl','.ndjson','.yml','.yaml','.toml','.ini','.cfg','.csv','.tsv','.lock','.log','.html','.htm','.svg','.xml'); $skipped = @()
+#   同一个文件两套上限时（TD-024：`_qc/check.ps1` 自己写着 `$selfCap = 985` 而这里判 500 ⇒ 碰 `_qc/`
+#   的批次必然假红）以**项目自己的声明**为准：DOC_MAP.json 的 `sourceLimits` 点名哪条按哪条判（逐字符
+#   相等的相对路径，不开通配 —— 通配是白名单，一条声明就豁免一族），点名的打一行 `[声明]`（豁免不静默）。
+#   声明面是**负向**的：没点名照旧按 D14 默认判 —— 漏写不漏判（判据对象过滤也救不了这一档：它是源码）。
+# DOC_MAP.json 在这里就读：⑥ 与 ⑧/⑨ 共用同一份（同一个事实不读两次，也不出现第二处判据数据）。
+$mapFile = Join-Path $RepoRoot 'DOC_MAP.json'
+$map = $null
+if (-not (Test-Path -LiteralPath $mapFile)) { $warn += '无 DOC_MAP.json：文档义务没有机械检查（缺它 = 义务仍只靠记性，机器不判）' }
+else { try { $map = [IO.File]::ReadAllText($mapFile, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $fail += "DOC_MAP.json 解析失败：$($_.Exception.Message)" } }
+$srcLim = @{}; if ($null -ne $map -and $null -ne $map.sourceLimits -and $null -ne $map.sourceLimits.files) { foreach ($pr in $map.sourceLimits.files.PSObject.Properties) { $srcLim[[string]$pr.Name] = [int]$pr.Value } }
+$notSource = @('.md','.markdown','.rst','.txt','.json','.jsonl','.ndjson','.yml','.yaml','.toml','.ini','.cfg','.csv','.tsv','.lock','.log','.html','.htm','.svg','.xml'); $skipped = @(); $declared = @()
 foreach ($f in $changed) {
     $full = Join-Path $RepoRoot ($f -replace '/', [IO.Path]::DirectorySeparatorChar)
     $isFile = $false
@@ -94,8 +104,10 @@ foreach ($f in $changed) {
     catch { $fail += "行数读取失败：$f（$($_.Exception.Message)）"; continue }
     $t = IsTest $f
     $lim = $LineLimit; if ($t) { $lim = $TestLineLimit }
+    if ($srcLim.ContainsKey($f)) { $lim = $srcLim[$f]; $declared += "$f = $lim" }
     if ($n -gt $lim) { $fail += "行数超限：$f 共 $n 行 > 上限 $lim（测试文件=$t）——拆分文件或缩范围" }
 }
+if ($declared.Count -gt 0) { Write-Host ("[声明] ⑥ 行数上限取自项目声明 DOC_MAP.json sourceLimits（不用 D14 默认 {0}/{1}）：{2}" -f $LineLimit, $TestLineLimit, ($declared -join '、')) }
 if ($skipped.Count -gt 0) { Write-Host ("[跳过] ⑥ 非源码不判行数（D14 只管代码，文档归 ⑨）：{0} 个 —— {1}" -f $skipped.Count, ($skipped -join '、')) }
 
 # ⑦ lockfile 变更 = 未请求的依赖变更（AGENTS.md §2.3）：硬红灯，必须单独说明。
@@ -103,36 +115,26 @@ $lk = @($changed | Where-Object { $_ -match '(?i)(lock|package-lock|yarn\.lock|p
 if ($lk.Count -gt 0) { $fail += "依赖变更：$($lk -join '、')——lockfile 变更必须单独说明并独立提交" }
 
 # ⑧ 文档义务（DOC_MAP.json）：命中形态而对应文档没在同批改动里 = 红。
-#   义务此前只写在散文里（AGENTS.md 的 D13 回写义务表 + docs/README.md 的对应表），索引键是
-#   "变更类型"，而手里的事实是"改了哪个路径"——路径→语义靠判断，这一步最容易漏，且漏了没有
-#   痕迹（实测：5-7 卡的产物 docs/BASELINE.md 在五处登记里缺了四处，而门禁照旧全绿）。
-#   判据数据在 DOC_MAP.json：source=added-file 取本批新增文件（排除 docs/，那些由 5-1 第 ⑧ 查管）
-#   ｜source=new-line 取本批新增行；每条规则的 d13 字段逐字引用 AGENTS.md 的义务行首，
-#   绑定由 _qc/check-docs.ps1 反向核对（防本文件引用一条不存在的义务）。
-$mapFile = Join-Path $RepoRoot 'DOC_MAP.json'
-if (-not (Test-Path -LiteralPath $mapFile)) {
-    $warn += '无 DOC_MAP.json：文档义务没有机械检查（缺它 = 义务仍只靠记性，机器不判）'
-}
-else {
-    $map = $null
-    try { $map = [IO.File]::ReadAllText($mapFile, [Text.Encoding]::UTF8) | ConvertFrom-Json }
-    catch { $fail += "DOC_MAP.json 解析失败：$($_.Exception.Message)" }
-    if ($null -ne $map) {
-        # 比对基准用 $Anchor（工作树 vs 锚点），不用 "$Anchor..HEAD"（只看到已提交）——
-        # 4-1 卡要求"提交前后都能跑"，只认已提交 = 提交前这段永远查不到（假绿）。
-        # 未跟踪文件不进 git diff，由下面的 ls-files --others 补上。
-        $added = @(@(git -C $RepoRoot -c core.quotepath=false diff --name-status --diff-filter=A "$Anchor" 2>$null | ForEach-Object { $c = @([string]$_ -split "`t"); if ($c.Count -ge 2) { $c[1] } }) + @(git -C $RepoRoot -c core.quotepath=false ls-files --others --exclude-standard 2>$null) | Where-Object { $_ } | Select-Object -Unique)
-        $newLines = @(git -C $RepoRoot diff -U0 "$Anchor" 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' })
-        foreach ($rule in @($map.rules)) {
-            if ($rule.disabled) { continue }
-            $pool = @($added | Where-Object { $_ -notmatch '^docs/' })
-            if ([string]$rule.source -eq 'new-line') { $pool = $newLines }
-            $hit = @($pool | Where-Object { $_ -match [string]$rule.pattern })
-            if ($hit.Count -eq 0) { continue }
-            $docs = @($rule.docs)
-            if (@($docs | Where-Object { $changed -contains $_ }).Count -eq 0) {
-                $fail += "文档义务未履行 [$($rule.id)]：本批新增 $($hit.Count) 处（如 $($hit[0])）→ 应同批更新 $($docs -join ' 或 ')（判据 DOC_MAP.json；不适用就给该条加 disabled 并写 STATE.md 裁剪记录）"
-            }
+#   义务此前只写在散文里（AGENTS.md 的 D13 回写义务表 + docs/README.md 的对应表），索引键是"变更类型"，
+#   而手里的事实是"改了哪个路径"——路径→语义靠判断，最容易漏且漏了没痕迹（实测：5-7 卡的产物
+#   docs/BASELINE.md 在五处登记里缺了四处，而门禁照旧全绿）。判据数据在 DOC_MAP.json（上面已读）：
+#   source=added-file 取本批新增文件（排除 docs/，那些由 5-1 第 ⑧ 查管）｜source=new-line 取本批新增行；
+#   每条规则的 d13 逐字引用 AGENTS.md 的义务行首，绑定由 _qc/check-docs.ps1 反向核对（防引用不存在的义务）。
+if ($null -ne $map) {
+    # 比对基准用 $Anchor（工作树 vs 锚点），不用 "$Anchor..HEAD"（只看到已提交）——
+    # 4-1 卡要求"提交前后都能跑"，只认已提交 = 提交前这段永远查不到（假绿）。
+    # 未跟踪文件不进 git diff，由下面的 ls-files --others 补上。
+    $added = @(@(git -C $RepoRoot -c core.quotepath=false diff --name-status --diff-filter=A "$Anchor" 2>$null | ForEach-Object { $c = @([string]$_ -split "`t"); if ($c.Count -ge 2) { $c[1] } }) + @(git -C $RepoRoot -c core.quotepath=false ls-files --others --exclude-standard 2>$null) | Where-Object { $_ } | Select-Object -Unique)
+    $newLines = @(git -C $RepoRoot diff -U0 "$Anchor" 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' })
+    foreach ($rule in @($map.rules)) {
+        if ($rule.disabled) { continue }
+        $pool = @($added | Where-Object { $_ -notmatch '^docs/' })
+        if ([string]$rule.source -eq 'new-line') { $pool = $newLines }
+        $hit = @($pool | Where-Object { $_ -match [string]$rule.pattern })
+        if ($hit.Count -eq 0) { continue }
+        $docs = @($rule.docs)
+        if (@($docs | Where-Object { $changed -contains $_ }).Count -eq 0) {
+            $fail += "文档义务未履行 [$($rule.id)]：本批新增 $($hit.Count) 处（如 $($hit[0])）→ 应同批更新 $($docs -join ' 或 ')（判据 DOC_MAP.json；不适用就给该条加 disabled 并写 STATE.md 裁剪记录）"
         }
     }
 }

@@ -230,8 +230,19 @@ test('D14 强制拆分件登记完整性：剔除额度这件事必须可证伪�
 const GATE_PS1 = join(ROOT, 'template', 'gate.ps1');
 const PROBE_LINES = 600;
 
-/** 在临时 git 仓里真跑一次 `gate.ps1`，返回 { status, out }；仓里只有一个基线提交。 */
-function runGateOn(files) {
+/**
+ * 在临时 git 仓里真跑一次 `gate.ps1`，返回 { status, out }；仓里只有一个基线提交。
+ *
+ * `docMap` 给了就写进**基线提交**（TD-024：⑥ 现在要读 `DOC_MAP.json` 的 `sourceLimits`）——
+ * 放进基线而不是改动清单，是为了让每一档保持单变量：`DOC_MAP.json` 自己不进 ⑥ 的行数段、
+ * 也不进 ⑤ 的越界判定。
+ *
+ * `rules: []` 是必须的（不是装饰）：`@($null).Count` 在 PowerShell 里是 **1**，缺 `rules` 键会让
+ * ⑧ 把 `$null` 当成一条规则（`[string]$null` = 空串、空正则匹配一切）⇒ 任何新增文件都被判
+ * 「文档义务未履行 []」。这是 `gate.ps1` 的既有边界，已登记 `docs/TECH_DEBT.md` TD-026，
+ * 本文件不顺手改它。
+ */
+function runGateOn(files, { docMap } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'rb-gate-'));
   try {
     const git = (...args) =>
@@ -241,6 +252,7 @@ function runGateOn(files) {
     git('init', '-q', '.');
     copyFileSync(GATE_PS1, join(dir, 'gate.ps1'));
     writeFileSync(join(dir, 'README.md'), '# probe\n');
+    if (docMap !== undefined) writeFileSync(join(dir, 'DOC_MAP.json'), `${JSON.stringify(docMap, null, 2)}\n`);
     git('add', '-A');
     git('commit', '-q', '-m', 'baseline');
     for (const file of files) {
@@ -277,4 +289,76 @@ test('gate.ps1 ⑥ 只管源码：600 行的 .md 判绿、600 行的 .js 判红�
 
   const tst = runGateOn(['big.test.mjs']);
   assert.equal(tst.status, 0, `600 行的测试文件在豁免线（${TEST_CAP}）之下，必须判绿：\n${tst.out}`);
+});
+
+/**
+ * ⑥ 的**项目自声明**（TD-024）：同一个文件两套上限。
+ *
+ * `_qc/check.ps1` 自己写着 `$selfCap = 985`（并有 `design §8` 与它同源），而 ⑥ 按 D14 判它 500
+ * ⇒ 任何碰 `_qc/` 的批次**必然假红**，只剩「悄悄调大 `-LineLimit`」一条路 —— 正是 TD-021 判定
+ * 最贵的那个后果。判据对象过滤（TD-021 的那一刀）救不了这一档：`_qc/check.ps1` **是**源码，
+ * 只是它的上限不是 500 —— 所以这里认的是**项目自己的声明**（`DOC_MAP.json` 的 `sourceLimits`），
+ * 没声明才回落到 D14 默认值。
+ *
+ * 四档缺一档都证明不了「声明被真的读了」：
+ *   ① 600 行 `.ps1` + 声明 900 → 绿，且打出 `[声明]`（读到了声明；豁免不许静默）
+ *   ② 同一文件声明 550 → 红，且阈值逐字是 **550**（不是 500）—— 「读声明值」与「有声明就免」的分界
+ *   ③ 声明表为空 → 红在 **500** —— 声明面是负向的：没点名 ≠ 豁免
+ *   ④ 声明**收紧**到 400 → 红在 **400** —— 声明不只是用来放宽的（只放宽时的实现会漏这一档）
+ */
+test('gate.ps1 ⑥ 认项目自己的源码行数声明（DOC_MAP.json 的 sourceLimits，缺省仍按 D14）', () => {
+  const docMapOf = (cap) => ({ schema: 'roadbook-docmap/1', rules: [], sourceLimits: { files: { 'big.ps1': cap } } });
+
+  const looser = runGateOn(['big.ps1'], { docMap: docMapOf(900) });
+  assert.match(looser.out, /变更 1 个文件/, `探针文件没进变更清单 ⇒ 这一档是假绿：\n${looser.out}`);
+  assert.match(looser.out, /\[声明\] ⑥ 行数上限取自/, `读了项目声明却不说出来 —— 豁免不许静默：\n${looser.out}`);
+  assert.equal(looser.status, 0, `600 行的 .ps1 被项目声明成 900 就必须判绿（否则碰 _qc/ 的批次照旧假红）：\n${looser.out}`);
+
+  const tighter = runGateOn(['big.ps1'], { docMap: docMapOf(550) });
+  assert.equal(tighter.status, 1, `声明 550 而文件 600 行必须判红：\n${tighter.out}`);
+  assert.match(tighter.out, /行数超限：big\.ps1 共 600 行 > 上限 550/, `阈值必须来自声明值：500 = 声明没被读，任何数都红 = 「有声明就免」：\n${tighter.out}`);
+
+  const undeclared = runGateOn(['big.ps1'], { docMap: { schema: 'roadbook-docmap/1', rules: [], sourceLimits: { files: {} } } });
+  assert.equal(undeclared.status, 1, `没点名就必须按 D14 的 ${CAP} 判红：\n${undeclared.out}`);
+  assert.match(undeclared.out, new RegExp(`行数超限：big\\.ps1 共 600 行 > 上限 ${CAP}`), undeclared.out);
+
+  const lowered = runGateOn(['big.ps1'], { docMap: docMapOf(400) });
+  assert.equal(lowered.status, 1, `声明收紧到 400 时 600 行必须判红：\n${lowered.out}`);
+  assert.match(lowered.out, /上限 400/, `阈值要跟着声明走（只放宽的实现会把这一档判成绿）：\n${lowered.out}`);
+});
+
+/**
+ * `sourceLimits` 的**同源断言**：声明不许成为第二处真相。
+ *
+ * 这一条的存在理由与 A1c / A1d 同款：`_qc/check.ps1` 的上限已经写在它自己的 `$selfCap` 里
+ * （且与 `design §8` 由既有断言锁死），`DOC_MAP.json` 那条是**抄进去给 ⑥ 读的** ⇒ 两处必须同号，
+ * 否则改一处忘一处，⑥ 就按一个没人维护的数字判红/判绿。放在测试里而不是 `_qc/check.ps1` 上，
+ * 沿用上一批的裁决（⑥ 会把 974 行的 `_qc/check.ps1` 判成源码超限 —— 那个裁决的翻案条件正是本批）：
+ * 现在 ⑥ 认声明了，断言放哪都能跑；但两处**都跑**（`_qc/check.ps1` 的整套件 glob 会跑到本文件），
+ * 所以不再搬回母版体检里制造第三处真相。
+ */
+test('DOC_MAP.json 的 sourceLimits 与文件自己的声明同源（母版那条 = `_qc/check.ps1` 的 $selfCap）', () => {
+  const rootMap = JSON.parse(readFileSync(join(ROOT, 'DOC_MAP.json'), 'utf8'));
+  const entries = Object.entries(rootMap.sourceLimits?.files ?? {});
+  assert.ok(entries.length >= 1, '根 DOC_MAP.json 的 sourceLimits 是空的 —— 那 TD-024 的假红原样还在（本条会退化成恒真）');
+
+  const tracked = new Set(trackedFiles().map((item) => item.replace(/\\/g, '/')));
+  for (const [file, cap] of entries) {
+    assert.ok(tracked.has(file), `sourceLimits 点名的 ${file} 不在 git 索引里（幽灵声明 = 白拿豁免）`);
+    assert.match(file, /\.(js|mjs|ts|ps1)$/, `sourceLimits 只用于源码（${file}）—— 文档的上限走 docLimits / 项目侧预算表`);
+    assert.ok(Number.isInteger(cap) && cap > 0, `${file} 的上限必须是正整数，实得 ${JSON.stringify(cap)}`);
+  }
+
+  const ck = readFileSync(join(ROOT, '_qc/check.ps1'), 'utf8');
+  const self = /^\s*\$selfCap\s*=\s*(\d+)/m.exec(ck);
+  assert.ok(self, '没从 `_qc/check.ps1` 抓到 `$selfCap`（正则或文件结构变了 ⇒ 本条会退化成恒真）');
+  assert.equal(
+    rootMap.sourceLimits.files['_qc/check.ps1'],
+    Number(self[1]),
+    `sourceLimits 那条必须等于文件自己的 $selfCap：两处不一致 = 上限出现第二处真相（改一处忘一处，⑥ 就按没人维护的数字判）`,
+  );
+
+  const tpl = JSON.parse(readFileSync(join(ROOT, 'template', 'DOC_MAP.json'), 'utf8'));
+  assert.ok(tpl.sourceLimits?.files, 'template/DOC_MAP.json 没有 sourceLimits 段：这套机制没下发给生成出来的项目');
+  assert.deepEqual(Object.keys(tpl.sourceLimits.files), [], '模板种子里不许预置源码豁免（空表 = 照 D14 判，要放宽必须先让文件自己声明）');
 });

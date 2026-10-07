@@ -548,6 +548,19 @@ test('A15b --dispatch 派单包：内嵌整张卡正文（逐字节，字节偏�
   for (const line of j.receipt) assert.ok(text.stdout.includes(line.trim()), `文本回执缺这一行：${line}`)
   assert.ok(text.stdout.includes(j.slice.sha256), 'sha256 必须出现在文本回执里（收件方可复核）')
 
+  // 「三行」这个约束挡不住「每行很长」（TD-011）：台账 #28 的两臂实测两臂都恰好 3 行，但 P0 臂
+  // 249 字符 / 现状臂 664 ⇒ 主线程省下的 token 又被回执吃回去。上限必须以**数据**出现在派单包里
+  // （子 agent 只拿得到这一份），规则串里的数字与它同源 —— 数字写两处必然漂。
+  assert.equal(typeof j.receiptChars, 'number', '派单包必须把回执的字符上限以数据带出来（规则串里的数字不算数据）')
+  for (const line of j.receipt) {
+    assert.ok(line.length <= j.receiptChars, `回执模板自己就超限（${line.length} > ${j.receiptChars}）：${line}`)
+  }
+  assert.ok(j.receiptRule.includes(String(j.receiptChars)), '规则串必须带上限数字，且由同一个常量拼出（不许手写第二处）')
+  assert.match(text.stdout, new RegExp(`每行 ≤${j.receiptChars} 字符`), '文本派单包也要写出上限（只写在 JSON 里 = 收件方看不到）')
+  // 负控：把上限收到模板最长行之下，上面那条比较必须报出违反项 —— 否则「≤cap」是恒真的装饰
+  const longest = Math.max(...j.receipt.map((line) => line.length))
+  assert.ok(j.receipt.some((line) => line.length > longest - 1), '负控：上限收紧 1 字符时必须能报出超限行')
+
   // 轻确认档的卡不许被印成「要裁决」（S 档链里 3-4 不在三张硬裁决卡里）
   const notice = cliJson(['--dispatch', '3-4', '--facts', JSON.stringify(fixture.scenarios['local-tool'].facts), '--json'])
   assert.equal(notice.needVerdict.gate, 'notice', '本地小工具（S 档）里 3-4 的门禁应是轻确认')

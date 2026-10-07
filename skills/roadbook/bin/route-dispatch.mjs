@@ -76,6 +76,14 @@ export function chainStateOf(result, done = []) {
   }
 }
 
+/**
+ * 回执的**字符上限（每行）**：三行这个约束挡不住「每行很长」—— 台账 #28 的单卡对照实测两臂回执都恰好
+ * 3 行，但 P0 臂 249 字符（均值 83）vs 现状臂 664（均值 221）⇒ 主线程省下的 token 又被回执吃回去一部分。
+ * 取 160 = 好臂均值的约 1.9 倍（容得下带「命令原文 ⇒ 输出行原文」的那一行），只挡「每行很长」这一种。
+ * 超限 = 回执不合规，不是「内容更丰富」。数字只写在这一处：规则串由它拼出，测试钉死两者同源。
+ */
+export const RECEIPT_CHARS = 160
+
 /** 子 agent 的回执**恰好三行**：多一行不收（回执变长就没人读，P0 省下的 token 又花回去了）。 */
 export const RECEIPT_LINES = [
   '① 卡 <卡号> · 结论 PASS|FAIL|BLOCKED · 退出码 <n>',
@@ -92,7 +100,7 @@ const CONSTRAINTS = [
 ]
 
 /** 每条派单都带的一句：回执形状不达标 = 这单没做完，不是「大概齐」。 */
-const RECEIPT_RULE = '回执只认上面三行：结论 PASS 而第 ② 行给不出真实输出 = 未完成；第 ③ 行不许留空（没有待裁决就写「无」）。'
+const RECEIPT_RULE = `回执只认上面三行、且每行 ≤${RECEIPT_CHARS} 字符（超限 = 回执不合规，不是「内容更丰富」）：结论 PASS 而第 ② 行给不出真实输出 = 未完成；第 ③ 行不许留空（没有待裁决就写「无」）。`
 
 /**
  * 派单包：把「哪张卡 + 卡正文切片 + 门禁是不是裁决 + 回执怎么写」装配成一个对象。
@@ -126,6 +134,7 @@ export function dispatchOf({ result, card, lang = 'cn', quote, done = [], stopMa
     },
     chain,
     receipt: RECEIPT_LINES,
+    receiptChars: RECEIPT_CHARS,
     receiptRule: RECEIPT_RULE,
     constraints: CONSTRAINTS,
     // 切片台账：派发方与收件方各自都能复核「这段文字 = 卡文件的第 N~M 行」。
@@ -208,7 +217,7 @@ export function fmtDispatch(pkg) {
   out.push('约束（只给指针，规则正文在卡与 AGENTS.md 里）：')
   for (const c of pkg.constraints) out.push(`  · ${c}`)
   out.push('')
-  out.push('回执（恰好三行）：')
+  out.push(`回执（恰好三行，每行 ≤${pkg.receiptChars} 字符）：`)
   for (const r of pkg.receipt) out.push(`  ${r}`)
   out.push(`  ${pkg.receiptRule}`)
   out.push('')
@@ -240,6 +249,7 @@ export function fmtDispatchJson(pkg) {
       total: pkg.chain.total, doneCount: pkg.chain.doneCount, current: pkg.chain.current, outOfOrder: pkg.chain.outOfOrder,
     },
     receipt: pkg.receipt,
+    receiptChars: pkg.receiptChars,
     receiptRule: pkg.receiptRule,
     constraints: pkg.constraints,
     slice: pkg.slice,
