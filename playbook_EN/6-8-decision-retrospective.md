@@ -48,6 +48,7 @@ After receiving the start order, echo these four items before touching anything 
 ```powershell
 Get-ChildItem docs/decisions -Filter '*.md' -File | Sort-Object Name | Select-Object Name, LastWriteTime, @{ n = '复核日'; e = { if ((Get-Content $_.FullName -Raw -Encoding UTF8) -match '复核[:：]\s*(\d{4}-\d{2}-\d{2})') { $Matches[1] } else { '未登记' } } } | Format-Table -AutoSize
 ```
+Expected: Renders a `Name / LastWriteTime / 复核日` table (measured in this repo: 4 decision documents, all 4 rows reading `未登记` — none of them currently carries a `复核：<date>` line); the `复核日` column reads `复核：YYYY-MM-DD` from the body and falls back to `未登记`. ⚠️ **Assigning this fence to a variable swallows the table**: measured, `$x = … | Format-Table -AutoSize` yields 8 `FormatStartData/FormatEntryData` objects and prints nothing on screen ⇒ use `| Out-String` when you need text. ⚠️ Column widths count **characters**, and CJK is double width, so the Chinese-name column looks ragged (readings are unaffected). ⚠️ When `docs/decisions` is missing you get `Get-ChildItem : 找不到路径…` (stderr, non-terminating) while `$LASTEXITCODE` stays empty ⇒ this fence gives no exit-code signal.
 
 The inventory table has three columns: **decision card / status (already reviewed ｜ reviewed this round ｜ skipped + reason) / due date**. A skip must state its reason — "no time" is not a reason; write clearly why digging into this one now means nothing.
 
@@ -99,6 +100,7 @@ Write each change as one line: `action → which file it lands on → who reads 
 ```powershell
 $f = @(Get-ChildItem docs/decisions -Filter 'REVIEW_*.md' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending); if ($f.Count -eq 0) { Write-Host '[FAIL] 找不到 REVIEW_<日期>.md'; exit 1 }; $l = @(Get-Content $f[0].FullName -Encoding UTF8); $txt = $l -join "`n"; $four = @('成立','侥幸成立','不成立' ) | Where-Object { $txt -match $_ }; $rows = @($l | Where-Object { $_ -match '^\|' -and $_ -match 'DEC-|决策' }).Count; $land = @($l | Where-Object { $_ -match 'docs/lessons/|AGENTS\.md|TECH_DEBT\.md|STATE\.md' }).Count; $lucky = @($l | Where-Object { $_ -match '侥幸成立' }).Count; "复核记录 $($f[0].Name) 行数 $($l.Count)（要求 ≤120）"; "四值命中 $($four.Count)/3；决策行 $rows（要求 ≥1）；落点行 $land（要求 ≥1）；侥幸成立命中 $lucky（要求 ≥1）"; if ($l.Count -gt 120 -or $four.Count -lt 3 -or $rows -lt 1 -or $land -lt 1 -or $lucky -lt 1) { Write-Host '[FAIL] 本卡自查未过'; exit 1 } else { Write-Host '[OK] 本卡自查通过' }
 ```
+Expected: With no `REVIEW_*.md` it prints only `[FAIL] 找不到 REVIEW_<日期>.md` and exits **1**. With a review file it first prints three reading lines (`复核记录 <file> 行数 N（要求 <= 120）` / `四值命中 n/3；决策行 n（要求 >= 1）；落点行 n（要求 >= 1）；侥幸成立命中 n（要求 >= 1）`): if any requirement fails it adds `[FAIL] 本卡自查未过` and exits 1; if all pass it prints `[OK] 本卡自查通过` and exits 0. ⚠️ The three verdict words are **not mutually exclusive**: `成立` is a substring of `侥幸成立` — measured, a file containing only 「侥幸成立」 and 「不成立」 already scores 3/3, so that cell really only detects whether 「不成立」 appears. ⚠️ `$f[0]` takes the **newest** file by LastWriteTime, so with several present only one is checked, silently. The readings here come from a **child process** (I ran it via `-File <script>` and read `$LASTEXITCODE`); pasting `exit 1` into an interactive console closes that console.
 
 **Prohibitions (any violation voids this round's output):**
 - Retrospecting only the decisions "that went wrong" is forbidden — **every one of them is dug up, with priority on the ones that look normal**
@@ -138,6 +140,7 @@ Only three kinds of proof count: real command output / file paths / commit hash;
 ```powershell
 $m = 'docs/decisions/REVIEW_<日期>.md'; git add STATE.md docs/decisions docs/lessons TECH_DEBT.md $m; git commit -m "6-8 docs(decision): 决策复核与侥幸成立专项"; powershell -NoProfile -File check.ps1
 ```
+Expected: The `<日期>` inside `$m` must be replaced with a real date first: run verbatim, the measured result is `fatal: pathspec 'docs/decisions' did not match any files` (the message names the **first** missing path in the list, which is **not necessarily `$m` itself), exit code **128**, 0 staged entries. With a real `REVIEW_<日期>.md` and all four paths present: `git add` prints 0 lines, `git commit` prints `[main <short-hash>] 6-8 docs(decision): 决策复核与侥幸成立专项`, and `check.ps1` ends with `全部通过（退出码 0）：完成声明成立。`
 The exit code must be 0; if non-0, stop and ask the user — never declare this card done.
 
 Fixed closing line:

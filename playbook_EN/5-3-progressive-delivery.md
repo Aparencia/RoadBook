@@ -65,6 +65,7 @@ Start-Sleep -Seconds 3                                    # 重启方式按项�
 $off = (Invoke-WebRequest $url -UseBasicParsing).Content  # 开关关：旧行为必须复现 (flag off: the old behaviour must reappear)
 "关前 $($on.Length) 字符 / 关后 $($off.Length) 字符；两条响应原文都贴进回执 (paste both raw responses into the receipt)"
 ```
+Expected: This fence **must not be pasted and run as a whole**: it runs `Stop-Process node -Force` (on this machine that kills the host too) and overwrites `.env`. Split it into three separately-run steps: ① `$env:FEATURE_NEW_CHECKOUT='false'` changes **the current process only** — measured, this process sees it and a freshly started process does not (the false green the card warns about is real) ② when nothing listens on the port, `Invoke-WebRequest` throws `WebException: 无法连接到远程服务器` (measured) and `$on` stays `$null` ③ the card's last line therefore prints `关前 0 字符 / 关后 0 字符` — `$null.Length` silently yields 0, so **"could not connect" and "the response was empty" look identical on that line** ⇒ a clean last line does not prove the switch was tested; paste both response bodies.
 - The flag must exist **before** release, and **turning it off = returning to the old behaviour** (turning it off causes an error = there is no rollback switch)
 - The criterion may only come from **behaviour observation**: the real response difference of the same request before and after turning it off; config text, the flag value inside a log, and "the command did not error" are not evidence
 - The rollback switch's default value, current value, and who may change it go into `docs/RUNBOOK.md`
@@ -79,6 +80,7 @@ git checkout $prevTag
 # 回滚的部署与数据处置按 docs/RUNBOOK.md 「回滚」节执行（口径唯一，以 RUNBOOK 原文为准；本卡只给"取版本"这一步）
 # (the deployment and data handling of the rollback follow the "回滚" (rollback) section of docs/RUNBOOK.md; that text is the single source — this card only gives the "check out the version" step)
 ```
+Expected: `git checkout v0.3.9` (tag exists, clean tree) → exit code 0, enters detached HEAD; the `You are in 'detached HEAD' state…` block goes to **stderr** (with `2>&1` each line arrives as a `RemoteException`) — **output appears but the exit code is 0**, so do not read it as failure. A tag that does not exist → `error: pathspec 'v0.3.9' did not match any file(s) known to git`, exit code **1** (not 128). A dirty tree → `error: Your local changes to the following files would be overwritten by checkout:` plus `Aborting`, exit code 1 ⇒ confirm `git status --porcelain` is empty before rolling back; `git rev-parse --abbrev-ref HEAD` printing `HEAD` means you are not back on a branch. Deployment and data handling follow the rollback section of `docs/RUNBOOK.md`.
 - The drill record goes into `docs/versions/vX.Y.Z.md`, filled to this shape with real values: `回滚演练：2026-01-01 ｜ 命令 git checkout v0.3.9 ｜ 结果 成功 ｜ 耗时 4 分钟` ("rollback drill: 2026-01-01 ｜ command git checkout v0.3.9 ｜ result success ｜ duration 4 minutes")
 - **An undrilled rollback must not go to release** (this is this card's red line); a failed drill = fix the rollback path before releasing
 
@@ -125,6 +127,7 @@ git add docs/versions/vX.Y.Z.md docs/RUNBOOK.md STATE.md
 git commit -m "5-3 docs(release): 发布策略与放量阶梯落档"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `vX.Y.Z` is a **placeholder**: run verbatim, the measured result is `fatal: pathspec 'docs/versions/vX.Y.Z.md' did not match any files`, exit code **128**, 0 staged entries (atomic failure — `STATE.md` does not go in either) ⇒ substitute the real version and create that file first. Once all three paths exist: `git add` prints 0 lines, `git commit` prints `[main <short-hash>] 5-3 docs(release): 发布策略与放量阶梯落档`, and `check.ps1` ends with `全部通过（退出码 0）：完成声明成立。`
 
 ---
 

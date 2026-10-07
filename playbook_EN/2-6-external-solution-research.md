@@ -35,6 +35,7 @@ After receiving the start instruction, first issue a receipt for the following f
 $spec = 'docs/specs/2026-10-05_slug'   # assign before calling; replace with today's date_feature-slug
 New-Item -ItemType Directory -Force $spec | Out-Null
 ```
+Expected: 0 lines of output (`| Out-Null`), `$?` = True, `$LASTEXITCODE` empty (a cmdlet never sets it — measured as an empty string); re-running when the directory exists prints 0 lines and no error. The `2026-10-05_slug` in the card is a **sample value** — the closing fence of this card feeds `$spec` to `git add`, so an unsubstituted directory fails there with 128.
 The section title is verbatim `## 外部方案` ("external solutions"); inside the section write the five subsections ①~⑤, each ending with one "conclusion" line.
 
 **The five wheel-first checks（轮子先行五查）(give judgeable evidence item by item; every number carries a link, and every estimated number is marked `⚠️ 估算：依据` (estimate: basis) [disambiguated])**
@@ -58,6 +59,7 @@ If none of the three keywords yields a usable candidate → write this subsectio
 $pkg = 'date-fns'   # the candidate package name for this round; assign before calling; swap the command for the real package manager
 npm view $pkg dependencies dist.unpackedSize --json
 ```
+Expected: Measured here, `date-fns` prints **a single bare value `10902084`** — not a JSON object: `date-fns` has no `dependencies` field (measured: `npm view date-fns dependencies --json` printed 0 lines and exited 0), and when only one of the requested fields resolves npm prints the bare value; a package that does have dependencies (measured with `express`) prints a `{ "dependencies": {…}, "dist": {…} }` object ⇒ read by **field name**, never by "does it look like JSON". ⚠️ A misspelled field (measured with `dependencie`) prints **0 lines and exits 0** (false green); a package that does not exist prints `npm error 404 …`, with the tail pointing at `…\_logs\<timestamp>-debug-0.log`, and exits 1. The first run needs the network (about 2 seconds here with a warm cache).
 ❌ Counter-example: "应该不大" ("probably not big") (no number)
 ✅ Example: "依赖树 0 条、解包 1.2 MB（命令输出贴回执）、与现有栈无冲突、无常驻服务" ("dependency tree 0, unpacked 1.2 MB (command output pasted in the receipt), no conflict with the current stack, no resident service")
 
@@ -121,6 +123,7 @@ git add STATE.md $spec
 git commit -m "2-6 docs(spec): add external solution research"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add` prints 0 lines and exits 0; `git commit` prints `[main <short-hash>] 2-6 docs(spec): add external solution research` plus ` N files changed, …` and exits 0; with nothing changed it prints `On branch main` plus `nothing to commit, working tree clean` and exits 1. A placeholder or missing `$spec` gives `fatal: pathspec '<path>' did not match any files`, exit code **128**, 0 staged entries. The last line must be `check.ps1`'s `全部通过（退出码 0）：完成声明成立。`
 `git status --porcelain` empty + check.ps1 exit code 0 = wrap-up complete.
 
 Fixed closing line:

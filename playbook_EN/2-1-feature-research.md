@@ -29,6 +29,7 @@ Also state: the output lands at `docs/specs/<日期>_<slug>/RESEARCH.md`; the ap
 $spec = 'docs/specs/2026-09-12_export'   # replace with 今天日期_功能slug (assign before calling)
 New-Item -ItemType Directory -Force $spec | Out-Null
 ```
+Expected: 0 lines of output (`| Out-Null` swallows the created item), `$?` = True; **`$LASTEXITCODE` stays empty** — a cmdlet never sets it (measured on this machine: empty string), so an empty exit-code column is not a failure signal; judge by `$?` or `Test-Path $spec`. Re-running when the directory already exists prints the same 0 lines and no error (`-Force` is idempotent). The `2026-09-12_export` in the card is a sample value; `$spec` must become today's date + the feature slug.
 The date uses today (YYYY-MM-DD), slug = a short English word for the feature (e.g. `2026-09-12_export`).
 
 **Action 1: read the three upstream places (check before acting, to prevent parallel creation)**
@@ -64,6 +65,7 @@ When the same proposal appears a second time, **read the ledger first** and past
 ```powershell
 git grep -n "相关符号名"     # replace "相关符号名" with the real symbol; if there is no match, write "未找到引用" ("no references found")
 ```
+Expected: A hit prints `<file>:<line number>:<whole line>` (measured here: the real symbol `chunkBoundary` printed 9 lines, exit code 0) — that line number is where you go back and edit code. **Zero hits means it prints nothing at all plus exit code 1** (measured): that is the "no references found" shape, not a broken command. ⚠️ Running the placeholder verbatim **matches the card itself**: measured, `git grep -n "相关符号名"` printed 2 lines and exited 0 — the hits are line 65 of this card and of the Chinese one ⇒ without substituting a real symbol this fence is a false green. Note `git grep` searches **tracked** files only; untracked and ignored files are invisible.
 List the files expected to be touched + the affected lines in the registry (paste the lines if there are any).
 
 **Action 5: tier proposal (criteria table inlined; upgrade only, never downgrade — when unsure, propose one tier higher; hidden complexity discovered mid-task (a new dependency / cross-module change / a breaking table schema) → stop immediately and announce the upgrade; finishing the work first and reporting later is forbidden)**
@@ -128,6 +130,7 @@ git add STATE.md $spec
 git commit -m "2-1 docs(spec): add export research"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add` prints 0 lines and exits 0 (it stages only files that really changed); `git commit` prints `[main <short-hash>] 2-1 docs(spec): add export research` plus ` N files changed, M insertions(+), M deletions(-)` and exits 0. With nothing changed, `git commit` prints `On branch main` plus `nothing to commit, working tree clean` and exits **1**. If `$spec` was never created (or is still a placeholder) the measured failure is `fatal: pathspec '<path>' did not match any files`, exit code **128**, and **nothing gets staged at all** (atomic failure — not even `STATE.md`). The last line must be `check.ps1`'s `全部通过（退出码 0）：完成声明成立。`
 `git status --porcelain` empty + check.ps1 exit code 0 = wrap-up complete.
 
 Fixed closing line:

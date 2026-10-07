@@ -39,6 +39,7 @@
 ```powershell
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern '[\u4e00-\u9fa5]' | Where-Object { $_.Path -notmatch 'locales|i18n' } | Select-Object Path, LineNumber
 ```
+Expected: ⚠️ On this machine this fence is **a no-op**: `Get-ChildItem … | Select-String` never reads file contents — `Select-String`'s `-Path` does not accept pipeline input (measured: `ValueFromPipeline = False`), and a `FileInfo` arriving via `-InputObject` matches neither content nor file name. Three measured cases: a file whose **content** holds Chinese (`ascii-name.ts`) → 0 hits; a file whose **name** holds Chinese (`这个文件名是中文.ts`) → 0 hits; `-Pattern 'ascii-name'` → 0 hits. The same files scanned with `Select-String -LiteralPath $_.FullName` hit immediately (1 hit: `const t = '保存成功';`). ⇒ that **empty table** does not mean "no hard-coded Chinese": `$?` stays True and `$LASTEXITCODE` stays empty. A missing `src` is equally silent (0 items — `-Recurse` swallows the not-found; drop `-Recurse` to see `找不到路径…`). Fix tracked as TD-033.
 (Note: on PowerShell 5.1 `-Recurse` is not a valid parameter of `Select-String`; only the pipeline form above runs)
 - Handle every hit line by line: move it into the language pack (`locales/zh-CN.json` and so on) and change the component to look up the key; what truly must not be externalized (regular expressions, logs) goes on the whitelist with the reason noted.
 - ❌ Counter-example: `<button>保存</button>` ("Save" written hard-coded into the component)
@@ -92,6 +93,7 @@ npx --yes @axe-core/cli http://localhost:3000 --exit
 npx --yes pa11y http://localhost:3000 --standard WCAG2AA
 npx --yes lhci autorun --only-categories=accessibility --collect.url=http://localhost:3000
 ```
+Expected: The three commands contain **no exit-code checks at all**, so the only visible output is each tool's own and the only exit code you can read is the last one's ⇒ run them one at a time and record `$LASTEXITCODE` after each. Measured here: `@axe-core/cli --help` exits 0 (first npx resolve/download took ~20 s); `@axe-core/cli http://localhost:3000 --exit` on a machine **without Chrome** exits **1** after 3 s (`SessionNotCreatedError: session not created / from unknown error: cannot find Chrome binary`, output carrying ANSI escapes); `pa11y http://localhost:3000` with no server exits **1** after ~34 s (puppeteer cannot connect; the tail is a `CdpPage.goto` stack). ⚠️ **`lhci` is not Lighthouse CI**: the `lhci` package on npm is a placeholder (`description: placeholder …`, 4.1.2, 339 bytes) that prints one line, `Hello, this is AnupamAS01!`, and **exits 0** — which makes the whole fence exit 0 (false green); the real package is `@lhci/cli` (0.15.1, whose binary is named `lhci`). Fix tracked as TD-034.
 - Criteria: axe exit code 0 (zero violations) / pa11y exit code ≤1 with every error registered / lighthouse accessibility score ≥90.
 - Paste the complete output of the three commands into receipt ③; write every failing item into the "not yet met" table of `docs/I18N.md` (with due date and owner).
 - ❌ Counter-example: pasting a screenshot saying "looks fine" (no command output = no evidence)
@@ -135,6 +137,7 @@ git add STATE.md docs/I18N.md docs/registry/COMPONENTS.md
 git commit -m "7-6 docs(i18n): 文案外置与可访问性清单"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add STATE.md docs/I18N.md docs/registry/COMPONENTS.md` → 0 lines of output, exit code 0 (only files that really changed are staged); `git commit` prints `[main <short-hash>] 7-6 docs(i18n): 文案外置与可访问性清单` plus ` N files changed, …` and exits 0; with nothing changed it prints `On branch main` plus `nothing to commit, working tree clean` and exits 1. If any listed path is missing → `fatal: pathspec '<first missing path>' did not match any files`, exit code **128**, 0 staged entries. The last line is `check.ps1`'s `全部通过（退出码 0）：完成声明成立。`
 The exit code must be 0; non-zero → stop and ask the user; announcing that this card is complete is forbidden.
 
 **Next card**: 4-1 Batch coding (code changes) / 7-1 UI change (UI elements only). When the second language goes public, check 7-5 Compliance and privacy in the same batch; touching the authentication system → stop and ask the user, and raise the tier.
