@@ -2,7 +2,7 @@
 > 最近核对 —（骨架未核对；核对后填 <日期> @ <提交哈希>）
 
 > 本目录是项目的记忆：现状查 registry，欠账查 TECH_DEBT，历史查 archive。每份文档都必须能指回「写它的卡」与「读它的卡」——指不回去就是分裂文档，要么补卡要么删。
-> 常驻层不在本目录：根 AGENTS.md（规则）+ STATE.md（状态）。本目录按需查，**找不到先查再建，禁止平行新建**。
+> 常驻层不在本目录：根 AGENTS.md（规则）+ STATE.md（状态与一行摘要）+ RISK.md（风险与未决问题的明细）。本目录按需查，**找不到先查再建，禁止平行新建**。
 ## 文档 ↔ 卡 对应表（新增、改名、删除任何文件必须同批改本表）
 
 | 文件路径 | 谁创建（产出卡） | 谁维护（卡号） | 什么时候必须更新 | 读它的卡（消费卡） | 行数上限 |
@@ -18,7 +18,7 @@
 | DESIGN_TOKENS.md | 3-5 | 3-5 | 改色阶、语义色、字号、间距、圆角、阴影、明暗映射 | 3-4、3-6、4-2、7-1 | ≤110 |
 | MOTION.md | 3-6 | 3-6 | 改时长、缓动、动效选项、降级策略 | 3-4、4-2、7-1 | ≤100 |
 | refactor/ | 7-8 | 7-8、5-1 | 每次重构立项、每个阶段收尾；旧实现退役时 | 4-1、4-2、5-1 | 索引 ≤45 · 每张 ≤120 |
-| registry/COMPONENTS.md | 1-2 / 1-3 | 4-1（每批）、7-1 | 新增文件当批登记；改 UI 同批回写；文件删除同批删行 | 4-1、4-2、7-1 | 单页 ≤50 |
+| registry/COMPONENTS.md | 1-2 / 1-3 | 4-1（每批）、7-1 | 新增文件当批登记；改 UI 同批回写；文件删除同批删行 | 4-1、4-2、7-1 | 单页 ≤80（母版 39 行自身文件；模板默认 50 —— 见 `DOC_MAP.json` docLimits 与 `_qc/check.ps1` 的 `$rootOverride`） |
 | registry/DATA_DICT.md | 1-2 / 1-3 | 3-1、4-1 | 表、字段、类型、校验、敏感度 D1~D4 任一变化 | 3-1、3-2、4-2 | 无硬限 |
 | registry/APIS.md | 1-2 / 1-3 | 3-1、4-1 | 路径、方法、错误码、鉴权任一变化 | 4-1、4-2、7-2 | 无硬限 |
 | pool/IDEAS.md | 1-2 | 1-1 | 有新想法先进池；复活条件到期或想法作废 | 1-1 | 无硬限 |
@@ -40,4 +40,4 @@
 ## 读取节奏与防膨胀（5-1 归档卡执行，人不用记）
 - 现行状态层按需查：registry 三件套 / TECH_DEBT / pool / .tool-versions；留存历史层（specs、reviews、decisions、lessons、versions、archive）归档后不读，教训按症状检索（`Select-String -Path docs/lessons/*.md -Pattern "关键词"`）。
 - 防膨胀：specs 超 30 天未动提示归档；lessons 与 decisions 各超 30 张时，最旧且 90 天无引用的移入 archive（6 张种子卡豁免）；COMPONENTS 单页超限就拆组件；README、ARCHITECTURE、RUNBOOK 过期检查随 5-1（启动命令跑得通？模块图与目录一致？.env 键全有解释？）。
-- 文件数超 STATE.md「文件数基线 + 20」→ check.ps1 判红；`powershell -NoProfile -File orphans.ps1` 出七张清单，每条必须落「删除 / 登记技术债 / 补登记」之一。
+- 文件数超 STATE.md「文件数基线拆分 + 20」→ check.ps1 判红（**双计数器**：源码·资产 / docs/**.md 各一套额度；D14 强制拆分件单列不计）；口径只有一处 = `@(git ls-files).Count`（含 `template/` 与插件子包），只写在 STATE.md 的「当前文件数」行；`powershell -NoProfile -File orphans.ps1` 出七张清单，每条必须落「删除 / 登记技术债 / 补登记」之一。

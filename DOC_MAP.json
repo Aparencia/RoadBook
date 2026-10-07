@@ -56,7 +56,7 @@
       "docs/UI.md": 125,
       "docs/DESIGN_TOKENS.md": 110,
       "docs/MOTION.md": 100,
-      "docs/registry/COMPONENTS.md": 50,
+      "docs/registry/COMPONENTS.md": 80,
       "docs/refactor/README.md": 45,
       "docs/refactor/*.md": 120,
       "docs/decisions/*.md": 60,

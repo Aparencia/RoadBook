@@ -65,7 +65,9 @@ else {
 # 判据执行者自身上限（$selfCap 模式，C-3 先例）+ 文档行数上限的同源断言（A1c 模式）——
 # 两条都是把母版私有 _qc 里已解决问题的形态下发给项目侧；上调 $selfCap 必须同批改本行与 design §11.10，
 # 理由只能是"判据真的变强了"，不是"文件写长了"。
-$selfCap = 150
+# 2026-10-07 由 150 上调到 170：新增 STATE.md 可读性三条（台账 #3 —— 单行 ≤500 字符 / 风险摘要恰好 1 行 /
+#   摘要指向的根 RISK.md 必须在位）。判据真变强，不是文件写长了；同批改 _qc/check.ps1 的 $budget 与 design §8。
+$selfCap = 170
 $selfN = @([IO.File]::ReadAllLines((Join-Path $PSScriptRoot 'check.ps1'), [Text.Encoding]::UTF8)).Count
 if ($selfN -le $selfCap) { Write-Host "[OK] check.ps1 自身 $selfN <= $selfCap 行（判据执行者自设上限）" -ForegroundColor Green }
 else { Write-Host "[FAIL] check.ps1 自身 $selfN > $selfCap 行：判据执行者没有预算（拆函数，或写明调高理由）" -ForegroundColor Red; $fail++ }
@@ -92,6 +94,20 @@ if (-not (Test-Path -LiteralPath $dlMap) -or -not (Test-Path -LiteralPath $dlRea
         else { Write-Host "[OK] 文档行数上限同源：DOC_MAP.json 的 docLimits $($want.Count) 条 ↔ docs/README.md 对应表（A1c 同款双向核对）" -ForegroundColor Green }
     }
 }
+# STATE.md 可读性（台账 #3 / 反馈 U-1 + T-07）：开工必读的一页不许有超长行 —— 读取端按行截断时，
+# 截掉的正是"这一轮该先处置什么"。修法不是"少写"，是分层：摘要留本文件，证据外置根 RISK.md。
+# 三条判据：单行 ≤500 字符 / 「风险摘要」恰好 1 行 / 摘要指向的 RISK.md 必须真的在（否则摘要 = 空指针）。
+$stLines = @()
+if (Test-Path $sm) { $stLines = [System.IO.File]::ReadAllLines($sm, [Text.Encoding]::UTF8) }
+$stLong = @($stLines | Where-Object { $_.Length -gt 500 }); $stMax = 0
+foreach ($l in $stLines) { if ($l.Length -gt $stMax) { $stMax = $l.Length } }
+if ($stLong.Count -gt 0) { Write-Host "[FAIL] STATE.md 有 $($stLong.Count) 行超过 500 字符（最长 $stMax）：明细外置根 RISK.md，本文件只留摘要行" -ForegroundColor Red; $fail++ }
+else { Write-Host "[OK] STATE.md 单行 <= 500 字符（最长 $stMax；明细外置层 = 根 RISK.md）" -ForegroundColor Green }
+$stRisk = @($stLines | Where-Object { $_ -match '^\s*[-*]?\s*风险摘要\s*[:：]' })
+if ($stRisk.Count -eq 1) { Write-Host "[OK] STATE.md 的「风险摘要」恰好 1 行（摘要指 RISK.md，正文不在本文件）" -ForegroundColor Green }
+else { Write-Host "[FAIL] STATE.md 的「风险摘要」有 $($stRisk.Count) 行：摘要限 1 行，明细写根 RISK.md" -ForegroundColor Red; $fail++ }
+if (Test-Path (Join-Path $PSScriptRoot 'RISK.md')) { Write-Host "[OK] RISK.md 在位（风险与未决问题的明细外置层）" -ForegroundColor Green }
+else { Write-Host "[FAIL] RISK.md 不在位：STATE.md 的摘要指了它 —— 明细层缺失 = 摘要成了空指针" -ForegroundColor Red; $fail++ }
 
 # --- git 断言：完成 = 已提交（未提交 = 没有历史；锚点/账本/归档全部空转）---
 # 非 git 仓库 = FAIL：DoD 的"已提交"失去机械真相来源（旧版在此 [--] 跳过 = 假绿）。
