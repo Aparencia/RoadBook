@@ -38,6 +38,7 @@
 Get-ChildItem docs/specs -Recurse -Filter INCIDENT.md | Select-String -Pattern '现象|一句话'
 Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-'
 ```
+Expected: the first command measured **no output** in this repo (`docs/specs/` holds two directories and 0 `INCIDENT.md` files ⇒ 0 entries; empty output = there are no incident records, not a command failure, so take FAQ sources from the debt rows instead); the second prints the whole debt row, measured **30 lines** here (`TD-001` … `TD-030`, one line each) ⇒ copy those line numbers straight into the FAQ source column.
 - Each item is four lines: symptom (the user's own words) → cause (one plain sentence) → what to do (a copyable command or where to click) → source (file name + line number).
 - ❌ Counter-example: "可能网络问题，重试即可" ("probably a network problem, just retry", with no source and no executable action)
 - ✅ Good example: "打不开页面｜端口被占用｜换项目根 README.md 的启动 3 步里的备用端口命令｜来源：docs/TECH_DEBT.md:12" ("the page will not open | the port is taken | use the backup-port command in the 3 startup steps of the project-root README.md | source: docs/TECH_DEBT.md:12")
@@ -47,6 +48,7 @@ Select-String -Path docs/TECH_DEBT.md -Pattern '^\|\s*TD-'
 ```powershell
 Select-String -Path docs/registry/COMPONENTS.md -Pattern '人话标识'
 ```
+Expected: measured **3 lines** here, all header-like — the usage line at the top of the file, the `## 界面组件` section heading, and the seven-column table header; **no data row contains the string 「人话标识」** (this repo's 3 component rows sit below the header) ⇒ this command cannot produce the glossary's program terms: search again for the program names found in those component rows (or `Select-Object -Skip` the header).
 - Two columns; a program word must come from the same source as the "人话标识" column of the registry, and inventing a second set of names is forbidden.
 - ❌ Counter-example: "订单状态机" ("order state machine", which the user will never search for) ｜ ✅ Good example: "还没发货 ↔ 待发货状态" ("not shipped yet ↔ pending-shipment state")
 
@@ -70,6 +72,7 @@ Select-String -Path docs/registry/COMPONENTS.md -Pattern '人话标识'
 $tmp = if ($env:TEMP) { $env:TEMP } else { '/tmp' }
 "handover note path = $tmp/handover_$(Get-Date -Format 'yyyy-MM-dd').md"
 ```
+Expected: exactly one line `交接条路径 = <system temp dir>/handover_<yyyy-MM-dd>.md` (measured tail here: `…/Temp/handover_2026-10-07.md` — note the **mixed** separators: `$env:TEMP` carries backslashes while the `/` in the template is a literal); this only builds the path and **creates no file** (measured: the path still does not exist after the command), so where the file goes is decided by the body of action 5b.
 - The content holds **pointers, not copies**: the repository path, the current card number, the start anchor, the next step, the open questions, and which files must be read (each with its file path + line numbers).
 - Copying out the body text that already exists in other artifacts is forbidden (a copy will always drift): for the body text of USER_GUIDE / STATE.md / the reports, give the path and never duplicate the paragraphs.
 - Desensitize secrets and personal information before writing: tokens, passwords, phone numbers, e-mail addresses and real names are all written as "see entry X in the password manager / ask the user", and the file in the temp directory is deleted once the handover is done.
@@ -119,6 +122,7 @@ git add STATE.md docs/USER_GUIDE.md
 git commit -m "7-7 docs(handover): 用户文档与交接清单"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add` lists exactly two things (the state file + the deliverable); `git commit` exits 0 with the message exactly `7-7 docs(handover): 用户文档与交接清单`; `check.ps1` ends with `全部通过（退出码 0）：完成声明成立。` and exits 0 — non-zero means stop and ask the user, and never declare this card done yourself (only a human confirms a handover).
 The exit code must be 0; non-zero → stop and ask the user; announcing that this card is complete is forbidden.
 
 **Next card**: 5-1 Archive. Touching authentication / payment / data deletion → stop and ask the user, and raise the tier to 3-2 Threat modeling.

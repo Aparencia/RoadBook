@@ -40,6 +40,7 @@
 $text = 'Search'        # the text on the interface; try them one by one
 Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $text | Select-Object Path, LineNumber, Line
 ```
+Expected: this repo has no `src/`, so the pipeline yields **nothing at all and `$null`** (measured: the `-Recurse -File` form does not even print 「找不到路径…因为该路径不存在。」; only dropping `-Recurse` surfaces that line) ⇒ empty output may mean "no hit" *or* "no such directory" — settle it with `Test-Path src` first; on a hit each line has the shape `<file path>:<line number>:<full line text>`, and the extra `Select-Object Path, LineNumber, Line` renders it as a three-column table (`Path` is absolute).
    - ❌ Counter-example: `grep -rn "<界面上的文字>" src` (a bash-only command + a placeholder; it errors out directly on Windows)
    - ✅ Good example: the `Get-ChildItem -Path src -Recurse -File | Select-String -Pattern $text` above (measured on PowerShell 5.1: 2 hits — `SearchBox.tsx:1 export function SearchBox() {` and `SearchBox.tsx:2   return <input placeholder="Search" aria-label="Search" />;`)
    - (Note: on PowerShell 5.1 `-Recurse` is not a valid parameter of `Select-String`; only the pipeline form above runs, and the wrong form fails with "找不到与参数名称"Recurse"匹配的参数" [no parameter matches the name "Recurse"])
@@ -63,6 +64,7 @@ $hit = Select-String -Path $changed -Pattern $pat -ErrorAction SilentlyContinue
 $hit | Select-Object Path, LineNumber, Line
 "命中 $($hit.Count) 处"
 ```
+Expected: measured here against the previous commit (4 files) it prints **1 hit** at `docs/TECH_DEBT.md:23` and the last line `命中 1 处` — the hit is one of the **four colour values quoted in prose about tokens** (`#8a8a8a` / `#3b82f6` / `#0000000a` / `#ffffff0f`), neither a token definition nor a `var(--…)` reference ⇒ judge by "hits = explained hits", giving a reason per hit, and never read `命中 1 处` as automatically red; when `$changed` is empty (nothing changed in this commit / `HEAD~1` does not exist) `Select-String` first raises `无法将参数绑定到参数"Path"，因为该参数为空数组。` and still prints `命中 0 处` (`$null.Count` = 0) — tell the two apart instead of reading "not checked" as "clean".
   Verdict: hit count = explained count (a token definition site / already changed to `var(--…)`) means pass; any unexplained hit = this card is not complete.
 - **One single system**: one interface allows only one radius set, one shadow level, one icon library, and ≤3 font families (see `docs/DESIGN_TOKENS.md` and `docs/UI.md`).
 - **Write back the registry**: if the program name changed, change the row; if the affected surface changed, update the column; fill "most recent confirmation" with today.
@@ -106,6 +108,7 @@ git add STATE.md docs/registry/COMPONENTS.md src/components/SearchBox.tsx
 git commit -m "7-1 style($page): $what 改为图标加文字"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add` takes this explicit list (`src/components/SearchBox.tsx` is a sample path; this repo has no `src/`, so copying it verbatim gives `fatal: pathspec '...' did not match any files` with exit code 128); `git commit` exits 0 with the message exactly `7-1 style(<page>): <element> 改为图标加文字`; `check.ps1` ends with `全部通过（退出码 0）：完成声明成立。` and exits 0 (non-zero = stop, do not declare it done).
 (The acceptance description of §③ is written as "open which page → what should be seen"; ask the user for a visual inspection and confirmation before proceeding to 5-1 Archive.)
 
 Fixed closing line:

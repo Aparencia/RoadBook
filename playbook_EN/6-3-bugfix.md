@@ -45,6 +45,7 @@ git bisect run <reproduction command>    # e.g. git bisect run npm test -- --gre
 # after it prints "is the first bad commit":
 git bisect reset
 ```
+Expected: run it line by line after replacing both placeholders — the criterion is the `<40-char hash> is the first 'bad' commit` line printed by `git bisect run` (**git 2.56.0 on this machine quotes it as 'bad'**; the unquoted wording in the comment above no longer appears verbatim) plus the final `bisect found first 'bad' commit`; right after that, check the first two lines of `git status` (`HEAD detached at <short hash>` / `You are currently bisecting, started from branch 'main'`), then `git bisect reset` prints `Switched to branch '...'` and `git status --porcelain` is empty afterwards — forgetting the reset means you keep editing on a detached HEAD.
   ① The reproduction command must produce an exit code **automatically** (0 = good / non-zero = bad); a command that needs human eyes must not be fed to `bisect run` directly; ② every `good`/`bad` verdict must be explainable (no "it looks like that one"); ③ you must finish with `git bisect reset` (forget it and you keep coding on a detached HEAD); ④ write the conclusion into the RCA: the hash of the commit that introduced the problem + what that commit changed (raw `git show --stat <hash>`) + why it was not caught at the time.
   ❌ Counter-example: roll back the last two commits on a hunch, the red disappears and you declare "root cause found" (it might be a third commit, or the red was merely masked) ｜ ✅ Good example: bisect converges on `abc1234`; paste the raw `git show --stat abc1234` + a retrospective on why the tests did not stop it
 
@@ -61,6 +62,7 @@ git rev-parse --verify "$anchor^{commit}"; if ($LASTEXITCODE -ne 0) { throw "锚
 $scopeFiles = @('src/a.ts','src/b.ts')   # replace with this card's real list of changed files
 powershell -NoProfile -File gate.ps1 -Anchor $anchor -ScopeFiles ($scopeFiles -join ',') -RepoRoot .
 ```
+Expected: one criterion per line — (1) `$anchor` reads the 40-char hash out of `STATE.md` (measured here: `b4f85801fbaecdf16d889dfe53299a09989b86df`); (2) with a valid anchor `git rev-parse --verify` exits 0 and prints the same string again, while a bad one prints `fatal: Needed a single revision` on stderr with **exit code 128**, so that `throw` fires and you stop and ask the user (128 = the range could not be drawn, not "nothing changed"); (3) `gate.ps1` exits 0 with one line `[GREEN] 机械门禁通过：变更 N 个文件｜锚点 <short hash>｜范围 N 项` (previous batch measured `变更 13 个文件｜锚点 cd758d8｜范围 13 项`), and exit code 1 = red (out-of-scope change / over the line limit / lockfile change) ⇒ do not commit.
 
 Verdict wording: **red = exit 1** (not a git working tree / invalid anchor / missing -Anchor / missing -ScopeFiles / out-of-scope change / line count over limit / lockfile change) → stop and fix; committing is forbidden; **amber = exit 0 but with items requiring attention** (renamed entries, empty change list) → relay them to the user along with the receipt; green = exit 0. The "passed" that the gate prints itself does not count as evidence; you must paste the original command + the complete output.
 
@@ -109,6 +111,7 @@ git add $scopeFiles STATE.md
 git commit -m "6-3 fix(${slug}): $msg (BUG-001)"
 powershell -NoProfile -File check.ps1
 ```
+Expected: `git add` takes only this explicit list (a path that does not exist gives `fatal: pathspec '...' did not match any files` with **exit code 128**, measured here); `git commit` exits 0 with the message exactly `6-3 fix(<slug>): <one sentence> (BUG-xxx)` (an empty list gives `nothing to commit, working tree clean` + exit code 1); `check.ps1` must end with `全部通过（退出码 0）：完成声明成立。` — a `[FAIL] 未配置 STEPS：…` line means the environment is not wired yet (exit code 2), not that the fix failed; go back to 1-2 / 1-3 and wire the commands.
 
 The exit code must be 0; if it is 2 (`$STEPS` not configured, environment not initialized) or non-zero → stop and ask the user; announcing that the fix is complete is forbidden.
 

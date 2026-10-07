@@ -46,6 +46,7 @@ git add $scopeFiles STATE.md
 git commit -m "6-4 test(${slug}): 负面测试 + 回归验证收尾 (BUG-001)"
 powershell -NoProfile -File check.ps1
 ```
+Expected: read the exit-code partition from the card body; the measured anchor for this exact command is `check.ps1` ending with `全部通过（退出码 0）：完成声明成立。` (exit code 0). The two non-zero causes are distinguishable in the script: `exit 1` = a step failed / dirty worktree / over the file-count budget, `exit 2` = `$STEPS` is empty (the script first prints `[FAIL] 未配置 STEPS：本项目命令还没接进来…`). Every path in `$scopeFiles` must really exist (otherwise `git add` reports `fatal: pathspec '...' did not match any files` with exit code 128), and an empty list makes `git commit` report `nothing to commit, working tree clean` + exit code 1 — both make the trio go non-zero before `check.ps1` even runs.
 
 Criteria (**exit code zones; do not mix them up**): `0` = pass; `1` = the closing ritual failed (dirty working tree / some step in `$STEPS` failed / file count over budget; fix item by item according to the output); `2` = **environment not initialized** (`$STEPS` not configured, **not a fix failure**; go back to card 1-2 / 1-3 to hook up STEPS; judging "regression failed" is forbidden). If it does not pass → go back to 6-3 and fix; archiving while broken is forbidden.
 

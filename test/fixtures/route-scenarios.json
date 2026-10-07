@@ -176,9 +176,9 @@
         ],
         "ledger": {
           "cards": 32,
-          "lines": 4299,
-          "chars": 189368,
-          "tokensApprox": 94684,
+          "lines": 4303,
+          "chars": 190078,
+          "tokensApprox": 95039,
           "checkboxes": 127,
           "psBlocks": 93,
           "stops": 43,
