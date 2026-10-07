@@ -266,6 +266,44 @@ test('skills/roadbook/SKILL.md 引用的 playbook/ playbook_EN/ template/ 不能
   }
 });
 
+// —— 反馈 T-10：SKILL.md 声明「基目录 = 包根」，且每条相对路径都能从包根解析到 ——
+// 旧版只写「基目录 = 本母版根」⇒ 装成包之后 skill 资源根是 <包根>/skills/roadbook/，
+// 相对路径差两级，全是死链；而上面的断言只问「playbook/ playbook_EN/ template/ 在不在白名单里」，
+// 「从声明的基目录出发能不能解析到」这一层没人管 —— 路由漂移正好从这道缝里过去。
+const DIST_DIRS = ['playbook', 'playbook_EN', 'template', 'design', '_qc', 'skills', 'test', 'docs', 'lib', 'plugin', 'rules']
+
+test('skills/roadbook/SKILL.md 声明基目录 = 包根，且每条相对路径都能从包根解析到（反馈 T-10）', () => {
+  const skill = readFileSync(onDisk('skills/roadbook/SKILL.md'), 'utf8')
+  assert.match(
+    skill,
+    /\*\*基目录\s*=\s*包根\*\*/,
+    'SKILL.md 必须把基目录写死为「包根」——写「本母版根」时，装成包之后读者会按 SKILL.md 所在目录解析（差两级）',
+  )
+  assert.match(
+    skill,
+    /skill 目录\s*≠\s*包根/,
+    'SKILL.md 必须显式写出「skill 目录 ≠ 包根」——不写这一句，读者没有理由不按本文件所在目录解析',
+  )
+  // 扫正文里的相对路径 token（`\p{L}` 是为了中文文件名：`playbook/0-1-驱动卡.md`）
+  const tokens = new Set()
+  for (const m of skill.matchAll(/(?<![\p{L}\p{N}$./_-])([\p{L}\p{N}_][\p{L}\p{N}_.-]*\/[\p{L}\p{N}_./-]*[\p{L}\p{N}_.-])/gu)) {
+    tokens.add(m[1])
+  }
+  // 只认「像文件」（带扩展名）或「开头是已知顶层目录」的 token —— 散文里的 `认证/鉴权体系` 不是路径
+  const isPathLike = (t) => /\.[\p{L}\p{N}]{1,5}$/u.test(t) || DIST_DIRS.includes(t.split('/')[0])
+  const paths = [...tokens].filter(isPathLike)
+  assert.ok(
+    paths.length >= 40,
+    `SKILL.md 里只扫出 ${paths.length} 条路径（<40 = 正则失灵或路由表被删空，这条断言会变成空转）`,
+  )
+  const unresolved = paths.filter((p) => !existsSync(join(ROOT, p)))
+  assert.deepEqual(
+    unresolved,
+    [],
+    `SKILL.md 里这些相对路径从包根解析不到（装成包以后就是死链；改路径，或把基目录声明改对）：${unresolved.join(', ')}`,
+  )
+})
+
 test('根 .gitignore 不会把必需目录整个吞掉（npm 在没有 .npmignore 时拿 .gitignore 当忽略源）', () => {
   const lines = readFileSync(join(ROOT, '.gitignore'), 'utf8')
     .split(/\r?\n/)

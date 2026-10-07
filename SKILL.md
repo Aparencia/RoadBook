@@ -5,7 +5,7 @@ description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 
 
 # Roadbook（路书）· skill 路由（49 张卡：0-1 驱动卡 + 0-2 会话生命周期 + 47 张动作卡，中英双语）
 
-**基目录 = 本母版根**（`playbook/` 中文权威版、`playbook_EN/` 英文执行版、`template/`、`design/`、`_qc/`）。下面所有相对路径都相对基目录解析。上游仓库：<https://github.com/Aparencia/RoadBook>。
+**基目录 = 包根**（= 本仓库根；装成包时同样指包根，即依赖树里那份 roadbook 的根目录）—— 下面所有相对路径都相对**包根**解析：`playbook/`（中文权威版）、`playbook_EN/`（英文执行版）、`template/`、`design/`、`_qc/` 都在包根下。**注意：skill 目录 ≠ 包根** —— 插件分发的 skill 资源根是 `<包根>/skills/roadbook/`（那里只有本文件与 `bin/`），卡与模板仍在 `<包根>/` 下；按本文件所在目录去解析相对路径会差两级、全是死链（反馈 T-10，机械判据在 `test/packaging.test.mjs`）。上游仓库：<https://github.com/Aparencia/RoadBook>。
 
 ## 规则在哪（唯一正文；本文件只做路由与门禁）
 
@@ -43,7 +43,7 @@ description: "Roadbook（路书）V6 开发流程母版：把开发动作落到 
 - **渐进披露三级（别把判据堆进入口）**：① **metadata**（本文件 frontmatter 的 `name` + `description`）常驻、约 100 词，只回答"什么时候用 / 什么时候不用"；② **正文**（`AGENTS.md` 规则正文、本文件、`playbook_EN/0-1-driver-card.md`、被路由到的卡）在触发时载入，单张卡 ≤150 行、正文文件 <500 行，超了必须拆出新的一层并在这里给明确指针（不许删内容腾地方）；③ **资源**（脚本 / 样例 / 参考资料）按需读取、不设总量上限；单个参考文件 >300 行时在开头给一份目录。
 - **上下文预算**：单会话保持在 smart zone（约 150k tokens）内，**到 75% 就主动开削**（先削已贴过结论的工具输出 / 重复读取 / 走过场的讨论；后保用户原话、当前卡清单原文、未完成待办与证据行号）；走完一张卡进下一张、或隔天 / 换机器继续时，先落证据再压缩或交接。交接条写系统临时目录、**只放指针不复述**、敏感值脱敏。
 - **产物寿命**：写下任何产物先声明属哪一类——持久（进仓库）/ 会话内（临时目录，随时可删）/ 永不入库（只贴回执）；**没有声明按会话内处理**（防临时报告被当成长期事实源）。
-- **分发自检**：装成 DSH skill 的那份是本仓库的 clone，不会自动变新——`git -C "$env:USERPROFILE/.dsh/skills/roadbook" log --oneline -1` 与母版 `git log --oneline -1` 比对，不一致就 `git -C "$env:USERPROFILE/.dsh/skills/roadbook" pull --ff-only`（症状：skill 描述里的卡数与母版不符）。
+- **分发自检（先认布局，两种判据不同）**：① **仓库 clone 布局**（DSH 用户级 skill，`~/.dsh/skills/roadbook`）：那份是本仓库的 clone、不会自动变新 —— `git -C "<clone 路径>" log --oneline -1` 与母版 `git log --oneline -1` 比对，不一致就 `git -C "<clone 路径>" pull --ff-only`（症状：skill 描述里的卡数与母版不符）；② **包内布局**（本仓作为插件/依赖装进依赖树）：skill 资源根是 `<包根>/skills/roadbook/`，而包根没有独立 git 历史 —— 更新走插件详情页的更新条或重新 `add roadbook`，判据是 `node skills/roadbook/bin/route.mjs --audit` 退出码 0 且卡数与描述一致。**两种布局的相对路径口径相同：一律从包根解析。**
 
 ## 路由：什么场景走哪张卡（49 张全覆盖）
 
