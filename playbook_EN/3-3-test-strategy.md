@@ -1,6 +1,7 @@
 # Card 3-3 · Test strategy (tiers M/L; walked after the design is approved)
-> Trigger: tier M/L and the design is approved (tier L = 3-1 Design has been walked; tier M never walks 3-1, so "approved" = 2-2 scope confirmed, and the UI line 3-4~3-6 comes after this card; with 3-2 present, walk 3-2 first) ｜ Output: docs/specs/<date>_<slug>/TESTPLAN.md ｜ Next: 4-1 Batch coding
+> Trigger: tier M/L and the design is approved (tier L = 3-1 Design has been walked; tier M never walks 3-1, so "approved" = 2-2 scope confirmed; with 3-2 present, walk 3-2 first) ｜ Output: docs/specs/<date>_<slug>/TESTPLAN.md ｜ Next: 4-1 Batch coding
 > Process area: VER, QA
+> **Where the UI line sits**: the UI line 3-4 / 3-5 / 3-6 comes **after** this card — it is not an entry condition for it (easiest to mix up at tier M). Never write that sentence back into the trigger line: the card graph reads the "Trigger" cell only, and a successor named there is counted as a back-edge (ledger #32 measured two).
 
 ---
 

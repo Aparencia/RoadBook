@@ -1,5 +1,5 @@
 # Card 4-2 · Code review (mandatory for tiers M/L; tier S skips this card, with the 4-3 card guardrail + constitution §11 self-check as the fallback; run it in a new session independent of coding)
-> Trigger: after 4-1 is green (**tier S: after 4-1 is green go straight to 4-3 (skipping 4-2); tiers M/L: after 4-2 is green and the user gives the go-ahead, go to 4-3**) ｜ Output: docs/reviews/CODE_<date>_<slug>.md ｜ Next: 4-3 verification (on red/amber, go back to 4-1 to fix, then re-review under the "re-review scope") [disambiguated]
+> Trigger: after 4-1 is green (**mandatory for tiers M/L; tier S skips this card — the rule is the first paragraph of ② Execution**) ｜ Output: docs/reviews/CODE_<date>_<slug>.md ｜ Next: 4-3 verification (on red/amber, go back to 4-1 to fix, then re-review under the "re-review scope") [disambiguated]
 > Process area: IMP, QA
 
 ---
@@ -27,6 +27,8 @@ Also declare: this card only outputs a report and a suggested color; it does not
 ---
 
 ## ② Execution
+
+**Tier split (moved out of the trigger line; the trigger line carries prerequisites only — a successor written there is counted as a back-edge by the card graph, ledger #32)**: tier S goes **straight to 4-3** after 4-1 is green (skipping this card), with the fallback = the 4-3 card guardrail + constitution D14 self-check; tiers M/L go to 4-3 only after this card is **green and the user gives the go-ahead**, and on red/amber go back to 4-1 to fix, then re-review under the "re-review scope".
 
 **Two-axis parallel review** (one subagent per axis; the two axes' scopes do not overlap):
 - **Standards axis** = the standards this repository has already written down + the smell baseline table below

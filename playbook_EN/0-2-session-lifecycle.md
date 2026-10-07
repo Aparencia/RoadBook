@@ -123,6 +123,7 @@ Give each item below; one missing item = the close-out is not done:
 3. The real `git status --short` output + the outcome of the three-way choice; then `git status --short` again after it is handled.
 4. The `STATE.md` fields written back, one by one: `工作树状态` / `下一步` / the new `最近完成` line verbatim.
 5. The handover note: path + `Test-Path` output (`True` / `False`) + the six fields one by one.
+6. **"No changes this round" and "the gate was never run" must be said apart**: a no-change round = the **empty** `git status --short` output **plus** the **exit code 0 output** of `powershell -NoProfile -File check.ps1`; only the former = the gate was not run = not done (standing DoD item ① is not waived by "nothing changed").
 
 ---
 

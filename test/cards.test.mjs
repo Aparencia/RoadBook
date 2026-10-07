@@ -116,16 +116,46 @@ test('台账 #33：旧词「横向卡」指向的 15 张卡，现在落在两个
 })
 
 /**
- * 台账 #32 的机械报出：`3-3` 的进入条件里写着「界面线 3-4~3-6 排在本卡之后」——
- * 「之后」被写进了「依赖」那一格，于是卡图上是两条反向箭头。卡文本在批 6 改；
- * 本条断言把**当前**这 3 条观测钉死：改完卡文本它会红，逼着同批把这里也改掉。
+ * 台账 #32 的收口（2026-10-07 批 6 后半）：`3-3` 的进入条件里写着「界面线 3-4~3-6 排在本卡之后」、
+ * `4-2` 的写着「…直接进 4-3（跳过 4-2）…」——「之后」被写进了「依赖」那一格，卡图上是三条反向箭头。
+ * 三句已搬进卡体（`> **界面线的位置**` 与 ② 执行第一段），观测归零。
+ *
+ * **归零本身不是断言**：下面同时钉住「检测器还活着」——把 3-3 的触发行换成一句点名后继的话，
+ * 必须**恰好**报出 `3-3->3-4` 一条。少了这半条，把检测器删掉这条也会绿。
  */
-test('台账 #32：顺序自相矛盾恰好这 3 条（卡文本改完即应改本条）', () => {
+test('台账 #32：真仓的顺序自相矛盾归零；检测器对合成的反向卡仍恰好报一条', () => {
   const { cn, en, model } = realModel()
   const { observations } = checkModel(model, { cn, en, artifact: serializeModel(model) })
-  const pairs = observations.map((o) => /卡 (\d+-\d+)（第 \d+ 位）的进入条件点名了排在它后面的 (\d+-\d+)/.exec(o))
-  assert.ok(pairs.every(Boolean), `观测文本形态变了，解析不到：${observations.join(' / ')}`)
-  assert.deepEqual(pairs.map((m) => `${m[1]}->${m[2]}`), ['3-3->3-4', '3-3->3-6', '4-2->4-3'])
+  assert.deepEqual(observations, [], `真仓还有顺序矛盾：${observations.join(' / ')}`)
+  const synthCn = new Map(cn)
+  synthCn.set('3-3', {
+    ...cn.get('3-3'),
+    trigger: '> 触发：设计获批后（界面线 3-4 排在本卡之后）｜ 产物：x.md ｜ 下一张：4-1 分批编码',
+  })
+  const synth = buildModel({ cn: synthCn, en })
+  const found = checkModel(synth, { cn: synthCn, en, artifact: null }).observations
+  const pairs = found.map((o) => /卡 (\S+)（第 \d+ 位）的进入条件点名了排在它后面的 (\S+)（/.exec(o))
+  assert.ok(pairs.every(Boolean), `观测文本形态变了，解析不到：${found.join(' / ')}`)
+  assert.deepEqual(pairs.map((m) => `${m[1]}->${m[2]}`), ['3-3->3-4'], '检测器必须仍然会报反向箭头')
+})
+
+/**
+ * 台账 #16：收尾语必须把「本轮零改动」与「没跑门禁」分开——两件事在回执里长得几乎一样
+ * （都是"没什么可报的"），而只有后者是**未完成**。中英两份同时钉（只改一份 = 双语漂移）。
+ * 反向对照用的是"把关键词剪掉再喂给同一个判定"，证明这条断言不是恒真。
+ */
+test('台账 #16：0-2 的收尾语区分「零改动」与「没跑门禁」（中英同批）', () => {
+  const { cn, en } = realModel()
+  const textOf = (map) => readFileSync(path.join(ROOT, map.get('0-2').dir, map.get('0-2').file), 'utf8')
+  const missing = (text, words) => words.filter((w) => !text.includes(w))
+  const cnWords = ['「本轮零改动」与「没跑门禁」必须分开说', '退出码 0 原文', '常设 DoD 第 ① 条不因"没改动"豁免']
+  const enWords = ['"No changes this round" and "the gate was never run" must be said apart', 'exit code 0 output', 'standing DoD item ① is not waived by "nothing changed"']
+  const cnText = textOf(cn)
+  const enText = textOf(en)
+  assert.deepEqual(missing(cnText, cnWords), [], 'playbook/0-2 的收尾语缺词——台账 #16 要求两件事分开说')
+  assert.deepEqual(missing(enText, enWords), [], 'playbook_EN/0-2 的收尾语缺词（双语同批）')
+  assert.deepEqual(missing(cnText.replace(cnWords[0], '照常收尾'), cnWords), [cnWords[0]],
+    '反向对照：把关键词剪掉后必须能被检出，否则这条断言是恒真的')
 })
 
 /* ───────────────────────── 反向对照：分类判定 ───────────────────────── */
@@ -335,4 +365,32 @@ test('CLI：--frontier 遇到环退出 1（`非 0 不许描述成成功`）', ()
 test('CLI：不认识的参数退出 2；--help 退出 0', () => {
   assert.equal(cli(['--nope']).status, 2)
   assert.equal(cli(['--help']).status, 0)
+})
+
+/* ───────────────────────── 工具的自家数据：本仓的批次总表 ───────────────────────── */
+
+/**
+ * TD-009：`--frontier` 做出来之后，**一次都没跑过本仓自己的批次表**（`design/vnext-2026-10-07.md`
+ * §6 的四格依赖写着散文：`批 0；**A1 硬门禁（真机）**` / `批 1 门禁` / `与批 2 并行` / `批 3（依赖 --quote）`）——
+ * 工具只活在合成夹具里就等于没做。批 6 把那四格改成结构写法、把被搬走的四句话记在表下的引用块里，
+ * 本条把"自家数据"钉进测试：谁是前沿、谁被谁挡住，都要算得出来。
+ */
+test('TD-009：本仓批次表依赖格全部结构化，前沿 = 批0（--frontier 退出 0）', () => {
+  const file = path.join(ROOT, 'design', 'vnext-2026-10-07.md')
+  const text = readFileSync(file, 'utf8')
+  const parsed = parseDepTable(text)
+  assert.deepEqual(parsed.problems, [], parsed.problems.join(' / '))
+  assert.equal(parsed.rows.length, 7, '批次总表恰好 7 行（批 0 ~ 批 6）')
+  const res = frontierOf(parsed.rows)
+  assert.equal(res.cycle, null, '批次表不许成环')
+  assert.deepEqual(res.ready, ['批0'])
+  assert.deepEqual(res.blocked.map((b) => b.id), ['批1', '批2', '批3', '批4', '批5', '批6'])
+  assert.deepEqual(frontierOf(parsed.rows, ['批0', '批1']).ready, ['批2', '批3'], '批 2 与批 3 互不依赖（原「与批 2 并行」）')
+  const r = cli(['--frontier', file])
+  assert.equal(r.status, 0, r.stdout + r.stderr)
+  assert.match(r.stdout, /可开工：批0/)
+  // 被搬走的四句话仍在文件里（结构化的是依赖格，不是把信息删掉）
+  for (const phrase of ['A1 硬门禁（真机）', '批 3 与批 2 **并行**', '`--quote` 切片']) {
+    assert.ok(text.includes(phrase), `搬出依赖格的那句话不许丢：「${phrase}」`)
+  }
 })
