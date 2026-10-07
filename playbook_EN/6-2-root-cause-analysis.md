@@ -39,6 +39,13 @@ After receiving the bug report, first send back a receipt for the following six 
 3. Look up the "plain-language identifier" column of `docs/registry/COMPONENTS.md` to reverse-map to the program name
 4. Check whether a lesson card in `docs/lessons/` covers the same symptom (if yes → first try the old card's fix; on success, update the "most recent confirmation" field on the old card = date + the evidence of this confirmation; **if the old card has no such field → add the field first, then update it**; never skip the update just because the field is missing); **if an existing lesson card is hit (the same symptom occurring a second time) → after the fix is complete you must draft an "upgrade proposal": upgrade this lesson from knowledge to a rule (write it into the constitution's prohibitions or the corresponding process card's check items, landing on a specific file + a specific item), and hand it to the user for a verdict — a pit stepped into twice will come back a third time**
 5. **Reverse chain tracing**: from the error line, trace up the call chain until you find the layer where "the input was still correct when it arrived here" — the root cause is one layer below it; the receipt must write out this chain (error point file:line → caller file:line → … → original trigger point file:line). **Prohibition: with no reverse call chain written out, touching the code is forbidden — fixing only the erroring line = symptom fixing, and this card is void.**
+6. **Host-level / environment-level failure: the five steps** (take this route when the error points at the environment, or when "the code looks fine"; the same exit as the three questions of red light C1):
+   - **Multi-channel comparison matrix**: run the same thing through ≥2 independent start channels (a different host / a different account / a different data directory), downgrading "it necessarily hangs" to "it hangs under some combination"; a single-channel conclusion does not count.
+   - **Minimal configuration**: first switch off every optional piece (autoload / plugins / injection parameters) and run the minimal configuration; still red ⇒ the problem is not in the configuration layer.
+   - **Zero-dependency probe**: write a probe that imports nothing from this project (a few lines of script in a temp directory) — if it can go red ⇒ it has nothing to do with this project's code.
+   - **System-level audit**: read ACL / integrity label / policy with a read-only reader (such as `scripts/envcheck.ps1`); **every conclusion must carry a healthy control sample** (the same probe is green in another directory or under another account) — no control sample = the conclusion does not stand.
+   - **Still unsatisfiable after all five steps** → register it in `docs/TECH_DEBT.md`, or close the task with B1's third state `BLOCKED_BY_ENV` (unsatisfiable on this machine ≠ the code is unfinished); **unresolved for 2 consecutive rounds → stop trying on this machine, switch machines + a manual action list**.
+7. **Four localization techniques** (the ones that save time; use them as needed): ① **the same SHA256 binary in a different location** — one sentence rules out "a code problem"; ② **2×2 stripping (path × content)** — strip "location" apart from "content"; ③ **a different access path** (`subst` / a directory symlink) — distinguish "path-string policy" from "directory object attributes"; ④ **synthetic reproduction** — see ④ of action 6.
 
 **Action 3: five whys comparison — ≥3 layers (ask all the way down; stopping at one layer is forbidden)**
 
@@ -61,6 +68,20 @@ After receiving the bug report, first send back a receipt for the following six 
 
 **Action 5: write `docs/specs/<date>_<slug>/RCA.md`**: symptoms / reproduction steps / root cause (≥3 layers) / impact surface / suggested fix. The `<slug>` in the path must be the same slug as in the card header and in STATE.md `当前任务`; it is forbidden to call it a bug name in one place and a slug in another.
 
+**Action 6: instrument and experiment discipline (prove the instrument is trustworthy before drawing a conclusion; these are not "be more careful", they are criteria)**
+- **A · experiment design (guard against "the false signal I built myself")**: ① **isolate every arm + assert the pre-state before every arm** — long-running processes / shared data directories / caches / ports must be independent per arm, and each arm must assert at its start that the pre-state is 0 (the previous arm's residue contaminates both comparison arms at once); ② **move one variable at a time** ("directory content" and "directory location" mixed into one comparison can only be stripped apart by doing a 2×2); ③ **even with >90% correlation, keep watching that one counter-example** (15 hangs out of 16 — the single pass is exactly where the mechanism comes from; writing "it necessarily hangs" as the conclusion cuts the mechanism off); ④ **synthetic reproduction is the only step that establishes causation** (build the failure yourself in a brand-new directory → remove it → it turns green).
+- **B · instrument discipline (self-calibrate first, conclude after)**: ⑤ **calibrate the instrument first** — build a known state as a ruler and see whether the instrument can read it out; ⑥ **an "exclusion" must name the specific fields being excluded** (saying "ACL is excluded" when only the DACL was excluded, while the answer sits just outside the DACL); ⑦ **an outer error code is for bucketing only, never a criterion** (the same root cause can hand out three different codes; those are merely different failure points); ⑧ **injection-type parameters must first have their channel verified** (plant a visible sentinel to confirm the parameter really reached the command line, otherwise that round of experiment is void — a void experiment is not evidence).
+- **C · attribution and advice discipline**: ⑨ **before saying "most likely", inventory the variables already brought under control**, and **before giving an operational suggestion, verify that it is executable on this machine** ("run it in a non-elevated terminal" equals no advice on a machine that cannot create a Medium process); ⑩ **before attributing to the outside, measure it** (runtime version / antivirus / elevation / host context, each ruled out by actual measurement; the true cause may be in no log, event or error code at all — only actively writing an instrument to read that layer makes it visible).
+
+| You will think | The fact |
+| :-- | :-- |
+| "The error code says the resource is in use, so it is an occupancy problem" | That is the outer wrapper; settle the bucketing rule first, do not use it as a criterion |
+| "ACL has already been excluded" | Which part was excluded? (DACL / SACL / label / owner) |
+| "I replicated the ACE and it still runs, so it has nothing to do with ACL" | `Set-Acl` moves only the DACL; the label was not moved along |
+| "6/6 hang, 6/6 pass — that is deterministic" | My experiment order may be contaminating the next arm |
+| "Bet on the most likely cause first" | Before betting, inventory the variables already brought under control |
+| "Suggest he run it in a non-elevated terminal" | Can this machine create a Medium process? Verify first |
+
 ---
 
 ## ③ Evidence receipt
@@ -70,6 +91,7 @@ Give, item by item:
 2. The raw root cause chain (≥3 layers)
 3. Severity classification proposal + basis
 4. RCA.md path
+5. Evidence of instrument and experiment discipline (paste the raw text item by item when they are involved): the output of the self-calibration ruler / the naming of the excluded fields / the pre-state assertion of each arm / the command and output of the healthy control sample
 
 ---
 

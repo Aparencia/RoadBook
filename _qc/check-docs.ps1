@@ -12,6 +12,7 @@
 #   A1a 卡产物 → 对应表：每张卡头部「产物：」里的每个 docs/ 路径，都要有对应表槽位覆盖
 #   A1b 对应表 → design：对应表每一行的首段都要在 design 全文出现（§5 目录树）
 #   A1c $budget ↔ 对应表：docs/ 开头的行数上限，两处必须同源
+#   A1d DOC_MAP.json 的 docLimits ↔ 对应表「行数上限」列：文档行数上限的机器判据数据也必须同源（A1c 同款）
 #
 # 判据口径（写在这里，免得下次改断言时凭印象）：
 #   「覆盖」= 取 token 去掉 docs/ 前缀后的**首段**，与对应表某行路径的首段相等。
@@ -110,6 +111,21 @@ if ($null -ne $map) {
     Check (-not $disMiss) "DOC_MAP 里 disabled 的规则在 template/STATE.md 裁剪记录可见（缺：$($disMiss -join ', ')；静默关掉义务 = 判据消失而没人知道）"
 }
 
+# ── A1d：DOC_MAP.json 的 docLimits ↔ 对应表的「行数上限」列（A1c 同款同源；2026-10-07 批 5 / 反馈 U-4）─
+# 上限的事实源仍只有一处（对应表那一列）；这里核对的是「机器判据数据没有漂成第二处真相」。
+$want = @{}; $got = @{}
+if ($null -ne $map -and $null -ne $map.docLimits) { foreach ($p in $map.docLimits.files.PSObject.Properties) { $want[[string]$p.Name] = [int]$p.Value } }
+foreach ($r in $rows) {
+    $ns = @([regex]::Matches($r.Raw, '≤(\d+)') | ForEach-Object { [int]$_.Groups[1].Value })
+    if ($ns.Count -eq 0) { continue }
+    if ($r.Path.EndsWith('/')) { $got['docs/' + $r.Path + '*.md'] = $ns[-1]; if ($ns.Count -ge 2) { $got['docs/' + $r.Path + 'README.md'] = $ns[0] } }
+    elseif ($ns.Count -eq 1) { $got['docs/' + $r.Path] = $ns[0] }
+}
+Check ($want.Count -ge 10) "A1d 从 template/DOC_MAP.json 解析出 docLimits $($want.Count) 条（<10 = 解析器空心）"
+$dlBad = @(); foreach ($k in $want.Keys) { if (-not $got.ContainsKey($k)) { $dlBad += "$k 缺对应表行" } elseif ($got[$k] -ne $want[$k]) { $dlBad += "$k 不一致（DOC_MAP $($want[$k]) / 表 $($got[$k])）" } }
+foreach ($k in $got.Keys) { if (-not $want.ContainsKey($k)) { $dlBad += "$k 只在对应表（漏进 docLimits）" } }
+Check (-not $dlBad) "A1d 文档行数上限两处同源（不一致：$($dlBad -join '；')）"
+
 # ── C1：固定槽位文档必须有「最近核对」行（文档是唯一没有机器可读头的受控项）────────────
 # 合法值两种：`—`（模板骨架，尚未核对——生成出来的项目一开始就是这种）/ `<YYYY-MM-DD> @ <7~40 位哈希>`
 # （核对后填，口径见 7-7 卡）。核对日**只在文档头、不进对应表**——两处都写就是第二处真相。
@@ -117,7 +133,7 @@ $hdrDocs = 'README.md,ARCHITECTURE.md,RUNBOOK.md,OBSERVABILITY.md,PRIVACY.md,I18
 $badHdr = @($hdrDocs | Where-Object { $fp = Join-Path $root ('template\docs\' + ($_ -replace '/', '\')); -not (Test-Path -LiteralPath $fp) -or @([IO.File]::ReadAllLines($fp, [Text.Encoding]::UTF8) | Where-Object { $_ -match '^> 最近核对\s+(—|\d{4}-\d{2}-\d{2}\s+@\s+[0-9a-f]{7,40})' }).Count -eq 0 })
 Check (-not $badHdr) "固定槽位文档有「最近核对」行（缺/格式不对：$($badHdr -join ', ')；合法值 = — 骨架未核对 / <日期> @ <短哈希>）"
 $selfN2 = [IO.File]::ReadAllLines((Join-Path $root '_qc\check-docs.ps1'), [Text.Encoding]::UTF8).Count
-Check ($selfN2 -le 130) "行数 $selfN2 <= 130 ：_qc/check-docs.ps1 自身（2026-10-06 由 120 上调：C1 最近核对行 + B2 DOC_MAP 绑定；与 _qc/check.ps1 同款自设上限）"
+Check ($selfN2 -le 145) "行数 $selfN2 <= 145 ：_qc/check-docs.ps1 自身（2026-10-06 由 120 上调到 130：C1 最近核对行 + B2 DOC_MAP 绑定；2026-10-07 由 130 上调到 145：A1d 文档行数上限同源——判据真变强，不是文件写长了）"
 
 Write-Host "文档域：通过 $pass 项；失败 $($fail.Count) 项"
 if ($fail.Count -gt 0) {

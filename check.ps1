@@ -62,6 +62,36 @@ else {
     if ($sd -gt $baseDocs + $fileBudgetGrowth) { Write-Host "[FAIL] docs/**.md 预算超支：基线 $baseDocs / 当前 $sd / 允许新增 $fileBudgetGrowth" -ForegroundColor Red; $fail++ }
     else { Write-Host "[OK] docs/**.md $sd <= 基线 $baseDocs + 允许新增 $fileBudgetGrowth" -ForegroundColor Green }
 }
+# 判据执行者自身上限（$selfCap 模式，C-3 先例）+ 文档行数上限的同源断言（A1c 模式）——
+# 两条都是把母版私有 _qc 里已解决问题的形态下发给项目侧；上调 $selfCap 必须同批改本行与 design §11.10，
+# 理由只能是"判据真的变强了"，不是"文件写长了"。
+$selfCap = 150
+$selfN = @([IO.File]::ReadAllLines((Join-Path $PSScriptRoot 'check.ps1'), [Text.Encoding]::UTF8)).Count
+if ($selfN -le $selfCap) { Write-Host "[OK] check.ps1 自身 $selfN <= $selfCap 行（判据执行者自设上限）" -ForegroundColor Green }
+else { Write-Host "[FAIL] check.ps1 自身 $selfN > $selfCap 行：判据执行者没有预算（拆函数，或写明调高理由）" -ForegroundColor Red; $fail++ }
+$dlMap = Join-Path $PSScriptRoot 'DOC_MAP.json'; $dlRead = Join-Path $PSScriptRoot 'docs/README.md'
+if (-not (Test-Path -LiteralPath $dlMap) -or -not (Test-Path -LiteralPath $dlRead)) {
+    Write-Host "[FAIL] 文档行数上限同源断言的前提缺失：DOC_MAP.json 或 docs/README.md 不在位" -ForegroundColor Red; $fail++
+} else {
+    $dlj = $null; try { $dlj = [IO.File]::ReadAllText($dlMap, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $dlj = $null }
+    if ($null -eq $dlj -or $null -eq $dlj.docLimits) { Write-Host "[FAIL] DOC_MAP.json 缺 docLimits：文档行数上限没有机器判据数据源（gate.ps1 ⑨ 会空转）" -ForegroundColor Red; $fail++ }
+    else {
+        $want = @{}; foreach ($pp in $dlj.docLimits.files.PSObject.Properties) { $want[[string]$pp.Name] = [int]$pp.Value }
+        $got = @{}
+        foreach ($ln in [IO.File]::ReadAllLines($dlRead, [Text.Encoding]::UTF8)) {
+            if (-not $ln.StartsWith('|')) { continue }
+            $c = @($ln.Trim().Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+            $nm = ($c[0] -replace '（[^）]*）', ''); $ns = @([regex]::Matches($c[-1], '≤(\d+)') | ForEach-Object { [int]$_.Groups[1].Value })
+            if ($ns.Count -eq 0 -or $nm -eq '' -or $nm -match '^[:\-\s]+$') { continue }
+            if ($nm.EndsWith('/')) { $got['docs/' + $nm + '*.md'] = $ns[-1]; if ($ns.Count -ge 2) { $got['docs/' + $nm + 'README.md'] = $ns[0] } }
+            elseif ($ns.Count -eq 1) { $got['docs/' + $nm] = $ns[0] }
+        }
+        $dd = @(); foreach ($k in $want.Keys) { if (-not $got.ContainsKey($k)) { $dd += "$k 缺对应表行" } elseif ($got[$k] -ne $want[$k]) { $dd += "$k 上限不一致（DOC_MAP $($want[$k]) / 对应表 $($got[$k])）" } }
+        foreach ($k in $got.Keys) { if (-not $want.ContainsKey($k)) { $dd += "$k 只在对应表（漏进 docLimits）" } }
+        if ($dd.Count -gt 0) { Write-Host "[FAIL] 文档行数上限两处不同源：$($dd -join '；')" -ForegroundColor Red; $fail++ }
+        else { Write-Host "[OK] 文档行数上限同源：DOC_MAP.json 的 docLimits $($want.Count) 条 ↔ docs/README.md 对应表（A1c 同款双向核对）" -ForegroundColor Green }
+    }
+}
 
 # --- git 断言：完成 = 已提交（未提交 = 没有历史；锚点/账本/归档全部空转）---
 # 非 git 仓库 = FAIL：DoD 的"已提交"失去机械真相来源（旧版在此 [--] 跳过 = 假绿）。

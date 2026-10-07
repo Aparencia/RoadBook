@@ -132,6 +132,28 @@ else {
     }
 }
 
+# ⑨ 文档行数上限（DOC_MAP.json 的 docLimits）：本批变更清单里的文档超限 = 红。
+#   与 ⑥ 同口径（只判本批动过的文件）——全仓一次性洗白会逼着"顺手改"（D6）；上限的事实源是
+#   docs/README.md 的「行数上限」列，两处同源由 check.ps1 的结构断言双向核对（数字不一致 = 判据分裂）。
+if ($null -ne $map -and $null -ne $map.docLimits) {
+    $lim = @{}
+    # `*` 只匹配同一路径段内（[^/]*）：写成 `.` 会让 docs/lessons/*.md 把子目录也算进来。
+    foreach ($pr in $map.docLimits.files.PSObject.Properties) { $lim['^' + ([regex]::Escape([string]$pr.Name)).Replace('\*', '[^/]*') + '$'] = [int]$pr.Value }
+    foreach ($f in $changed) {
+        $hit = @($lim.Keys | Where-Object { $f -match $_ })
+        if ($hit.Count -eq 0) { continue }
+        $cap = ($hit | ForEach-Object { $lim[$_] } | Measure-Object -Minimum).Minimum   # 多条命中取最严
+        $full9 = Join-Path $RepoRoot ($f -replace '/', [IO.Path]::DirectorySeparatorChar)
+        $isFile9 = $false
+        try { $isFile9 = Test-Path -LiteralPath $full9 -PathType Leaf } catch { $isFile9 = $false }
+        if (-not $isFile9) { continue }
+        try { $n9 = [System.IO.File]::ReadAllLines($full9, [Text.Encoding]::UTF8).Count }
+        catch { $fail += "文档行数读取失败：$f（$($_.Exception.Message)）"; continue }
+        if ($n9 -gt $cap) { $fail += "文档行数超限：$f 共 $n9 行 > 上限 $cap（上限数据在 DOC_MAP.json 的 docLimits，事实源 docs/README.md；按 D13 把明细外置成同级文档，不许调高上限当解法）" }
+    }
+}
+elseif ($null -ne $map) { $warn += 'DOC_MAP.json 没有 docLimits：文档行数上限仍只是人读索引（docs/README.md 那一列），机器不判' }
+
 if ($fail.Count -gt 0) {
     Write-Host "[RED] 机械门禁不通过（exit 1）：" -ForegroundColor Red
     foreach ($x in $fail) { Write-Host "  - $x" }

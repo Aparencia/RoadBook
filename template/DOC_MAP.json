@@ -42,5 +42,27 @@
       "d13": "表/字段",
       "why": "迁移文件 = 表结构变更（红线域）：数据字典必须同批回写表/字段/类型/校验/敏感度"
     }
-  ]
+  ],
+  "docLimits": {
+    "note": "文档行数上限的机器判据数据（反馈 U-4 / 台账 #9）：key = 相对项目根的路径，`*` 只匹配同一路径段内；多条命中取最严（最小）上限。事实源 = docs/README.md 的「行数上限」列——两处同源由 check.ps1 的「结构断言」段与母版侧 _qc/check-docs.ps1 的 A1d 双向核对（数字不一致 = 判据出现第二处真相）。执行者是 gate.ps1 ⑨：本批变更清单里的文档超限即判红（与 ⑥ 同口径；全仓一次性洗白会逼着顺手改）。「无硬限」的文档不进本表。",
+    "files": {
+      "docs/README.md": 55,
+      "docs/ARCHITECTURE.md": 150,
+      "docs/RUNBOOK.md": 100,
+      "docs/OBSERVABILITY.md": 80,
+      "docs/PRIVACY.md": 80,
+      "docs/I18N.md": 60,
+      "docs/USER_GUIDE.md": 60,
+      "docs/UI.md": 125,
+      "docs/DESIGN_TOKENS.md": 110,
+      "docs/MOTION.md": 100,
+      "docs/registry/COMPONENTS.md": 50,
+      "docs/refactor/README.md": 45,
+      "docs/refactor/*.md": 120,
+      "docs/decisions/*.md": 60,
+      "docs/lessons/*.md": 12,
+      "docs/archive/INDEX.md": 120,
+      "docs/BASELINE.md": 120
+    }
+  }
 }

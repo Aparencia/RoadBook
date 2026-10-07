@@ -23,15 +23,19 @@ After receiving the start instruction, first send back a receipt:
 Select-String -Path "docs/reviews/*.md" -Pattern "建议色" | Select-Object Filename, Line
 ```
 - ≥10 consecutive greens, with rework having occurred during that period → proposal: "the review gate is too loose" (treat the cause: add criteria to the corresponding dimension); red/amber rate > 50% → proposal: "there is a systemic problem upstream" (treat the cause: add check items to cards 2-1 / 2-2, or the tier for that class of task should be raised)
-**Signal 2: stop-and-ask hot spots (which card is the most laborious)**
+**Signal 2: stop-and-ask hot spots (which card is the most laborious) — two-stage: location column → card number**
 ```powershell
-Select-String -Path "docs/TECH_DEBT.md" -Pattern '^\|\s*TD-' | ForEach-Object { ($_.Line -split '\|')[4].Trim() } | Group-Object | Where-Object { $_.Count -ge 2 } | Select-Object Count, Name
+Select-String -Path "docs/TECH_DEBT.md" -Pattern '^\|\s*TD-' | ForEach-Object {
+  $p = (([string]$_.Line -split '\|')[3] -split ':')[0].Trim(' `')   # stage 1: the location column = column 3
+  $c = ((git log -1 --format=%s -- $p) -split ' ')[0]                # stage 2: location → the card number of its most recent commit
+  [pscustomobject]@{ 位置 = $p; 卡号 = $(if ($c -match '^\d+-\d+$') { $c } else { '未标注卡号' }) }
+} | Group-Object 卡号 | Where-Object { $_.Count -ge 2 } | Select-Object Count, Name
 ```
-The criteria look only at **data rows**: numbered rows start with `| TD-`; after splitting by `|`, group by column 4 (the source column); only when the same source appears **≥2 times** does it count as a hot spot → proposal: "that card or that class of task needs a front-loaded check item".
-- The header row (containing the two characters "来源") and the `（示例）` row do not take part in the count; rows with fewer than 5 columns must have their columns completed first before being counted, and must not be skipped as noise.
-- ❌ Counter-example: `Select-String -Pattern "来源"` (it hits only the header, so the same source can never be counted ≥2 times) ｜ ✅ Good example: the column-grouping command above (output the list of sources with Count ≥2 and attach it to the report)
+The criteria look only at **data rows**: numbered rows start with `| TD-`; after splitting by `|`, **column 3 is the location column** (`[4]` is the type column — taking the wrong column only ever outputs type hot spots such as "rot, design, test" and has nothing to do with "which card is laborious"); only when the same **card number** appears **≥2 times** does it count as a hot spot → proposal: "that card or that class of task needs a front-loaded check item". When the location column holds several paths or a note, take the first path that can be reverse-mapped to a card number; if none can be reverse-mapped → put it under 「未标注卡号」 and name it in the report (a commit message without a card number = the ledger format is substandard, see the commit convention in B1).
+- The header row (containing the two characters "位置") and the `（示例）` row do not take part in the count; rows with fewer than 8 columns must have their columns completed first before being counted, and must not be skipped as noise.
+- ❌ Counter-example: `($_.Line -split '\|')[4]` (it takes the type column) ｜ ✅ Good example: the two-stage command above (output the list of card numbers with Count ≥2 and attach it to the report)
 **Signal 3: lesson recurrence (knowledge should be upgraded)**
-Every lesson card must carry three machine-readable fields in its header: `复发次数: N` (recurrence count) / `作用域: 项目 | 全局` (scope: project | global) / `最近复发: YYYY-MM-DD` (most recent recurrence) — **a lesson card missing these fields is treated as "the count cannot be trusted"** (fill the fields in first; that card does not take part in clustering this round).
+Every lesson card must carry three machine-readable fields in its header: `复发次数: N` (recurrence count) / `作用域: 项目 | 全局` (scope: project | global) / `最近复发: YYYY-MM-DD` (most recent recurrence) — **`作用域` is an enum, not free text**: the only legal values are `项目` or `全局` (a parenthetical note may follow the word, e.g. `全局（跨 3 个项目）`); **a missing field or an illegal enum value → that card does not take part in clustering this round and must be named in the report** (writing a "looks right" value such as `本项目` / `Project` = neither of the two additional criteria below ever matches, and that card silently drops out of the clustering).
 ```powershell
 $kw = '备份'; <# swap the keyword topic by topic #> Select-String -Path "docs/lessons/*.md" -Pattern $kw | Select-Object Filename, Line
 ```
@@ -74,7 +78,7 @@ Window = **the most recent 2 archives**: `git remote -v` is empty, or STATE.md `
 Select-String -Path docs/RUNBOOK.md -Pattern '下次到期'; (Select-String -Path STATE.md -Pattern '最近归档').Line
 ```
 If `下次到期` has already passed, is empty, or still holds the template placeholder → proposal: "the drill record is expired and was not re-drilled" (landing point: run card 5-5 once to re-drill and write the new due date back into RUNBOOK §5); ❌ Counter-example: `下次到期` says 2026-01-01 and is long overdue, yet the report still says "backup drill normal"; ✅ Good example: state the number of overdue days + propose the re-drill + write back the new due date.
-**Signal 12: card-behavior baseline artifacts unconsumed**: if run directories exist under `_qc/baseline/runs/` while this audit report cites none of their line numbers → record "baseline spinning idle"; proposal: "merge that run's failure types and conclusions into this audit".
+**Signal 12: card-behavior baseline artifacts unconsumed** (**master applies**; no `_qc/` in this project = N/A for derived projects → write "this project has no baseline artifacts" and raise no proposal): if run directories exist under `_qc/baseline/runs/` while this audit report cites none of their line numbers → record "baseline spinning idle"; proposal: "merge that run's failure types and conclusions into this audit".
 **Signal 13: route drift** — the card numbers, file names and commands pointed to by the resident entry points (`SKILL.md` and the driver card) do not match what is on disk = the routing is lying. Audit action: reconcile every entry-point item against disk (commands below), list the items that do not match, and require them to be fixed in the same batch.
 ```powershell
 $entry = 'SKILL.md'; <# replace with the resident entry file; run it once per file if there are several #> [IO.File]::ReadAllLines($entry, [Text.Encoding]::UTF8) | Select-String -Pattern '\d+-\d+'
@@ -86,7 +90,7 @@ Criteria: that task's behavior after deleting the rule is **completely identical
 ```powershell
 Get-ChildItem "_qc/baseline/runs/*/manifest.txt" -ErrorAction SilentlyContinue | Select-String -Pattern 'arm|plugin_mode|inject_events'
 ```
-No run directory → write "no baseline artifacts this round" and raise no proposal (that belongs to signal 12's observation surface).
+No run directory → write "no baseline artifacts this round" and raise no proposal (that belongs to signal 12's observation surface); **N/A for derived projects**: a derived project has no `_qc/`, so it always takes this degraded exit — **never write "cannot read the manifest" as "the evidence arm is clean"**.
 **Signal 16: actionable-finding rate (theater of critique)** — count the findings in the last ≥2 rounds of review reports and how many of them are **actionable** (an `actionable finding` = has a file:line plus can be landed as an action):
 ```powershell
 Select-String -Path "docs/reviews/*.md" -Pattern '本轮发现|可行动'
@@ -99,7 +103,7 @@ Two consecutive rounds with "findings N > 0 and actionable M = 0" → proposal: 
 3. **Land on a specific file + a specific item** — ❌ "coding should be more careful from now on" ✅ "constitution §2 adds: writing an API must first register its error codes in APIS.md"
 
 **Four conditions for changing a rule (S5; all must hold before a card change may be proposed — any one missing makes the proposal invalid):**
-1. **Three-arm numbers**: no rule / current rule / changed rule, **same task and same model, ≥6 runs per arm** — "it got much better after the change" without the raw three-arm numbers = invalid; when this machine cannot run the baseline (no headless), substitute the two rows already in `_qc/baseline/ledger.json` and explicitly write "no three-arm numbers this round"
+1. **Three-arm numbers**: no rule / current rule / changed rule, **same task and same model, ≥6 runs per arm** — "it got much better after the change" without the raw three-arm numbers = invalid; when this machine cannot run the baseline (no headless, **or this project has no `_qc/` at all — N/A for derived projects**), substitute **two comparison outputs this project can re-run (the command text + the output text, both pasted)** and explicitly write "no three-arm numbers this round"; a project that has `_qc/baseline/ledger.json` should **prefer** the two rows already recorded there (master applies)
 2. **Side-effect statement**: name at least one **existing task that could be broken**, and give the evidence that it was not broken (failing to name one = you only looked where you wanted to look)
 3. **Recurrence threshold**: the same failure type reproduced ≥2 times (two rows can be cited from `_qc/baseline/ledger.json` or review reports; if you cannot cite them the threshold has not been met)
 4. **Reading discipline (T7)**: every number cited must come from this round or be re-verifiable in this round — **a stale reading must never be presented as current fact** (last audit's summary line or last round's green rate may only be cited as a "baseline", never stated as "the current state"; numbers from a cache or from memory must be re-run before they go into the report)
