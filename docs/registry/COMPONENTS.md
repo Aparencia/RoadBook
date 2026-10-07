@@ -45,8 +45,8 @@
 | 界面元素 | 人话标识 | 程序名 | 文件 | 搜索词 | 影响面 | 最近确认 |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | 「图册」标签页 | "画图纸那个标签页" | AtlasGallery | lib/client.js | `roadbook:gallery` | 侧栏第 1 张（order 45）；读 `docs/diagrams`；键盘可达 | 2026-10-07 |
-| 「自进化」标签页 | "看信号表那个标签页" | EvolveTab | lib/client.js | `roadbook:evolve` | 侧栏第 2 张（order 46）；读 `/roadbook/evolve/*` | 2026-10-07 |
-| 插件详情页三处贡献 | "插件设置页上的更新条" | updateSlots | lib/client.js | `plugins.detail` | 只认 `pkg.name === 'roadbook'` 的详情页 | 2026-10-07 |
+| 「自进化」标签页 | "看信号表那个标签页" | EvolvePanel（分块导出；核心经 `chunkBoundary("evolve", "EvolvePanel")` 挂载，描述符在 lib/client.js:1853） | lib/client-evolve.js | `roadbook:evolve` · `EvolvePanel` · `chunkBoundary` | 侧栏第 2 张（order 46）；读 `/roadbook/evolve/*`；未装载时分块边界显示「加载中／加载失败」 | 2026-10-07 |
+| 插件详情页三处贡献 | "插件设置页上的更新条" | registerPluginDetailSlots | lib/client.js | `plugins.detail` · `roadbook` 详情页门 | 只认 `pkg.name === 'roadbook'` 的详情页 | 2026-10-07 |
 
 <!-- 搜索词 = 下次 3 秒找到你的关键词组合：组件名/文案/路由。改完行不回写 = 卡片过期比没有更毒 -->
 

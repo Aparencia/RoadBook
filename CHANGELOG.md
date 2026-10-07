@@ -63,6 +63,11 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
   `__internals`（`lib/client.js` +4 行），`test/client-contract-shell.test.mjs` 用假 document 钉住
   「注入的 `src`/`async`/真的进了 head」「二次装载不重复注入」「失败之后能重试」；**两条用例各证伪过一次**
   （去掉失败清理 ⇒ 重试红；`async` 写错 ⇒ 形状红），用例 16 → 18。
+- **`docs/registry/COMPONENTS.md` 界面组件表的两处假名**：「自进化」标签页的**程序名写成
+  `EvolveTab`**、插件详情页三处贡献写成 `updateSlots` —— 两个名字**在全库代码里一个都不存在**
+  （真实是分块导出的 `EvolvePanel` 与 `registerPluginDetailSlots`），且前者还把「文件」指到已经
+  搬空那份的 `lib/client.js`。该列列名就是「程序名」，表下注释写着「卡片过期比没有更毒」；
+  是分块拆分那一笔留下的漂移，按 D13 回写修正。
 
 ### 测试与验收
 
