@@ -1,0 +1,194 @@
+{
+  "schema": "roadbook-selftest-cases/1",
+  "note": "仪器自检的用例表：数据与引擎分家（加用例只改本文件，_qc/selftest.ps1 不随用例变）。每条用例 = 一次变异 + 期望红的断言集合 + 证据行。判据 = 相对基线的『新增红』：expectFail 必红；新增的其它红必须在 allowExtra 里预先声明理由（未声明的红 = 用例没打中判据，判 FAIL）。变异脚本在仓库根跑，可用 $repo / $utf8NoBom 与 Read-Lines / Save-Lines / Read-Text / Save-Text 四个助手；touch 里的路径按 sha256 逐字节复原。",
+  "instruments": {
+    "qc": {
+      "kind": "ps1",
+      "path": "_qc/check.ps1",
+      "clean": false,
+      "failRe": "^\\s*\\[FAIL\\] (.+?)\\s*$",
+      "ranRe": "通过 \\d+ 项；失败 \\d+ 项"
+    },
+    "gate": {
+      "kind": "ps1",
+      "path": "check.ps1",
+      "clean": true,
+      "failRe": "^\\[FAIL\\] (.+?)\\s*$",
+      "ranRe": "全部通过（退出码 0）：完成声明成立。|收工仪式未通过：\\d+ 步失败"
+    },
+    "packaging": { "kind": "node", "script": "test/packaging.test.mjs", "clean": false, "failRe": "^not ok \\d+ - (.+?)\\s*$", "ranRe": "^# (?:tests|pass) \\d+" },
+    "ruleParity": { "kind": "node", "script": "test/rule-parity.test.mjs", "clean": false, "failRe": "^not ok \\d+ - (.+?)\\s*$", "ranRe": "^# (?:tests|pass) \\d+" },
+    "routeCli": { "kind": "node", "script": "test/route-cli.test.mjs", "clean": false, "failRe": "^not ok \\d+ - (.+?)\\s*$", "ranRe": "^# (?:tests|pass) \\d+" },
+    "annot": { "kind": "node", "script": "test/expected-annotation.test.mjs", "clean": false, "failRe": "^not ok \\d+ - (.+?)\\s*$", "ranRe": "^# (?:tests|pass) \\d+" },
+    "gateJs": { "kind": "node", "script": "plugin/roadbook-autoload/test/gate.test.mjs", "clean": false, "failRe": "^not ok \\d+ - (.+?)\\s*$", "ranRe": "^# (?:tests|pass) \\d+" }
+  },
+  "baseline": ["qc", "gate"],
+  "cases": [
+    {
+      "id": "B1",
+      "rule": "B1",
+      "name": "完成 = 门禁退出码 0 + 真跑过：塞一条必失败的测试",
+      "instrument": "gate",
+      "touch": ["test/zz-selftest-probe.test.mjs"],
+      "mutate": "Save-Lines 'test/zz-selftest-probe.test.mjs' @('import test from \"node:test\"', 'import assert from \"node:assert/strict\"', 'test(\"selftest-probe 故意失败\", () => { assert.equal(1, 2) })')",
+      "expectFail": ["node --test .* \\(exit 1\\)"],
+      "evidence": "selftest-probe",
+      "note": "项目门的第 1 步必须真跑套件并如实报红。证据行 = 那条测试自己的名字出现在输出里（不是只有一行结论）。"
+    },
+    {
+      "id": "B2",
+      "rule": "B2",
+      "name": "母版唯一验收口径：拆掉仪器的一个分册",
+      "instrument": "qc",
+      "touch": ["_qc/check-docs.ps1", "_qc/check-docs.ps1.off"],
+      "mutate": "Move-Item -LiteralPath (Join-Path $repo '_qc/check-docs.ps1') -Destination (Join-Path $repo '_qc/check-docs.ps1.off') -Force",
+      "expectFail": ["文档域断言全绿", "脚本存在：_qc.check-docs\\.ps1"],
+      "evidence": "check-docs",
+      "note": "分册不在 = 文档域没有判据了，主仪器必须红（旧版这里是静默跳过 = 假绿）。两条红是同一条事实的两个观察面：分册的存在性 + 它的退出码。"
+    },
+    {
+      "id": "B3",
+      "rule": "B3",
+      "name": "双语同批：英文侧缺一张卡",
+      "instrument": "qc",
+      "touch": ["playbook_EN/4-1-batch-coding.md", "playbook_EN/4-1-batch-coding.md.off"],
+      "mutate": "Move-Item -LiteralPath (Join-Path $repo 'playbook_EN/4-1-batch-coding.md') -Destination (Join-Path $repo 'playbook_EN/4-1-batch-coding.md.off') -Force",
+      "expectFail": ["playbook_EN 文件数 4[89] = §4\\.1 表", "英文卡文件名与 §4.1 表逐张对齐", "中英同卡号过程域取值一致", "内化判据在位", "仪器自身抛错.*4-1-batch-coding\\.md", "4-1 .*中英同批", "仓库自测全绿"],
+      "evidence": "4-1-batch-coding",
+      "note": "缺一张英文卡 = 整套『读那张卡』的断言同时失去输入：张数与逐张对齐（与 §4.1 表比）、过程域中英一致、内化判据存在性；两处直接读卡正文的断言被仪器 trap 具名接住（不再整份体检半路炸掉），随后五条中英 needle 因为读不到英文正文而判红（判据无从判定 = 判红，不是静默跳过）；套件行同红（卡图/期望值等测试也读它）。实测还查明 `SKILL.md 引用的英文卡全部存在` **不**红 —— 它比的是 SKILL.md ↔ §4.1 表（三源里的两个），磁盘缺份由张数与逐张对齐那两条管。"
+    },
+    {
+      "id": "B4",
+      "rule": "B4",
+      "name": "SKILL.md 双份逐字节镜像：根部多一个字节",
+      "instrument": "qc",
+      "touch": ["SKILL.md"],
+      "mutate": "Save-Text 'SKILL.md' ((Read-Text 'SKILL.md') + ' ')",
+      "expectFail": ["是根 SKILL.md 的逐字节镜像", "仓库自测全绿"],
+      "evidence": "skill-mirror\\.test\\.mjs",
+      "note": "固有耦合：同一条事实有两个观察面——check.ps1 的哈希断言与 test/skill-mirror.test.mjs；后者红 ⇒ 套件行必红。"
+    },
+    {
+      "id": "B5",
+      "rule": "B5",
+      "name": "字面近似层：两张卡的「什么时候用」撞车",
+      "instrument": "qc",
+      "touch": ["playbook/6-5-复盘.md"],
+      "mutate": "$src = Read-Lines 'playbook/6-6-流程体检.md'; $h1 = @($src | Where-Object { $_ -like '# *' })[0] -replace '6-6', '6-5'; $trg = @($src | Where-Object { $_ -like '>*触发*' })[0]; $ls = Read-Lines 'playbook/6-5-复盘.md'; for ($i = 0; $i -lt $ls.Count; $i++) { if ($ls[$i] -like '# *') { $ls[$i] = $h1 } elseif ($ls[$i] -like '>*触发*') { $ls[$i] = $trg } }; Save-Lines 'playbook/6-5-复盘.md' $ls",
+      "expectFail": ["零成本字面近似层", "仓库自测全绿"],
+      "evidence": "6-5-复盘~6-6-流程体检=0\\.9",
+      "note": "固有耦合：触发行同时是卡图数据（refs）的输入、卡正文又是端点成本账本的输入（lines/chars）⇒ 撞车变异必然连带仓库自测红（test/cards.test.mjs 与 route-cli 的 A10 冻结账本），套件行必红。证据行给出撞车的那一对与相似度。"
+    },
+    {
+      "id": "B6",
+      "rule": "B6",
+      "name": "文件数预算：21 个新入库文件越过额度",
+      "instrument": "gate",
+      "touch": ["_qc/probe-budget"],
+      "mutate": "$d = Join-Path $repo '_qc/probe-budget'; New-Item -ItemType Directory -Force -Path $d | Out-Null; 1..21 | ForEach-Object { [IO.File]::WriteAllText((Join-Path $d (\"probe-$_.txt\")), 'probe') }; & git -C $repo add -- _qc/probe-budget | Out-Null",
+      "restore": "& git -C $repo reset -q -- _qc/probe-budget; if (Test-Path (Join-Path $repo '_qc/probe-budget')) { Remove-Item -LiteralPath (Join-Path $repo '_qc/probe-budget') -Recurse -Force }",
+      "expectFail": ["源码·资产预算超支", "工作树不干净"],
+      "evidence": "当前 3\\d\\d",
+      "note": "固有耦合：预算量的就是**入库**文件（git ls-files），造 21 个入库文件必然同时弄脏工作树 ⇒ 两条红是一件事的两面。restore 里先 git reset 再删目录（否则索引里留 21 条 staged 删除）。"
+    },
+    {
+      "id": "B7",
+      "rule": "B7",
+      "name": "命令形态统一：powershell -File 且盘符反斜杠",
+      "instrument": "qc",
+      "touch": ["playbook/4-1-分批编码.md"],
+      "mutate": "$ls = Read-Lines 'playbook/4-1-分批编码.md'; $i = 0; while ($ls[$i] -notmatch '^```powershell') { $i++ }; $ls[$i + 1] = 'powershell -File C:\\x\\roadbook.ps1'; Save-Lines 'playbook/4-1-分批编码.md' $ls",
+      "expectFail": ["命令统一 powershell -NoProfile -File", "命令代码块内无盘符反斜杠路径", "仓库自测全绿"],
+      "evidence": "4-1-分批编码.md:powershell -File C:.x.roadbook.ps1",
+      "note": "一行坏命令同时踩两条判据（缺 -NoProfile + 盘符反斜杠），两条都是 B7 的条款：命令形态统一。证据行指明是哪张卡的哪一行。套件行同红的原因实测为 route-cli 的 A10 冻结账本——卡片正文是成本账本（lines / chars / psBlocks）的输入，改一行字账本就变；这不是串扰，而是『卡是流程的计价单位』的必然结果。"
+    },
+    {
+      "id": "B8",
+      "rule": "B8",
+      "name": "随包白名单：根部 files 漏了 lib/",
+      "instrument": "packaging",
+      "touch": ["package.json"],
+      "mutate": "Save-Text 'package.json' ((Read-Text 'package.json').Replace('\"lib\",', ''))",
+      "expectFail": ["files 白名单覆盖每一个运行时路径"],
+      "evidence": "lib/",
+      "note": "运行时真正读的路径 ⊆ 发布白名单：漏一个 = 装出来的插件缺件，而本机（源码树）照跑。"
+    },
+    {
+      "id": "B9",
+      "rule": "B9",
+      "name": "收工工作树干净：留一个未提交文件",
+      "instrument": "gate",
+      "touch": ["_qc/probe-dirty.txt"],
+      "mutate": "[IO.File]::WriteAllText((Join-Path $repo '_qc/probe-dirty.txt'), 'dirty')",
+      "expectFail": ["工作树不干净"],
+      "evidence": "probe-dirty",
+      "note": "「完成 = 已提交」：只要工作树非空，门禁就必须红（证据行 = 门禁把那行脏改动原样打了出来）。本用例只在干净树上跑得动。"
+    },
+    {
+      "id": "B10",
+      "rule": "B10",
+      "name": "STATE.md 必填字段：删掉「体检计数」字段行",
+      "instrument": "qc",
+      "touch": ["template/STATE.md"],
+      "mutate": "$ls = Read-Lines 'template/STATE.md'; Save-Lines 'template/STATE.md' @($ls | Where-Object { $_ -notmatch '^\\s*-\\s*体检计数' })",
+      "expectFail": ["STATE.md 含 design §7 字段「体检计数」", "插件离线单测全绿"],
+      "evidence": "体检计数",
+      "note": "字段缺失 = 下一轮从错的地方开始。套件行同红的原因实测为 plugin/roadbook-autoload/test/state.test.mjs：插件 stateCheck 的必填字段口径**逐字来自 template/STATE.md**（它防的正是『模板与校验器各写一份字段表』）⇒ 删字段同时被两处看见。本条是模板侧（生成出来的项目第一跑就缺字段）。"
+    },
+    {
+      "id": "B11",
+      "rule": "B11",
+      "name": "规则索引 ↔ 正文双向对齐：索引里改一个 id",
+      "instrument": "ruleParity",
+      "touch": ["rules/rules.json"],
+      "mutate": "Save-Text 'rules/rules.json' ((Read-Text 'rules/rules.json').Replace('\"id\": \"B5\"', '\"id\": \"B5X\"'))",
+      "expectFail": ["③ 正文 → 索引", "③b 英文锚点表与索引 id 一一对应"],
+      "evidence": "索引里没有：B5",
+      "note": "只改索引一侧：正文里有 B5 而索引里没有（③），英文锚点表里也没有 B5X（③b）——两个方向都判红。"
+    },
+    {
+      "id": "B12",
+      "rule": "B12",
+      "name": "上线闭包：goLive 为真却把 5-4 从链里摘掉",
+      "instrument": "routeCli",
+      "touch": ["skills/roadbook/bin/route-data.mjs"],
+      "mutate": "$ls = Read-Lines 'skills/roadbook/bin/route-data.mjs'; for ($i = 0; $i -lt $ls.Count; $i++) { if ($ls[$i] -match \"card: '5-4'\") { $ls[$i] = $ls[$i].Replace('f.goLive === true', 'f.goLive === false') } }; Save-Lines 'skills/roadbook/bin/route-data.mjs' $ls",
+      "expectFail": ["A5 上线闭包", "A10 端点场景账本等于冻结 fixture"],
+      "evidence": "5-4",
+      "note": "上线闭包（goLive=true 链必含 4-5 / 5-2 / 5-4）真正的把守者是 test/route-cli.test.mjs 的 A5；AGENTS.md 与 rules.json 写的落点 route --audit 目前只查镜像锚点/双语/幽灵引用，**不含闭包**（rules.json 里那条 status=planned / phase=6，属已声明的待落项，不是漂移）。A10 同红 = 端点成本账本冻结了每条链的卡集合与每张卡的行数/字数 ⇒ 改链或改卡都会动它（同一条链的两个观察面）。"
+    },
+    {
+      "id": "B13",
+      "rule": "B13",
+      "name": "命令块带 Expected：抽掉 4-1 卡的全部期望值行",
+      "instrument": "annot",
+      "touch": ["playbook/4-1-分批编码.md"],
+      "mutate": "$ls = Read-Lines 'playbook/4-1-分批编码.md'; Save-Lines 'playbook/4-1-分批编码.md' @($ls | Where-Object { $_ -notmatch 'Expected：' })",
+      "expectFail": ["4-1：每个 powershell 围栏", "四张卡的 Expected 行数中英相等"],
+      "evidence": "4-1",
+      "note": "有命令没期望值 = 命令跑完也没人知道对不对。两条红各管一个方向：逐张卡（每个围栏收口后 5 行内要有 Expected 行）+ 跨语言（中英围栏数与 Expected 行数必须相等）——抽掉中文 4-1 的期望值，两条都该红。只咬 S 链四卡（2-2 / 4-1 / 4-3 / 5-1），全库一次性全红会把门禁变成噪音。"
+    },
+    {
+      "id": "A2",
+      "rule": "A2",
+      "name": "A 类不可委托：删掉「执行发布部署」这条红线规则",
+      "instrument": "gateJs",
+      "touch": ["plugin/roadbook-autoload/gate.js"],
+      "mutate": "$ls = Read-Lines 'plugin/roadbook-autoload/gate.js'; Save-Lines 'plugin/roadbook-autoload/gate.js' @($ls | Where-Object { $_ -notmatch \"label: '执行发布部署'\" })",
+      "expectFail": ["gate：红线域命令 → deny"],
+      "evidence": "npm run deploy",
+      "note": "A 类只能人做：动作闸的判据被摘掉 ⇒ 部署命令不再被拦，单测必须红。证据行 = 那条本该被拦下的命令。"
+    },
+    {
+      "id": "C3",
+      "rule": "C3",
+      "name": "C 类门禁分级：红线域不再升级为裁决",
+      "instrument": "routeCli",
+      "touch": ["skills/roadbook/bin/route-data.mjs"],
+      "mutate": "$ls = Read-Lines 'skills/roadbook/bin/route-data.mjs'; Save-Lines 'skills/roadbook/bin/route-data.mjs' @($ls | Where-Object { $_ -notmatch \"^\\s*\\['redLine',\" })",
+      "expectFail": ["A7 redLine:true"],
+      "evidence": "3-2",
+      "note": "红线域五类触碰必须升 L 档并做威胁建模（3-2）、门禁是裁决而不是轻确认——判据被摘 ⇒ 单测红。证据行 = 威胁建模卡号 3-2。"
+    }
+  ]
+}

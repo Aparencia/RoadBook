@@ -8,6 +8,10 @@ $root = Split-Path -Parent $PSScriptRoot
 $fail = @()
 $pass = 0
 $obs = @()
+# 仪器自身抛错不许把整份体检打断（2026-10-07 增）：某张卡被改名后，后面还有断言要直接读它 ——
+# 未捕获异常会让 300+ 条断言停在半路，而人看到一段堆栈：那就分不清「判据红了」与「仪器挂了」（C1 红灯三问）。
+# 做法：trap 把异常降级成一条具名 FAIL，然后**继续跑后面的断言**（退出码仍为 1，异常不会被吞掉）。
+trap { Write-Host "  [FAIL] 仪器自身抛错（该处断言没跑完，后面的照跑）：$($_.Exception.Message)" -ForegroundColor Red; $script:fail += "仪器自身抛错：$($_.Exception.Message)"; continue }
 function Check($ok, $msg) {
     if ($ok) { Write-Host "  [OK] $msg"; $script:pass++ }
     else { Write-Host "  [FAIL] $msg" -ForegroundColor Red; $script:fail += $msg }
@@ -49,7 +53,9 @@ Check (Test-Path (Join-Path $root 'design\glossary-en.md')) 'design/glossary-en.
 Check (-not (Test-Path (Join-Path $root '_archive'))) '_archive/ 不存在（V5 残件已删，防死链复现）'
 Check (Test-Path (Join-Path $root 'LICENSE')) 'LICENSE 存在（MIT，README 有引用）'
 $selfN = [System.IO.File]::ReadAllLines((Join-Path $root '_qc\check.ps1'), [Text.Encoding]::UTF8).Count
-$selfCap = 930
+# 2026-10-07 由 930 上调到 945：仪器自检的**覆盖面断言**（变异集 ≥15 条 / B 类 13 条逐条在位 /
+# 每条带期望红集合与证据行）——判据从"只看退出码"换成"红的断言恰好是这一条"。同批改 design §8（同源断言见上）。
+$selfCap = 945
 Check ($selfN -le $selfCap) "行数 $selfN <= $selfCap ：_qc/check.ps1 自身（2026-10-04 由 600 上调：安全批次 7-9 准入卡 + security.ps1 接线与内容断言；2026-10-05 由 650 上调到 670：门禁改跑**整套件 glob** —— 原先逐个点名 test/trigger.test.mjs 与 test/index.test.mjs，banner.test.mjs 因此漏检，本地全绿不算数；2026-10-05 由 670 上调到 700：主插件自动更新四条断言 —— 更新模块存在 / 判定必须三态（读不到 = unknown）/ 两条更新路由与 DNS rebinding 守卫 / 根 README 可发现；2026-10-05 由 700 上调到 720：自进化行 roadbook-evolve 六条断言 —— 打包白名单须含 signals.js / 三态判定 / 两条只读路由 + 同源守卫 / inject 必须为空 / umbRows 补齐此前漏登记的 roadbook-team / 测试套件 glob 增第三组；2026-10-06 由 720 上调到 730：SKILL.md frontmatter 的 YAML 安全断言 —— 值未加引号却含 ASCII「: 」会被 YAML 读成嵌套映射，宿主 parseFrontmatter 抛错后整份静默丢弃（roadbook 技能从未进技能目录、inject 事件 0 条），本节九条正则断言全绿也拦不住；2026-10-06 由 730 上调到 790：**过程域覆盖**（每张卡有过程域行 / 取值在受控词表内 / 中英同卡号一致 / 每个过程域要么有卡覆盖要么在 v6-design §18 显式点名）+ **子包 version 跟随伞包**（四个子包长期停 0.1.x 而伞包 0.7.2 = 死元数据），两组断言 + §1.1 词表与 §18 两处存在性；2026-10-06 由 790 上调到 810：§18 矩阵的**反向核对**（表里列的每张卡必须真带该过程域 / 表的覆盖集合必须等于卡头实际集合——§18 自称"派生视图不手抄"却又手抄了一份矩阵，反向核对是不删那份矩阵的前提）+ 四张新卡（3-7 / 4-6 / 5-7 / 6-8）的中英 needle；2026-10-06 再由 810 上调到 850：**四段分隔线断言**（写作契约 §1 早就写着"四段用 --- 分隔"，但此前没有任何断言盯着它，于是 3-5/3-6/3-7/4-6/5-7/6-8 六张卡全没有分隔线而门禁一直判绿——又一处"契约说了、机器不管"）+ design §8 行数上限与断言的**同源核对**（此前已漂过一次：设计写 ≤730 而断言已 790）；2026-10-06 再由 850 上调到 900：**顺序三载体同源断言**（执行顺序被手抄在三处——design §3 总图 / design §4 档位线与专线 / `route.mjs` 的 `STEPS` + 白名单——而此前没有任何断言盯着它们彼此一致，实测 9 张卡不在总图上、`2-6`/`5-6`/`5-7` 三张主线卡不可达却被 `--audit` 印成「正常」、L 链静默少掉发版前的两张基线卡、`START-HERE.md` 的 M/L 线与 §4 各写一套）+ 三条断言（§3 总图必须画全 / §4 线表点名的卡必须能被 route 到达 / START-HERE 与 §4 档位线同源）；2026-10-06 由 900 上调到 910：**文档域断言拆出**（_qc/check-docs.ps1：卡产物里的 docs/ 路径必须有对应表槽位 / 对应表每行必须在 design 全文 / 预算表的上限必须与对应表同源）——此前文档登记是一份写死的 4 项清单，新增文档无人问（实测 5-7 卡的 docs/BASELINE.md 五处登记缺四处而门禁全绿）；本脚本只加一行子调用与其结果断言；2026-10-06 由 910 上调到 920：**文档义务机械化**（新增 template/DOC_MAP.json + gate.ps1 第 ⑧ 段拦截；本脚本加一条接线断言、DOC_MAP.json 进必需文件清单、gate.ps1 的行数上限由 110 上调到 145——那一段是读 DOC_MAP.json 的通用循环，不随项目变）——义务此前只写在散文里（AGENTS.md 的 D13 回写义务表 + docs/README.md 的对应表），索引键是"变更类型"而手里的事实是"改了哪个路径"，路径→语义靠判断，漏了没有痕迹，且卡里没有任何动作会在提交前问一句；上调须同时改本行与 design §8）"
 $idFiles = @('README.md','START-HERE.md','SKILL.md','design\v6-design.md','playbook\0-1-驱动卡.md','template\README.md','template\AGENTS.md')
 $noName = @($idFiles | Where-Object { [System.IO.File]::ReadAllText((Join-Path $root $_), [Text.Encoding]::UTF8) -notmatch 'Roadbook' })
@@ -736,12 +742,24 @@ $lgObj = $null
 if (Test-Path (Join-Path $blDir 'ledger.json')) { $lgObj = ([IO.File]::ReadAllText((Join-Path $blDir 'ledger.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json) }
 Check (($null -ne $lgObj) -and ($lgObj.schema -match 'ledger') -and ($lgObj.comparability_rule -match '换代') -and ($null -ne $lgObj.entries)) 'baseline 台账 ledger.json 在位（同代可比、换代即新条目、旧条目不覆盖）'
 $selfTest = Join-Path $root '_qc\selftest.ps1'
+$selfCases = Join-Path $root '_qc\selftest-cases.json'
 Check (Test-Path $selfTest) '仪器自检 _qc/selftest.ps1 在位（好的必过、坏的必被抓住）'
-if (Test-Path $selfTest) {
-    $stLines = [IO.File]::ReadAllLines($selfTest, [Text.Encoding]::UTF8)
-    $stTxt = $stLines -join "`n"
-    Check ($stLines.Count -le 110) "行数 $($stLines.Count) <= 110 ：_qc/selftest.ps1"
-    Check (($stTxt -match 'good：') -and ($stTxt -match 'bad：') -and ($stTxt -match 'finally') -and ($stTxt -match 'Compare-Object')) 'selftest.ps1 含 good/bad 参照实现 + finally 复原 + porcelain 前后比对'
+Check (Test-Path $selfCases) '变异集用例表 _qc/selftest-cases.json 在位（数据与引擎分家：加用例只改 JSON）'
+if ((Test-Path $selfTest) -and (Test-Path $selfCases)) {
+    $stLines = [IO.File]::ReadAllLines($selfTest, [Text.Encoding]::UTF8); $stTxt = $stLines -join "`n"
+    # 2026-10-07 由 110 上调到 200：变异集 4 类 → 15 条（B 类 13 + A/C 各 1），判据从「只看退出码」换成
+    # 「红的断言恰好是这一条」（基线差分 + 期望红集合 + 证据行 + 逐字节复原）；用例数据外置到 JSON。
+    Check ($stLines.Count -le 200) "行数 $($stLines.Count) <= 200 ：_qc/selftest.ps1（2026-10-07 由 110 上调：判据变强，见下面四条覆盖面断言）"
+    Check (($stTxt -match 'finally') -and ($stTxt -match 'Compare-Object') -and ($stTxt -match 'selftest-cases\.json')) 'selftest.ps1 含 finally 复原 + porcelain 前后比对 + 外置用例表'
+    $stCases = @((([IO.File]::ReadAllText($selfCases, [Text.Encoding]::UTF8)) | ConvertFrom-Json).cases)
+    $stRules = @($stCases | ForEach-Object { $_.rule } | Select-Object -Unique)
+    $stMissRule = @(1..13 | ForEach-Object { "B$_" } | Where-Object { $stRules -notcontains $_ })
+    $stThin = @($stCases | Where-Object { @($_.expectFail).Count -eq 0 -or -not $_.evidence })
+    $stAc = @($stRules | Where-Object { $_ -match '^[AC]\d+$' })
+    Check ($stCases.Count -ge 15) "变异集 ≥15 条（实际 $($stCases.Count) 条；只自述条数不报覆盖面不算覆盖）"
+    Check ($stMissRule.Count -eq 0) "变异集覆盖 B 类 13 条（缺：$($stMissRule -join ', ')）"
+    Check ($stAc.Count -ge 2) "变异集含 A 类与 C 类用例（实际：$($stAc -join ', ')）"
+    Check ($stThin.Count -eq 0) "每条用例都声明了期望红的断言 + 证据行（缺 $($stThin.Count) 条）"
 }
 
 # —— C 档内化批次 3（卡组 1）：判据可执行、标准不许被悄悄改低 ——
