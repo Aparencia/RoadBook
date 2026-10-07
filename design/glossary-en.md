@@ -304,7 +304,7 @@
 | B3 | Bilingual batches: the same card number must exist in both playbook/ and playbook_EN/ |
 | B4 | SKILL.md is a byte-identical pair: the root copy and skills/roadbook/SKILL.md |
 | B5 | The T1 literal-similarity layer: any two cards' H1 plus trigger line must stay below 0.75 bigram Dice |
-| B6 | File-count budget: the project's current file count minus the file-count baseline must not exceed 20 |
+| B6 | File-count budget (dual counter: source/assets and docs/**.md each have their own allowance): each one is red when its own current count minus its own baseline exceeds 20; files that exist only because D14 forced a split are registered per-parent in COMPONENTS.md and excluded from the count |
 | B7 | One command shape: powershell -NoProfile -File, forward-slash paths, no Chinese variable names and no drive-letter backslashes inside command blocks |
 | B8 | The bundled-files whitelist must cover every path the runtime actually reads, with no phantom entries |
 | B9 | A clean working tree at close of work: git status --porcelain is empty |

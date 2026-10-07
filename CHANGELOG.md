@@ -25,6 +25,21 @@ node --test "test/*.test.mjs" && node --test "plugin/roadbook-autoload/test/*.te
 **v0.10.0 升级方案（`design/vnext-2026-10-07.md`）的在办改动。版本号由批 6 的 #62 一次升到位**
 （本次不动 `package.json`，所以七处对齐与 `git tag` 都不触发）。
 
+### 判据（B6 文件数预算改双计数器 —— 台账 #4 / 反馈 T-03，2026-10-07 用户裁决提前到批 1）
+
+- **B6 从单计数器改双计数器**：源码·资产 与 `docs/**.md` 各一套 20 个额度（`check.ps1` 与
+  `template/check.ps1` 的「结构断言」段**逐字同源**，同源断言进 `_qc/check.ps1`）。Why：B6 防的是
+  「生成多删除少」，而 `docs/**.md` 是流程产物的必要载体 —— 两者挤同一个额度时，写一份 RCA 与
+  新建一个模块等价，预算就不再量它想量的东西。
+- **D14 强制拆分件单列、不占额度**：单文件 ≤500 行是硬标准，满足它必须拆文件。豁免**不靠自述** ——
+  `docs/registry/COMPONENTS.md` 的 `D14 拆分自 <父路径>` 标记 + `test/d14-lines.test.mjs` 的五条可证伪
+  断言（每片在库 / 不自我为父 / 父的存在性与「已删除」标注一致 / 每片 ≤ 上限 / **同一父的全部片之和
+  > 上限** ⇒ 原文件必然超限、拆分确实是被逼的）。
+- 正文同步（同一笔）：`AGENTS.md` + `template/AGENTS.md` 的 B6 行、`rules/rules.json` 的
+  title/predicate/anchors、`design/glossary-en.md` 的 en 锚点；`template/STATE.md` 加
+  「文件数基线拆分: 0 / 0」行（留 0 = 未初始化判红，生成项目不会静默跳过）。
+- 实测：源码·资产 **329 ≤ 325+20**、`docs/**.md` **33 ≤ 23+20**（单计数器时代的 377 > 368 红灯消失）。
+
 ### 新增
 
 - **客户端分块机制（#55）**：`lib/client.js` 首屏不再背着整张「自进化」标签页（412 行已搬进

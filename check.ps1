@@ -1,4 +1,4 @@
-﻿# check.ps1 · 收工仪式（guardrail）
+﻿ check.ps1 · 收工仪式（guardrail）
 # "完成"的唯一合法定义 = 本脚本退出码 0 + 真实输出。
 # 1-2-选型初始化卡会把下方 STEPS 替换为本项目真实的 typecheck/lint/test/build 命令。
 # ⚠️ 口径唯一：本脚本（含 STEPS）是本项目唯一验收口径。将来加 CI/钩子必须跑与 STEPS 完全相同的命令——
@@ -19,25 +19,49 @@ $STEPS = @(
 # --- 结构断言：与 STEPS 无关，先跑（orphans 工具在位 + 文件数预算）---
 # 文件数口径同 orphans.ps1：优先 git ls-files（-c core.quotepath=false，中文名不被转义成八进制串）；
 # 无 git 时遍历并在 ReparsePoint 目录处停住（PS5.1 的 -Recurse 会穿透 junction）。
+# 双计数器（台账 #4 / 反馈 T-03，2026-10-07 用户裁决提前到批 1）：源码·资产 与 docs/**.md 各一套额度。
+#   Why：B6 防的是"生成多删除少"，而 docs/**.md 是流程产物的必要载体——两者挤同一个额度时，
+#   写一份 RCA 与新建一个模块等价，预算就不再量它想量的东西。
+# D14 强制拆分单列（同批裁决 ④）：单文件 ≤500 行是硬标准，满足它必须拆文件，拆出来的不该再吃
+#   "全新功能"的额度。豁免不靠自述——完整性断言在 test/d14-lines.test.mjs（父文件在或显式标注
+#   已删除 / 每片 ≤ 上限 / 同一父的所有片之和 > 上限 ⇒ 原文件必然超限、拆分确实是被逼的）。
 $fileBudgetGrowth = 20
 $fail = 0
 if (Test-Path (Join-Path $PSScriptRoot 'orphans.ps1')) { Write-Host "[OK] orphans.ps1 存在" -ForegroundColor Green }
 else { Write-Host "[FAIL] orphans.ps1 存在（项目根缺孤儿、幽灵与文档七查工具）" -ForegroundColor Red; $fail++ }
-$cnt = 0
-if (Get-Command git -ErrorAction SilentlyContinue) { $cnt = @(git -C $PSScriptRoot -c core.quotepath=false ls-files 2>$null | Where-Object { $_ }).Count }
-if ($cnt -eq 0) {
-    $cnt = 0; $q = New-Object System.Collections.Queue; $q.Enqueue($PSScriptRoot)
-    while ($q.Count -gt 0) {
-        $d = $q.Dequeue(); $cnt += @([IO.Directory]::GetFiles($d)).Count
+$all = @()
+if (Get-Command git -ErrorAction SilentlyContinue) { $all = @(git -C $PSScriptRoot -c core.quotepath=false ls-files 2>$null | Where-Object { $_ }) }
+if ($all.Count -eq 0) {
+    $q = New-Object System.Collections.Queue; $q.Enqueue($PSScriptRoot)
+    while ($q.Count -gt 0) { $d = $q.Dequeue()
+        foreach ($f in [IO.Directory]::GetFiles($d)) { $all += $f.Substring($PSScriptRoot.Length + 1).Replace('\', '/') }
         foreach ($s in [IO.Directory]::GetDirectories($d)) { if ($s -notmatch '\\(\.git|node_modules|_archive)(\\|$)' -and -not ((Get-Item -LiteralPath $s -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { $q.Enqueue($s) } }
     }
 }
+$split = @()   # D14 拆分件登记在 COMPONENTS.md「归属批次」列，标记 = D14 拆分自 <父路径>
+$reg = Join-Path $PSScriptRoot 'docs/registry/COMPONENTS.md'
+if (Test-Path $reg) { foreach ($ln in [IO.File]::ReadAllLines($reg, [Text.Encoding]::UTF8)) {
+    if ($ln -notmatch 'D14 拆分自\s+[^\s）|（]+') { continue }
+    $cm = [regex]::Match($ln, '^\|\s*`([^`]+)`\s*\|'); if ($cm.Success) { $split += $cm.Groups[1].Value.Trim() }
+} }
+$ghost = @($split | Where-Object { $all -notcontains $_ })
+if ($ghost.Count -gt 0) { Write-Host "[FAIL] 拆分件登记了但索引里没有（幽灵 = 登记在骗人）：$($ghost -join ', ')" -ForegroundColor Red; $fail++ }
 # 文件数基线：缺失或 0 都是 FAIL——预算断言空转等于没有预算（模板默认 STATE.md 就是 0，旧版在此静默跳过）。
-$sm = Join-Path $PSScriptRoot 'STATE.md'; $base = $null
-if (Test-Path $sm) { $bm = [regex]::Match([IO.File]::ReadAllText($sm, [Text.Encoding]::UTF8), '(?m)^\s*[-*]?\s*文件数基线\s*[:：]\s*(\d+)'); if ($bm.Success) { $base = [int]$bm.Groups[1].Value } }
+$sm = Join-Path $PSScriptRoot 'STATE.md'; $base = $null; $baseSrc = $null; $baseDocs = $null
+if (Test-Path $sm) { $txt = [IO.File]::ReadAllText($sm, [Text.Encoding]::UTF8)
+    $m1 = [regex]::Match($txt, '(?m)^\s*[-*]?\s*文件数基线\s*[:：]\s*(\d+)'); if ($m1.Success) { $base = [int]$m1.Groups[1].Value }
+    $m2 = [regex]::Match($txt, '(?m)^\s*[-*]?\s*文件数基线拆分\s*[:：]\s*(\d+)\s*/\s*(\d+)'); if ($m2.Success) { $baseSrc = [int]$m2.Groups[1].Value; $baseDocs = [int]$m2.Groups[2].Value }
+}
 if ($null -eq $base -or $base -eq 0) { Write-Host "[FAIL] 文件数基线未初始化：STATE.md 没有「文件数基线: N」行或值为 0——预算断言无从判定（1-2 / 1-3 卡接入收尾必须写入当时的文件数）" -ForegroundColor Red; $fail++ }
-elseif ($cnt -le $base + $fileBudgetGrowth) { Write-Host "[OK] 文件数 $cnt <= 基线 $base + 允许新增 $fileBudgetGrowth" -ForegroundColor Green }
-else { Write-Host "[FAIL] 文件数预算超支：基线 $base / 当前 $cnt / 允许新增 $fileBudgetGrowth" -ForegroundColor Red; $fail++ }
+elseif ($null -eq $baseSrc -or $baseSrc -eq 0 -or $null -eq $baseDocs -or $baseDocs -eq 0) { Write-Host "[FAIL] 文件数基线拆分未初始化：STATE.md 缺「文件数基线拆分: <源码> / <docs>」行或值为 0——双计数器无从判定（2026-10-07 台账 #4；接入收尾要写取样时的两个数）" -ForegroundColor Red; $fail++ }
+else {
+    $dc = @($all | Where-Object { $_ -match '^docs/.*\.md$' }).Count; $ds = @($split | Where-Object { $_ -match '^docs/.*\.md$' }).Count
+    $sc = $all.Count - $dc - ($split.Count - $ds); $sd = $dc - $ds
+    if ($sc -gt $baseSrc + $fileBudgetGrowth) { Write-Host "[FAIL] 源码·资产预算超支：基线 $baseSrc / 当前 $sc / 允许新增 $fileBudgetGrowth" -ForegroundColor Red; $fail++ }
+    else { Write-Host "[OK] 源码·资产 $sc <= 基线 $baseSrc + 允许新增 $fileBudgetGrowth（另有 $($split.Count - $ds) 个 D14 拆分件单列不计）" -ForegroundColor Green }
+    if ($sd -gt $baseDocs + $fileBudgetGrowth) { Write-Host "[FAIL] docs/**.md 预算超支：基线 $baseDocs / 当前 $sd / 允许新增 $fileBudgetGrowth" -ForegroundColor Red; $fail++ }
+    else { Write-Host "[OK] docs/**.md $sd <= 基线 $baseDocs + 允许新增 $fileBudgetGrowth" -ForegroundColor Green }
+}
 
 # --- git 断言：完成 = 已提交（未提交 = 没有历史；锚点/账本/归档全部空转）---
 # 非 git 仓库 = FAIL：DoD 的"已提交"失去机械真相来源（旧版在此 [--] 跳过 = 假绿）。

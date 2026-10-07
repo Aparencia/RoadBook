@@ -284,11 +284,11 @@
     {
       "id": "B6",
       "class": "B",
-      "title": "文件数预算（当前 − 基线 > 20 判红）",
+      "title": "文件数预算（双计数器；各自 当前 − 基线 > 20 判红）",
       "trigger": [
         "文件数膨胀"
       ],
-      "predicate": "项目当前文件数 − 文件数基线 > 20",
+      "predicate": "源码·资产 与 docs/**.md 各自「当前 − 对应基线 > 20」判红（因 D14 强制拆分而净增的文件按 COMPONENTS.md 的父路径登记单列不计）",
       "judge": {
         "kind": "command",
         "cmd": "powershell -NoProfile -File check.ps1",
@@ -298,8 +298,8 @@
         "template/STATE.md"
       ],
       "anchors": {
-        "zh": "文件数预算：项目当前文件数 − 文件数基线 > 20 判红",
-        "en": "File-count budget: the project's current file count minus the file-count baseline must not exceed 20"
+        "zh": "文件数预算（双计数器：源码·资产 与 docs/**.md 各一套额度）：各自「当前 − 对应基线 > 20」判红；因 D14 强制拆分而净增的文件在 COMPONENTS.md 逐行登记父路径、单列不计额度",
+        "en": "File-count budget (dual counter: source/assets and docs/**.md each have their own allowance): each one is red when its own current count minus its own baseline exceeds 20; files that exist only because D14 forced a split are registered per-parent in COMPONENTS.md and excluded from the count"
       }
     },
     {

@@ -1,4 +1,4 @@
-﻿# _qc/check.ps1 · Roadbook（路书）V6 母版一致性校验
+﻿ _qc/check.ps1 · Roadbook（路书）V6 母版一致性校验
 # 用法：powershell -NoProfile -File _qc/check.ps1
 # 退出码：0=全部通过；1=存在失败项（清单见输出）
 # 口径唯一：卡清单的事实源 = design/v6-design.md §4 表（卡号+卡名）与 §4.1 表（英文文件名），本脚本不再硬编码卡名。
@@ -415,7 +415,7 @@ Check (Test-Path (Join-Path $root '_qc/internalize-2026-10-04-security.md')) '�
 
 Write-Host "== 3. 模板 template/ =="
 $tpl = Join-Path $root 'template'
-$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 125; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 45; 'docs/archive/INDEX.md' = 120; 'check.ps1' = 110; 'doctor.ps1' = 80; 'gate.ps1' = 145; 'orphans.ps1' = 140; 'security.ps1' = 130 }
+$budget = @{ 'README.md' = 40; 'AGENTS.md' = 240; 'STATE.md' = 45; 'CHANGELOG.md' = 40; 'docs/README.md' = 55; 'docs/registry/COMPONENTS.md' = 50; 'docs/ARCHITECTURE.md' = 150; 'docs/RUNBOOK.md' = 100; 'docs/OBSERVABILITY.md' = 80; 'docs/PRIVACY.md' = 80; 'docs/I18N.md' = 60; 'docs/USER_GUIDE.md' = 60; 'docs/UI.md' = 125; 'docs/DESIGN_TOKENS.md' = 110; 'docs/MOTION.md' = 100; 'docs/refactor/README.md' = 45; 'docs/archive/INDEX.md' = 120; 'check.ps1' = 120; 'doctor.ps1' = 80; 'gate.ps1' = 145; 'orphans.ps1' = 140; 'security.ps1' = 130 }
 foreach ($k in @('README.md','AGENTS.md','STATE.md','CHANGELOG.md','DOC_MAP.json','.tool-versions','check.ps1','doctor.ps1','gate.ps1','orphans.ps1','security.ps1','.env.example','.gitignore','.gitattributes','docs/README.md','docs/ARCHITECTURE.md','docs/RUNBOOK.md','docs/OBSERVABILITY.md','docs/PRIVACY.md','docs/I18N.md','docs/USER_GUIDE.md','docs/registry/COMPONENTS.md','docs/registry/DATA_DICT.md','docs/registry/APIS.md','docs/pool/IDEAS.md','docs/TECH_DEBT.md','docs/UI.md','docs/DESIGN_TOKENS.md','docs/MOTION.md','docs/refactor/README.md','docs/archive/INDEX.md')) {
     Check (Test-Path (Join-Path $tpl $k)) "模板文件存在：$k"
 }
@@ -450,6 +450,13 @@ $ckTxt = ''
 $ckp = Join-Path $tpl 'check.ps1'
 if (Test-Path $ckp) { $ckTxt = [IO.File]::ReadAllText($ckp, [Text.Encoding]::UTF8) }
 Check ($ckTxt -match '\$fileBudgetGrowth') 'template/check.ps1 有文件数预算断言（$fileBudgetGrowth）'
+# 同源断言（台账 #44 / 2026-10-07）：根 check.ps1 与 template/check.ps1 的「结构断言」段必须逐字相同。
+# Why：这一段（双计数器 + D14 拆分件剔除 + 基线读取）只有一份真相。两处各写一遍时，
+#      改了一处忘另一处 = 派生项目继承旧判据，而母版这边看不出来 —— TD-006 正是这么烂的：
+#      $budget 只算 template/ 下的副本，根副本零上限，一直没人发现。
+$blkRoot = [regex]::Match(([IO.File]::ReadAllText((Join-Path $root 'check.ps1'), [Text.Encoding]::UTF8) -replace "`r`n", "`n"), '(?s)# --- 结构断言.*?(?=# --- git 断言)').Value
+$blkTpl = [regex]::Match(($ckTxt -replace "`r`n", "`n"), '(?s)# --- 结构断言.*?(?=# --- git 断言)').Value
+Check ($blkRoot.Length -gt 500 -and $blkRoot -eq $blkTpl) "根与 template 的「结构断言」段逐字同源（实测根 $($blkRoot.Length) 字符 / 模板 $($blkTpl.Length) 字符；<500 = 解析空心，不等 = 判据出现第二处真相）"
 $wired = @('4-1-分批编码','5-1-归档','6-6-流程体检','7-3-债与腐化清偿') | Where-Object { $p2 = Join-Path $pb "$_.md"; -not (Test-Path $p2) -or ([IO.File]::ReadAllText($p2, [Text.Encoding]::UTF8) -notmatch 'orphans\.ps1') }
 Check (-not $wired) "死代码治理四卡均引用 orphans.ps1（缺：$wired）"
 $secWired = @((Join-Path $pb '1-2-选型初始化.md'), (Join-Path $pen $enMap['1-2']), (Join-Path $pb '1-3-接入已有项目.md'), (Join-Path $pen $enMap['1-3']), (Join-Path $pb '7-9-外部技能与插件准入.md'), (Join-Path $pen $enMap['7-9'])) | Where-Object { -not (Test-Path $_) -or ([IO.File]::ReadAllText($_, [Text.Encoding]::UTF8) -notmatch 'security\.ps1') }

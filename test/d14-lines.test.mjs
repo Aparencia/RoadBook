@@ -133,3 +133,79 @@ test('D14 行数上限：非测试 ≤500 行、测试 ≤1000 行（豁免清�
     '豁免清单记录的行数与实测不符（这几个文件一改就要同批更新这个数，别让它烂成假账）',
   )
 });
+
+/**
+ * D14 强制拆分件的登记表：`docs/registry/COMPONENTS.md`「归属批次」列里的 `D14 拆分自 <父路径>`。
+ *
+ * 它是 `check.ps1` 双计数器（台账 #4）剔除额度的唯一依据。剔除**不能只靠自述** —— 否则
+ * "因 D14 被逼拆分"就成了万能免额条：新建一个文件、写一行标记、额度白拿。下面的完整性断言
+ * 让这件事可证伪：拆分是否真的被逼，用**片之和 > 上限**来证明（片之和 ≤ 原文件 ⇒ 原文件必然超限）。
+ */
+export function splitRegistry() {
+  const text = readFileSync(join(ROOT, 'docs/registry/COMPONENTS.md'), 'utf8');
+  const rows = [];
+  for (const line of text.split(/\r?\n/)) {
+    const marker = /D14 拆分自\s+([^\s）|（]+)(（([^）]*)）)?/.exec(line);
+    if (!marker) continue;
+    const cell = /^\|\s*`([^`]+)`\s*\|/.exec(line);
+    if (!cell) continue;
+    rows.push({ child: cell[1].trim(), parent: marker[1], note: marker[3] ?? '' });
+  }
+  return rows;
+}
+
+test('D14 强制拆分件登记完整性：剔除额度这件事必须可证伪（五条断言）', () => {
+  const rows = splitRegistry();
+  assert.ok(rows.length >= 10, `从 COMPONENTS.md 只解析出 ${rows.length} 条「D14 拆分自」登记，疑似解析空心`);
+  const tracked = new Set(trackedFiles().map((item) => item.replace(/\\/g, '/')));
+  const measured = new Map(scan().map((row) => [row.file, row]));
+  const childNames = new Set(rows.map((row) => row.child));
+
+  // ① 每片真实在库，且不许把自己写成父（自己拆自己 = 一行代码都没动）
+  assert.deepEqual(
+    rows.filter((row) => !tracked.has(row.child)).map((row) => row.child),
+    [],
+    '登记的拆分件不在 git 索引里（幽灵登记 = 白拿额度）',
+  );
+  assert.deepEqual(
+    rows.filter((row) => row.child === row.parent).map((row) => row.child),
+    [],
+    '拆分件把自己写成父路径',
+  );
+
+  // ② 父路径的存在性必须与标注一致：在库却标"已删除"、或不在库又没标，都是对不上
+  const badParent = rows
+    .filter((row) => tracked.has(row.parent) === /已随拆分删除|已删除/.test(row.note))
+    .map(
+      (row) =>
+        `${row.child} → ${row.parent}（实测父${tracked.has(row.parent) ? '在库' : '不在库'}，标注「${row.note || '无'}」）`,
+    );
+  assert.deepEqual(badParent, [], `父路径的存在性与标注对不上：${badParent.join('；')}`);
+
+  // ③ 每片自己必须过 D14 上限 —— 拆分件存在的理由就是让每片都达标
+  const fat = rows
+    .filter((row) => measured.has(row.child) && measured.get(row.child).lines > measured.get(row.child).cap)
+    .map((row) => `${row.child} = ${measured.get(row.child).lines} 行（上限 ${measured.get(row.child).cap}）`);
+  assert.deepEqual(fat, [], `拆分件自己超限，那就不是为了满足 D14 才拆的：${fat.join('；')}`);
+
+  // ④ 同一父的所有片（含父本体）之和 > 上限 —— 这条是豁免的**证明义务**
+  const families = new Map();
+  for (const row of rows) {
+    if (!families.has(row.parent)) families.set(row.parent, []);
+    families.get(row.parent).push(row.child);
+  }
+  const thin = [];
+  for (const [parent, children] of families) {
+    const cap = /\.test\.mjs$/.test(parent) || children.some((item) => /\.test\.mjs$/.test(item)) ? TEST_CAP : CAP;
+    const total =
+      children.reduce((sum, item) => sum + (measured.get(item)?.lines ?? 0), 0) + (measured.get(parent)?.lines ?? 0);
+    if (total <= cap) thin.push(`${parent} 的全部片只有 ${total} 行（上限 ${cap}）—— 没超限就不需要拆，这几片不该占拆分额度`);
+  }
+  assert.deepEqual(thin, [], thin.join('；'));
+
+  // ⑤ 不许套娃：父自己不能再是别人的拆分件（否则同一份体积可以被反复抵扣）
+  const nested = rows
+    .filter((row) => childNames.has(row.parent))
+    .map((row) => `${row.child} → ${row.parent}（父自己也是拆分件）`);
+  assert.deepEqual(nested, [], `拆分件不许再当父：${nested.join('；')}`);
+});

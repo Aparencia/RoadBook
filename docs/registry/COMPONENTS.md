@@ -19,23 +19,23 @@
 | `design/vnext-2026-10-07.md` | v0.10.0 升级方案与 63 条修复点台账（母版私有，不进包） | 批 0（2026-10-07） | `N/A（纯文本）` |
 | `lib/chunks.js` | 客户端分块装载器（`__dshChunks__`） | 批 1（规划） | `N/A（宿主半）` |
 | `lib/session.js` | 会话生命周期读数纯逻辑（预算/三提醒判据） | 批 2（规划） | `N/A（纯函数）` |
-| `lib/update.js` | 更新检查与应用的**公开入口**（barrel：只再导出，调用方无需改） | 批 1（2026-10-07 D14 拆分） | `N/A（宿主半）` |
-| `lib/update-constants.js` | 更新模块共享常量（模式/间隔/超时/重定向与体积上限/安全正则） | 批 1（2026-10-07 D14 拆分） | `N/A（宿主半）` |
-| `lib/update-version.js` | 版本号解析与比较（纯函数，无副作用） | 批 1（2026-10-07 D14 拆分） | `N/A（纯函数）` |
-| `lib/update-repo.js` | 仓库身份推导（slug / manifest / lock 解析 / 上游提交 API） | 批 1（2026-10-07 D14 拆分） | `N/A（宿主半）` |
-| `lib/update-transport.js` | 两级传输（fetch → https+系统 CA）、本机请求守卫、错误文案 | 批 1（2026-10-07 D14 拆分） | `N/A（宿主半）` |
-| `lib/update-plan.js` | 更新判定与检查编排（`decideUpdate` / `checkForUpdate` / 配置归一） | 批 1（2026-10-07 D14 拆分） | `N/A（宿主半）` |
-| `lib/update-host.js` | 宿主安装面探测（profile / lock / PATH 候选 / 命令模板 / 升级对账） | 批 1（2026-10-07 D14 拆分） | `N/A（宿主半）` |
-| `lib/update-report.js` | 观测文件读数（尾部读取 / 最近检查事件 / 最近应用目标 / 默认报告路径） | 批 1（2026-10-07 D14 拆分） | `N/A（宿主半）` |
-| `lib/selfcheck.js` | 「随包文件全在」自检的纯逻辑（注释剥离状态机 + 相对 import 闭包 + 缺失清单） | 批 1（2026-10-07 由 `lib/index.js` 拆出） | `N/A（纯函数）` |
-| `lib/update-watch.js` | 更新服务的**读侧**（状态读取 / 检查 / 冷却 / 升级生效对账） | 批 1（2026-10-07 由 `lib/index.js` 拆出） | `N/A（宿主半）` |
-| `lib/update-apply.js` | 更新服务的**写侧**（安装命令探测阶梯 / 锁 / 子进程与结账） | 批 1（2026-10-07 由 `lib/index.js` 拆出） | `N/A（宿主半）` |
-| `test/client-contract-shell.test.mjs` | 客户端契约·外壳面（ModuleLoader 形状 / 注册与生命周期 / 服务降级 / 双语与版本常量） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
-| `test/client-contract-gallery.test.mjs` | 客户端契约·图册面（预览与归档 URL / 目录与规格 / 空态生成 / 路径折算） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
-| `test/client-contract-panels.test.mjs` | 客户端契约·面板面（更新条 / 自进化标签页 / 插件详情页三处贡献） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
-| `test/helpers/client-contract-harness.mjs` | 上述三份共用的夹具（假 React / bundle 加载器 / 假 ctx / 元素收集；不复制三份） | 批 1（2026-10-07 由 `test/client-contract.test.mjs` 拆三份） | `N/A（测试）` |
+| `lib/update.js` | 更新检查与应用的**公开入口**（barrel：只再导出，调用方无需改） | 批 1（2026-10-07 D14 拆分；本行是 barrel 父件，按判据不带拆分标记） | `N/A（宿主半）` |
+| `lib/update-constants.js` | 更新模块共享常量（模式/间隔/超时/重定向与体积上限/安全正则） | 批 1（2026-10-07 D14 拆分自 lib/update.js） | `N/A（宿主半）` |
+| `lib/update-version.js` | 版本号解析与比较（纯函数，无副作用） | 批 1（2026-10-07 D14 拆分自 lib/update.js） | `N/A（纯函数）` |
+| `lib/update-repo.js` | 仓库身份推导（slug / manifest / lock 解析 / 上游提交 API） | 批 1（2026-10-07 D14 拆分自 lib/update.js） | `N/A（宿主半）` |
+| `lib/update-transport.js` | 两级传输（fetch → https+系统 CA）、本机请求守卫、错误文案 | 批 1（2026-10-07 D14 拆分自 lib/update.js） | `N/A（宿主半）` |
+| `lib/update-plan.js` | 更新判定与检查编排（`decideUpdate` / `checkForUpdate` / 配置归一） | 批 1（2026-10-07 D14 拆分自 lib/update.js） | `N/A（宿主半）` |
+| `lib/update-host.js` | 宿主安装面探测（profile / lock / PATH 候选 / 命令模板 / 升级对账） | 批 1（2026-10-07 D14 拆分自 lib/update.js） | `N/A（宿主半）` |
+| `lib/update-report.js` | 观测文件读数（尾部读取 / 最近检查事件 / 最近应用目标 / 默认报告路径） | 批 1（2026-10-07 D14 拆分自 lib/update.js） | `N/A（宿主半）` |
+| `lib/selfcheck.js` | 「随包文件全在」自检的纯逻辑（注释剥离状态机 + 相对 import 闭包 + 缺失清单） | 批 1（2026-10-07 D14 拆分自 lib/index.js） | `N/A（纯函数）` |
+| `lib/update-watch.js` | 更新服务的**读侧**（状态读取 / 检查 / 冷却 / 升级生效对账） | 批 1（2026-10-07 D14 拆分自 lib/index.js） | `N/A（宿主半）` |
+| `lib/update-apply.js` | 更新服务的**写侧**（安装命令探测阶梯 / 锁 / 子进程与结账） | 批 1（2026-10-07 D14 拆分自 lib/index.js） | `N/A（宿主半）` |
+| `test/client-contract-shell.test.mjs` | 客户端契约·外壳面（ModuleLoader 形状 / 注册与生命周期 / 服务降级 / 双语与版本常量） | 批 1（2026-10-07 D14 拆分自 test/client-contract.test.mjs（父文件已随拆分删除）） | `N/A（测试）` |
+| `test/client-contract-gallery.test.mjs` | 客户端契约·图册面（预览与归档 URL / 目录与规格 / 空态生成 / 路径折算） | 批 1（2026-10-07 D14 拆分自 test/client-contract.test.mjs（父文件已随拆分删除）） | `N/A（测试）` |
+| `test/client-contract-panels.test.mjs` | 客户端契约·面板面（更新条 / 自进化标签页 / 插件详情页三处贡献） | 批 1（2026-10-07 D14 拆分自 test/client-contract.test.mjs（父文件已随拆分删除）） | `N/A（测试）` |
+| `test/helpers/client-contract-harness.mjs` | 上述三份共用的夹具（假 React / bundle 加载器 / 假 ctx / 元素收集；不复制三份） | 批 1（2026-10-07 D14 拆分自 test/client-contract.test.mjs（父文件已随拆分删除）） | `N/A（测试）` |
 | `lib/chunks.js` | 客户端分块的**宿主半**：`GET /roadbook/bundle/<名>.js` 路由（名字白名单 / 固定目录 / 同源守卫 / ETag 记忆化 + 304） | 批 1（#55 分块机制） | `N/A（宿主半）` |
-| `lib/client-evolve.js` | 客户端分块「自进化」：标签页界面与三态判定（核心 bundle 按需注入 `<script>` 装载） | 批 1（#55；412 行由 `lib/client.js` 原样搬来） | `N/A（客户端分块；无独立可达性面，随标签页验）` |
+| `lib/client-evolve.js` | 客户端分块「自进化」：标签页界面与三态判定（核心 bundle 按需注入 `<script>` 装载） | 批 1（#55；D14 拆分自 lib/client.js（412 行原样搬来）） | `N/A（客户端分块；无独立可达性面，随标签页验）` |
 | `test/chunks.test.mjs` | 分块契约（白名单与穿越四种写法 / 路由四态与缓存三件套 / 两半常量一致 / 分块文件 ⊆ 白名单 / 宿主件无缺项 / 边界组件） | 批 1（#55 分块机制） | `N/A（测试）` |
 
 <!-- 上面是母版仓自己的登记行（表头 2026-10-07 由 TD-001 定：路径/用途/归属批次/可访问性）。生成出来的项目照同一表头填自己的文件；纯逻辑/脚本/文档一律 `N/A（纯文本|脚本）`，界面元素才有可访问性验证方式 -->

@@ -37,7 +37,7 @@
 - **B3** 双语同批：`playbook/` 与 `playbook_EN/` 同卡号逐张对齐，缺一张判红 —— 机械落点：`check.ps1` 按卡号逐张比对
 - **B4** `SKILL.md` 双份逐字节镜像（根 `SKILL.md` 与 `skills/roadbook/SKILL.md` 字节相同）—— 机械落点：`node --test test/skill-mirror.test.mjs`
 - **B5** T1 字面近似层：任意两卡 (H1 + 触发行) 的 bigram Dice < 0.75（撞车 = 路由必指错卡）—— 机械落点：`check.ps1` 纯字符串层，零 token
-- **B6** 文件数预算：项目当前文件数 − 文件数基线 > 20 判红 —— 机械落点：`check.ps1`，基线写在 `STATE.md`
+- **B6** 文件数预算（双计数器：源码·资产 与 docs/**.md 各一套额度）：各自「当前 − 对应基线 > 20」判红；因 D14 强制拆分而净增的文件在 COMPONENTS.md 逐行登记父路径、单列不计额度 —— 机械落点：`check.ps1`（两条基线写在 `STATE.md` 的「文件数基线拆分」行；拆分登记的可证伪性断言在 `test/d14-lines.test.mjs`）
 - **B7** 命令形态统一：`powershell -NoProfile -File`、路径正斜杠、命令块内无中文变量名与盘符反斜杠
 - **B8** 随包白名单覆盖运行时路径：运行时真正读的路径 ⊆ `package.json` 的 `files`，且无幽灵条目 —— 机械落点：`node --test test/packaging.test.mjs`
 - **B9** 收工工作树干净：`git status --porcelain` 为空（并行态登记簿有未到期行除外）
