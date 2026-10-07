@@ -98,9 +98,9 @@ Check ($shCntTxt -match "$cardCnt 张") "START-HERE.md 卡数 = §4 表 $cardCnt
 Check ($skCntTxt -match "$cardCnt 张") "SKILL.md 卡数 = §4 表 $cardCnt 张（同源，防漂移）"
 
 # ── 顺序的三处载体必须同源（2026-10-06 增；判据正文见 design §17.6）─────────────────
-# 执行顺序被手抄在三处——design §3 总图 / design §4 档位线与专线 / route.mjs 的 STEPS 数组——
+# 执行顺序被手抄在三处——design §3 总图 / design §4 档位线与专线 / 路由层的 STEPS 表——
 # 而此前没有任何断言盯着它们彼此一致。实测后果：9 张卡不在 §3 总图上（人第一眼看的就是它，
-# 图上没有 ≈ 不存在）；2-6 / 5-6 / 5-7 三张主线卡在 route.mjs 里不可达却被印成「正常」；
+# 图上没有 ≈ 不存在）；2-6 / 5-6 / 5-7 三张主线卡在路由层里不可达却被印成「正常」；
 # L 链静默少掉发版前的两张基线卡；START-HERE.md 的 M/L 线又与 §4 各写一套。
 $sec3 = [regex]::Match($designTxt, '(?sm)^## 3\..*?(?=^## 4\.)').Value
 Check ($sec3.Length -gt 0) 'design §3 生命周期总图可定位（顺序断言的前提）'
@@ -113,13 +113,19 @@ foreach ($b in @($sec4 -split "`n" | Where-Object { $_ -match '^-\s+\*\*' })) {
     foreach ($m in [regex]::Matches($b, '(?<![\d-])\d+-\d+(?![\d-])')) { $lineIds += $m.Value }
 }
 $lineIds = @($lineIds | Select-Object -Unique | Sort-Object)
-$routeSrc = [IO.File]::ReadAllText((Join-Path $root 'skills\roadbook\bin\route.mjs'), [Text.Encoding]::UTF8)
+# 扫描面 = **整个路由层**（`skills/roadbook/bin/route*.mjs`）：2026-10-07 批 3 把 567 行的
+# route.mjs 拆成「数据 / 读盘 / 路由 / 渲染」四层 + CLI，`STEPS` 与 `UNREACHABLE_OK` 搬去了
+# route-data.mjs。写死在单文件上就会像 `lib/update.js` 那次拆分一样假红/恒真 ——
+# 扫描面为空时下面两条断言会变成恒真，所以先加一条非空守卫。
+$routeDir = Join-Path $root 'skills\roadbook\bin'
+$routeSrc = (@(Get-ChildItem $routeDir -File -Filter 'route*.mjs' | Sort-Object Name | ForEach-Object { [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::UTF8) }) -join "`n")
+Check ($routeSrc.Length -gt 5000) "路由层扫描面非空（route*.mjs 共 $($routeSrc.Length) 字符；小于 5000 = 解析空心，下面两条断言会变成恒真）"
 $stepsIds = @([regex]::Matches($routeSrc, "card:\s*'(\d+-\d+)'") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
 $wlBlock = [regex]::Match($routeSrc, '(?s)UNREACHABLE_OK\s*=\s*\[(.*?)\]')
 $wlIds = @([regex]::Matches($wlBlock.Groups[1].Value, "'(\d+-\d+)'") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
 $routable = @($stepsIds + $wlIds | Select-Object -Unique)
 $orphanIds = @($lineIds | Where-Object { $routable -notcontains $_ })
-Check (-not $orphanIds) "§4 档位线与专线点名的卡号 route.mjs 必须能到（缺：$($orphanIds -join ', ')；不在 STEPS 也不在白名单 = 路由永远到不了它）"
+Check (-not $orphanIds) "§4 档位线与专线点名的卡号 route 层必须能到（缺：$($orphanIds -join ', ')；不在 STEPS 也不在白名单 = 路由永远到不了它）"
 Observe ($true) "顺序口径：§4 线表点名 $($lineIds.Count) 张 · route 可达 $($routable.Count) 张（STEPS $($stepsIds.Count) + 白名单 $($wlIds.Count)）"
 
 $tierLines = @($sec4 -split "`n" | Where-Object { $_ -match '^-\s+\*\*[SML]\*\*' })

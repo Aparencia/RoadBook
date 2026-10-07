@@ -37,6 +37,12 @@
 | `lib/client-evolve.js` | 客户端分块「自进化」：标签页界面与三态判定（核心 bundle 按需注入 `<script>` 装载） | 批 1（#55；D14 拆分自 lib/client.js（412 行原样搬来）） | `N/A（客户端分块；无独立可达性面，随标签页验）` |
 | `test/chunks.test.mjs` | 分块契约（白名单与穿越四种写法 / 路由四态与缓存三件套 / 两半常量一致 / 分块文件 ⊆ 白名单 / 宿主件无缺项 / 边界组件） | 批 1（#55 分块机制） | `N/A（测试）` |
 | `skills/roadbook/bin/cards.mjs` | 卡图 CLI（只读）：分类判定 / 进入条件点名关系 / 依赖表 → 可开工前沿（成环退 1）/ `--check` 三条配对关系对账 | 批 3（台账 #36 #37 #38） | `N/A（CLI）` |
+| `skills/roadbook/bin/route.mjs` | 路由 CLI + barrel（参数/事实/回执/退出码；对外导出面按原名再导出，调用方零改动） | 批 3（2026-10-07 D14 拆分；本行是 barrel 父件，按判据不带拆分标记） | `N/A（CLI）` |
+| `skills/roadbook/bin/route-data.mjs` | 路由**数据表**：事实问题（FACTS）/ 进入条件（STEPS）/ 档位判据（L_JUDGE + `tierOf`）/ 门禁集合 / 不可达标白名单 / 预设场景 | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（纯数据 + 纯函数）` |
+| `skills/roadbook/bin/route-cards.mjs` | 路由**读盘半**：卡目录扫描（认不出的文件名收进 `unparsed`）/ 锚点区提取（H1 + 触发行）/ 读卡正文 | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（宿主半）` |
+| `skills/roadbook/bin/route-core.mjs` | 路由**纯逻辑**：门禁判定 / 事实校验与归一 / 出链 / 账本 / 审计（锚点失配 · 双语缺份 · 幽灵引用 · 不可达） | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（纯函数）` |
+| `skills/roadbook/bin/route-format.mjs` | 路由**渲染半**：文本回执与 `--json` 回执（键序钉死，同事实两次运行逐字节相同） | 批 3（2026-10-07 D14 拆分自 skills/roadbook/bin/route.mjs） | `N/A（纯函数）` |
+| `skills/roadbook/bin/route-quote.mjs` | 卡正文**逐字节切片**（`--quote`）：行号 + sha256 + 可机械剥离的前缀 —— 台账 #27 的派单内嵌件（**新功能，不是拆分件**） | 批 3（台账 #27 前置） | `N/A（纯函数）` |
 | `skills/roadbook/data/cards.json` | 卡图数据文件（**生成物**，`cards.mjs --write` 唯一写者；49 张卡的分类 / 序号 / 点名关系） | 批 3（台账 #33） | `N/A（数据）` |
 | `test/cards.test.mjs` | 卡图属性测试（分类成划分 / 恒真判定健全且完备 / 触发行分三格 / 随机 DAG 前沿双向不变式 / 回边必成环 / CLI 退出码） | 批 3（台账 #36 #37 #38） | `N/A（测试）` |
 

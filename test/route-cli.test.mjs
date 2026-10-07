@@ -19,11 +19,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { CN_DIR, EN_DIR, STEPS, UNREACHABLE_OK, audit, route, scanDir } from '../skills/roadbook/bin/route.mjs'
+import { CN_DIR, EN_DIR, STEPS, UNREACHABLE_OK, audit, route, scanDir, stripLineNumbers } from '../skills/roadbook/bin/route.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..')
@@ -95,11 +96,26 @@ test('A1b 主模块判定精确：被同名文件 import 不许执行 main（旧
   }
 })
 
-test('A1c 契约：route.mjs 只用 node:fs / node:path / node:url，且不 spawn 子进程', () => {
-  const src = readFileSync(CLI, 'utf8')
-  const imports = [...src.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1])
-  assert.deepEqual([...new Set(imports)].sort(), ['node:fs', 'node:path', 'node:url'], `import 超出零依赖白名单：${imports.join(', ')}`)
-  assert.ok(!/child_process|spawnSync|execSync|execFile/.test(src), 'route.mjs 不许 spawn 子进程')
+test('A1c 契约：route 层只用 node 内置模块，且不 spawn 子进程（拆分后按整层扫，不只看入口）', () => {
+  const dir = path.dirname(CLI)
+  const files = readdirSync(dir).filter((f) => /^route.*\.mjs$/.test(f)).sort()
+  // 扫描面守卫：拆分后入口只剩 195 行，只扫它 = 另外四层没有契约约束（旧的单文件写法会静默退化）
+  assert.ok(
+    files.includes('route.mjs') && files.length >= 6,
+    `扫描面只有 ${files.length} 个 route*.mjs（${files.join(', ')}），疑似解析空心`,
+  )
+  const allowed = new Set(['node:fs', 'node:path', 'node:url', 'node:crypto'])
+  const bad = []
+  for (const f of files) {
+    const src = readFileSync(path.join(dir, f), 'utf8')
+    for (const m of src.matchAll(/from\s+'([^']+)'/g)) {
+      const spec = m[1]
+      if (allowed.has(spec) || /^\.\/route-[a-z]+\.mjs$/.test(spec)) continue
+      bad.push(`${f} → ${spec}`)
+    }
+    assert.ok(!/child_process|spawnSync|execSync|execFile/.test(src), `${f} 不许 spawn 子进程`)
+  }
+  assert.deepEqual(bad, [], `出现白名单外的 import（第三方依赖、或未登记的内置模块）：${bad.join('；')}`)
 })
 
 /* ── A2 反向对照：篡改卡表 head 必须判红 ── */
@@ -368,4 +384,99 @@ test('A13b 白名单不许腐烂：白名单里的卡必须真的不在 STEPS，
   const { unreachableOk } = audit(scanDir(CN_DIR), scanDir(EN_DIR))
   const expected = UNREACHABLE_OK.filter((id) => !ids.has(id)).sort()
   assert.deepEqual(unreachableOk, expected, '白名单与实际不可达集合必须一致（多一个 = 有卡漏进「正常」那一行）')
+})
+
+/* ── A14 卡正文切片（--quote）：逐字节 + 行号 + 哈希（台账 #27 的派单内嵌件） ── */
+
+/**
+ * 字节偏移口径的**独立复算**：不信 `--quote` 自己说的「逐字节」，用 Buffer 重新切一遍。
+ * 为什么不能拿 `text.split('\n')` 当复算：那是实现用的同一个表达式 —— 两边一起错就一起绿。
+ */
+function expectedSlice(file, from, to) {
+  const buf = readFileSync(file)
+  const starts = [0]
+  for (let i = 0; i < buf.length; i += 1) if (buf[i] === 10) starts.push(i + 1)
+  const endsWithNewline = buf.length > 0 && buf[buf.length - 1] === 10
+  const total = starts.length - (endsWithNewline ? 1 : 0)
+  const end = to < total ? starts[to] - 1 : (endsWithNewline ? buf.length - 1 : buf.length)
+  return { text: buf.slice(starts[from - 1], end).toString('utf8'), total }
+}
+
+test('A14 --quote 逐字节：字节偏移独立复算 = 切片原文，哈希算在原文上（全部 49 张整卡）', () => {
+  const cn = scanDir(CN_DIR)
+  assert.ok(cn.size >= 49, `扫描面只有 ${cn.size} 张卡，疑似解析空心`)
+  for (const [id, entry] of cn) {
+    const file = path.join(CN_DIR, entry.file)
+    const whole = expectedSlice(file, 1, Number.MAX_SAFE_INTEGER)
+    const j = cliJson(['--quote', id, '--json'])
+    assert.equal(j.card, id)
+    assert.equal(j.from, 1)
+    assert.equal(j.to, whole.total, `${id}：--quote 说到第 ${j.to} 行，字节偏移复算说共 ${whole.total} 行`)
+    assert.equal(j.text, whole.text, `${id}：--quote 的 text 与字节偏移复算不一致 ——「逐字节」不成立`)
+    assert.equal(
+      j.sha256,
+      createHash('sha256').update(whole.text, 'utf8').digest('hex'),
+      `${id}：sha256 与独立复算对不上（哈希必须算在原文上，不是算在带行号的渲染文本上）`,
+    )
+  }
+})
+
+test('A14b --quote 行号前缀可机械剥离：剥掉后 = 原文（文本模式，全部 49 张整卡）', () => {
+  for (const [id, entry] of scanDir(CN_DIR)) {
+    const file = path.join(CN_DIR, entry.file)
+    const r = cli(['--quote', id])
+    assert.equal(r.status, 0, `${id} 应退出 0：${r.stderr}`)
+    // 剥离规则与 route-quote.mjs 的 LINE_PREFIX_RE 同源，但这里**自己写一遍**：
+    // 用被测物自带的正则去验被测物的输出，等于没验。
+    const stripped = r.stdout
+      .split('\n')
+      .filter((line) => /^\s*\d+\| /.test(line))
+      .map((line) => line.replace(/^\s*\d+\| /, ''))
+      .join('\n')
+    assert.equal(stripped, expectedSlice(file, 1, Number.MAX_SAFE_INTEGER).text, `${id}：剥掉行号前缀后与原文不一致`)
+  }
+  // 导出的 `stripLineNumbers` 自称是这条规则的机械版：它必须与上面那条独立规则逐字节一致，
+  // 否则收件方按文档剥前缀会剥出别的东西（文档说的与代码做的是两回事）。
+  const one = cliJson(['--quote', '4-1:80-84', '--json'])
+  const rendered = cli(['--quote', '4-1:80-84']).stdout
+  assert.equal(stripLineNumbers(rendered), one.text, 'stripLineNumbers 与「剥掉行首 `行号| `」这条规则不一致')
+})
+
+test('A14c --quote 区间与 --lang：区间字节精确；英文执行版读 playbook_EN/；两次运行逐字节相同', () => {
+  const exp = expectedSlice(path.join(CN_DIR, '4-1-分批编码.md'), 80, 120)
+  const j = cliJson(['--quote', '4-1:80-120', '--json'])
+  assert.equal(j.from, 80)
+  assert.equal(j.to, 120)
+  assert.equal(j.lines, 41, `区间行数应为 41，实得 ${j.lines}`)
+  assert.equal(j.text, exp.text, '区间切片的 text 与字节偏移复算不一致')
+  assert.equal(j.bytes, Buffer.byteLength(exp.text, 'utf8'), 'bytes 应等于原文的 UTF-8 字节数')
+
+  const en = cliJson(['--quote', '4-1:1-3', '--lang', 'en', '--json'])
+  assert.equal(en.dir, 'playbook_EN', '--lang en 必须读英文执行版目录')
+  assert.equal(en.text, expectedSlice(path.join(EN_DIR, en.file), 1, 3).text, '英文侧切片与复算不一致')
+  assert.equal(en.lang, 'en')
+
+  const a = cli(['--quote', '4-1:80-120', '--json']).stdout
+  const b = cli(['--quote', '4-1:80-120', '--json']).stdout
+  assert.equal(a, b, '同一切片两次运行必须逐字节相同（键序固定，供派单 diff）')
+})
+
+test('A14d --quote 退出码纪律：卡不存在 / 越界 / 起止颠倒 = 1；写法非法 / 缺取值 / --lang 非法 = 2', () => {
+  const cases = [
+    [['--quote', '9-9'], 1, '卡不存在'],
+    [['--quote', '4-1:9999-10000'], 1, '行号越界'],
+    [['--quote', '4-1:120-80'], 1, '起止颠倒'],
+    [['--quote', '4-1:abc'], 2, '切片写法非法'],
+    [['--quote', '4-1:80~120'], 2, '宽松解析不许放行（换了个分隔符也是非法写法）'],
+    [['--quote'], 2, '缺取值'],
+    [['--quote', '4-1', '--lang', 'xx'], 2, '--lang 取值非法'],
+  ]
+  for (const [args, code, why] of cases) {
+    const r = cli(args)
+    assert.equal(r.status, code, `${why}：route.mjs ${args.join(' ')} 应退出 ${code}，实得 ${r.status}\n${r.stdout}${r.stderr}`)
+  }
+  // 反向对照：卡不存在时不许静默降级成「切了个空的」或整卡 —— 一个正文字符都不许出来
+  const miss = cli(['--quote', '9-9'])
+  assert.ok(!/^\s*\d+\| /m.test(miss.stdout), `卡不存在时不许输出任何正文：\n${miss.stdout}`)
+  assert.match(cli(['--help']).stdout, /--quote/, '--help 必须列出 --quote（否则没人知道有这条出口）')
 })
