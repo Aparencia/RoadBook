@@ -1,4 +1,4 @@
-﻿ check.ps1 · 收工仪式（guardrail）
+﻿#  check.ps1 · 收工仪式（guardrail）
 # "完成"的唯一合法定义 = 本脚本退出码 0 + 真实输出。
 # 1-2-选型初始化卡会把下方 STEPS 替换为本项目真实的 typecheck/lint/test/build 命令。
 # ⚠️ 口径唯一：本脚本（含 STEPS）是本项目唯一验收口径。将来加 CI/钩子必须跑与 STEPS 完全相同的命令——

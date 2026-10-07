@@ -1,4 +1,4 @@
-﻿ _qc/check.ps1 · Roadbook（路书）V6 母版一致性校验
+﻿# _qc/check.ps1 · Roadbook（路书）V6 母版一致性校验
 # 用法：powershell -NoProfile -File _qc/check.ps1
 # 退出码：0=全部通过；1=存在失败项（清单见输出）
 # 口径唯一：卡清单的事实源 = design/v6-design.md §4 表（卡号+卡名）与 §4.1 表（英文文件名），本脚本不再硬编码卡名。
